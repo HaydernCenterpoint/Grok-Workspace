@@ -45,6 +45,37 @@
   flex-shrink: 0;
 }
 
+/*
+ * Collapsed phase: duration + a one-line "what happened" tail. Row must be
+ * able to shrink instead of pushing the transcript sideways, so the header
+ * becomes a full-width flex line and only the tail ellipsizes.
+ */
+.grok-act__header--sum {
+  display: flex;
+  width: 100%;
+  max-width: 100%;
+}
+.grok-act__header--sum .grok-act__header-text {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.grok-act__header-sum {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--grok-act-fg-dim);
+}
+.grok-act__header-sum::before {
+  content: "·";
+  margin-right: 0.5ch;
+  opacity: 0.6;
+}
+.grok-act__header:hover .grok-act__header-sum {
+  color: var(--grok-act-fg);
+}
+
 .grok-act__steps {
   display: flex;
   flex-direction: column;
@@ -299,6 +330,31 @@
   0%, 100% { opacity: 0.45; }
   50% { opacity: 1; }
 }
+
+/* Expanding a fold crossfades its body in — opacity only, so the row height
+   the transcript already reserved never shifts. */
+@keyframes chat-fold-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .grok-act__steps,
+  .grok-act__expand-body,
+  .grok-act__thought-body,
+  .grok-thought__body {
+    animation: chat-fold-in var(--motion-normal) var(--ease-out);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .grok-act__step.is-running .grok-act__icon,
+  .grok-act__working-icon,
+  .grok-thought.is-live .grok-thought__icon,
+  .grok-thought__label--live {
+    animation: none;
+  }
+}
 @keyframes chat-pulse {
   0%, 100% { opacity: 0.45; }
   50% { opacity: 1; }
@@ -526,6 +582,32 @@
   align-items: center;
   opacity: 0.75;
   flex-shrink: 0;
+}
+/* Collapsed thought: duration + one-line gist (full text is one click away). */
+.grok-thought__header--sum {
+  display: flex;
+  width: 100%;
+  max-width: 100%;
+}
+.grok-thought__header--sum .grok-thought__label {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.grok-thought__sum {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--chat-text-3, #9ca3af) 100%, transparent);
+}
+.grok-thought__sum::before {
+  content: "·";
+  margin-right: 0.5ch;
+  opacity: 0.6;
+}
+.grok-thought__header:not(:disabled):hover .grok-thought__sum {
+  color: var(--chat-text-2, #d1d5db);
 }
 /* Dig-in body: clearly secondary, not the answer */
 .grok-thought__body {

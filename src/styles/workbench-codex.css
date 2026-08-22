@@ -7,7 +7,7 @@
   bottom: auto;
   z-index: 4;
   pointer-events: auto;
-  padding: 10px 16px 14px;
+  padding: 8px 14px 10px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -23,7 +23,7 @@
 [data-chrome="codex"]
   .main__stage:has(.composer-wrap--dock:not(.composer-wrap--side-dock))
   .messages__col {
-  padding-bottom: 16px;
+  padding-bottom: 12px;
 }
 
 [data-chrome="codex"]
@@ -32,15 +32,22 @@
   inset-block-end: 12px;
 }
 
+/*
+ * Transcript and composer share one measure (see the --chat-width-max ladder,
+ * declared on the html root so both inherit it). Edges line up exactly while
+ * the window is the binding constraint; once the cap binds the composer box
+ * runs 14px wider per side than the text, because the transcript carries its
+ * gutter inside the capped box and the composer carries it outside.
+ */
 [data-chrome="codex"]
   .main__stage:has(.composer-wrap--dock:not(.composer-wrap--side-dock))
   [data-slot="conversation-content"] {
-  max-width: 48rem;
+  max-width: var(--chat-width-max, 1120px);
 }
 
 [data-chrome="codex"] .composer-wrap--dock:not(.composer-wrap--side-dock) .composer-stack {
   width: 100%;
-  max-width: 48rem;
+  max-width: var(--chat-width-max, 1120px);
   pointer-events: auto;
 }
 
@@ -49,14 +56,19 @@
   .composer-stack--with-context {
   gap: 0;
   border: 1px solid var(--border-subtle);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   background: var(--bg-elevated);
+  box-shadow: var(--elev-1);
+  transition:
+    border-color var(--motion-normal) var(--ease-out),
+    box-shadow var(--motion-normal) var(--ease-out);
 }
 
 [data-chrome="codex"]
   .composer-wrap--dock:not(.composer-wrap--side-dock)
   .composer-stack--with-context:focus-within {
   border-color: color-mix(in srgb, var(--text-primary) 22%, var(--border-subtle));
+  box-shadow: var(--elev-2);
 }
 
 [data-chrome="codex"]
@@ -78,8 +90,8 @@
 [data-chrome="codex"] .composer-wrap--dock:not(.composer-wrap--side-dock) .composer {
   width: 100%;
   max-width: none;
-  border-radius: 12px;
-  box-shadow: none;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--elev-1);
   border: 1px solid var(--border-subtle);
   background: var(--bg-elevated);
   padding: 6px 8px 8px;
@@ -177,7 +189,7 @@
 
 [data-chrome="codex"] .message__bubble--user {
   padding: 8px 12px;
-  border-radius: 10px;
+  border-radius: 14px;
   font-size: var(--text-md);
   line-height: var(--leading-normal);
 }

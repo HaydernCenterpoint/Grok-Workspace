@@ -270,6 +270,9 @@
   border-radius: 10px;
   font-size: 13px;
   color: var(--text-secondary);
+  transition:
+    background var(--motion-fast) var(--ease-out),
+    color var(--motion-fast) var(--ease-out);
 }
 
 .cmm__opt:hover {

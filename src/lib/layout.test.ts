@@ -28,12 +28,12 @@ import {
 } from "./layout";
 
 describe("layout prefs", () => {
-  it("defaults right pane open (Codex chrome)", () => {
-    expect(DEFAULT_LAYOUT.asideCollapsed).toBe(false);
+  it("defaults right pane closed so the conversation owns the frame", () => {
+    expect(DEFAULT_LAYOUT.asideCollapsed).toBe(true);
     expect(SIDEBAR_DEFAULT_WIDTH).toBe(240);
   });
 
-  it("round-trips widths; aside follows chrome default on launch", () => {
+  it("round-trips widths; aside launches closed on every chrome", () => {
     const data: Record<string, string> = {};
     const storage = {
       getItem: (k: string) => data[k] ?? null,
@@ -49,7 +49,7 @@ describe("layout prefs", () => {
     });
     expect(data[LAYOUT_STORAGE_KEY]).toBeTruthy();
     const loaded = loadLayout(storage);
-    expect(loaded.asideCollapsed).toBe(false);
+    expect(loaded.asideCollapsed).toBe(true);
     expect(loaded.sidebarWidth).toBe(280);
     expect(loaded.asideWidth).toBe(420);
     expect(loaded.sidebarCollapsed).toBe(true);
@@ -58,7 +58,7 @@ describe("layout prefs", () => {
   });
 
   it("parseLayout falls back safely", () => {
-    expect(parseLayout(null).asideCollapsed).toBe(false);
+    expect(parseLayout(null).asideCollapsed).toBe(true);
     expect(parseLayout(null).sidebarCollapsed).toBe(false);
   });
 

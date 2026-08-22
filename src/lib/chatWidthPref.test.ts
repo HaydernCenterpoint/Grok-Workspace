@@ -44,9 +44,9 @@ describe("chatWidthPref", () => {
   });
 
   it("exposes max-width px map (full = none)", () => {
-    expect(CHAT_WIDTH_MAX_PX.narrow).toBe(640);
-    expect(CHAT_WIDTH_MAX_PX.medium).toBe(800);
-    expect(CHAT_WIDTH_MAX_PX.wide).toBe(1000);
+    expect(CHAT_WIDTH_MAX_PX.narrow).toBe(760);
+    expect(CHAT_WIDTH_MAX_PX.medium).toBe(1120);
+    expect(CHAT_WIDTH_MAX_PX.wide).toBe(1440);
     expect(CHAT_WIDTH_MAX_PX.full).toBeNull();
   });
 

@@ -44,13 +44,15 @@ import {
 } from "@/lib/formatWorkDuration";
 import { resolveWorkChromeLabel } from "@/lib/workChromeLabel";
 import {
+  activityStepLabel,
+  activityStepsSummary,
   buildGrokActivitySteps,
   type GrokActivityStep,
 } from "@/lib/grokActivitySteps";
 import {
-  resolveToolPrimaryLabel,
   toolExpandBody,
   type ToolDisplayKind,
+  type ToolLabelTr,
 } from "@/lib/toolDisplay";
 import {
   GROK_ACTIVITY_STEP_ROW_PX,
@@ -157,29 +159,10 @@ function StepIcon({ step }: { step: GrokActivityStep }) {
   return <IconCircle size={size} stroke={stroke} />;
 }
 
-function exploreLabel(
-  step: Extract<GrokActivityStep, { type: "explore-group" }>,
-  tr: ReturnType<typeof createT>,
-): string {
-  // “探索 · 1 次搜索, 3 个文件” — omit a clause when its count is zero so a
-  // pure-read burst reads as “探索 · 3 个文件”.
-  const parts: string[] = [];
-  if (step.searches > 0) {
-    parts.push(
-      step.searches === 1
-        ? tr("chat.exploreSearchesOne")
-        : tr("chat.exploreSearches", { n: String(step.searches) }),
-    );
-  }
-  if (step.reads > 0) {
-    parts.push(
-      step.reads === 1
-        ? tr("chat.exploreFilesOne")
-        : tr("chat.exploreFiles", { n: String(step.reads) }),
-    );
-  }
-  const detail = parts.join(", ");
-  return detail ? `${tr("chat.explored")} · ${detail}` : tr("chat.explored");
+/** `createT` narrowed to the loose translator the label helpers expect. */
+function toolLabelTr(tr: ReturnType<typeof createT>): ToolLabelTr {
+  return (key, params) =>
+    tr(key as MessageKey, params as Record<string, string> | undefined);
 }
 
 function StepMainText({
@@ -189,67 +172,32 @@ function StepMainText({
   step: GrokActivityStep;
   tr: ReturnType<typeof createT>;
 }) {
-  switch (step.type) {
-    case "speech":
-      return null;
-    case "thought":
-      return (
-        <span className="grok-act__label-text">
-          {step.summary || tr("chat.thinkingLabel")}
+  if (step.type === "speech") return null;
+  // Search / browse split prefix and target into their own spans; everything
+  // else shares the plain-text label with the collapsed phase summary.
+  if (step.type === "web-search") {
+    return (
+      <span className="grok-act__label-text">
+        <span className="grok-act__label-prefix">
+          {tr("chat.searchedWebForPrefix")}
         </span>
-      );
-    case "bash-group":
-      return (
-        <span className="grok-act__label-text">
-          {step.count === 1
-            ? tr("chat.ranCommandsOne")
-            : tr("chat.ranCommands", { n: String(step.count) })}
-        </span>
-      );
-    case "edit-group":
-      return (
-        <span className="grok-act__label-text">
-          {step.count === 1
-            ? tr("chat.editedFilesOne")
-            : tr("chat.editedFiles", { n: String(step.count) })}
-        </span>
-      );
-    case "search-group":
-      return (
-        <span className="grok-act__label-text">
-          {step.count === 1
-            ? tr("chat.ranSearch")
-            : tr("chat.ranSearches", { n: String(step.count) })}
-        </span>
-      );
-    case "explore-group":
-      return (
-        <span className="grok-act__label-text">{exploreLabel(step, tr)}</span>
-      );
-    case "web-search":
-      return (
-        <span className="grok-act__label-text">
-          <span className="grok-act__label-prefix">
-            {tr("chat.searchedWebForPrefix")}
-          </span>
-          <span className="grok-act__label-query"> {step.query}</span>
-        </span>
-      );
-    case "browse":
-      return (
-        <span className="grok-act__label-text">
-          <span className="grok-act__label-prefix">{tr("chat.browsedPrefix")}</span>
-          <span className="grok-act__label-url"> {step.url}</span>
-        </span>
-      );
-    case "tool": {
-      // Same primary-label resolver as bare TimelineToolRow.
-      const label = resolveToolPrimaryLabel(step.tool, (key, params) =>
-        tr(key as MessageKey, params as Record<string, string> | undefined),
-      );
-      return <span className="grok-act__label-text">{label}</span>;
-    }
+        <span className="grok-act__label-query"> {step.query}</span>
+      </span>
+    );
   }
+  if (step.type === "browse") {
+    return (
+      <span className="grok-act__label-text">
+        <span className="grok-act__label-prefix">{tr("chat.browsedPrefix")}</span>
+        <span className="grok-act__label-url"> {step.url}</span>
+      </span>
+    );
+  }
+  return (
+    <span className="grok-act__label-text">
+      {activityStepLabel(step, toolLabelTr(tr))}
+    </span>
+  );
 }
 
 const GrokActivityStepRow = memo(function GrokActivityStepRow({
@@ -821,6 +769,11 @@ export const TimelinePhaseBlock = memo(function TimelinePhaseBlock({
     formatDuration: (sec) => formatWorkDuration(sec, locale),
   });
 
+  // Folded phases still name the reasoning + tools; the rail is one click away.
+  const collapsedSummary = expanded
+    ? ""
+    : activityStepsSummary(stepsResolved, toolLabelTr(tr));
+
   return (
     <div
       className={
@@ -834,7 +787,9 @@ export const TimelinePhaseBlock = memo(function TimelinePhaseBlock({
     >
       <button
         type="button"
-        className="grok-act__header"
+        className={
+          "grok-act__header" + (collapsedSummary ? " grok-act__header--sum" : "")
+        }
         aria-expanded={expanded}
         onClick={() => {
           userToggled.current = true;
@@ -845,6 +800,9 @@ export const TimelinePhaseBlock = memo(function TimelinePhaseBlock({
           <IconGridDots size={15} stroke={1.5} />
         </span>
         <span className="grok-act__header-text">{phaseChromeLabel}</span>
+        {collapsedSummary ? (
+          <span className="grok-act__header-sum">{collapsedSummary}</span>
+        ) : null}
         <span className="grok-act__header-caret" aria-hidden>
           {expanded ? (
             <IconChevronDown size={12} stroke={2} />

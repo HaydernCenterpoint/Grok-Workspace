@@ -62,6 +62,16 @@
   --motion-normal: 200ms;
   --motion-pane: 320ms;
   --motion-pane-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  /* Entering / hover / press easing for micro-interactions. */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /*
+   * Elevation scale — one soft ambient ramp for every raised region.
+   * 1 = resting card / bubble / composer, 2 = floating menu / focused input.
+   * Never hand-roll a new shadow value in a component.
+   */
+  --elev-1: 0 1px 2px rgba(0, 0, 0, 0.16), 0 2px 6px rgba(0, 0, 0, 0.12);
+  --elev-2: 0 2px 4px rgba(0, 0, 0, 0.18), 0 8px 20px rgba(0, 0, 0, 0.16);
 
   /* Solid window base — never leave transparent or theme switches flash white */
   --bg-app: #0d0d0d;
@@ -309,6 +319,9 @@
   /* Softer than dark — avoid heavy black halo on white chrome */
   --shadow-window: 0 8px 28px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
   --shadow-pop: var(--glass-shadow);
+
+  --elev-1: 0 1px 2px rgba(16, 18, 24, 0.06), 0 2px 6px rgba(16, 18, 24, 0.05);
+  --elev-2: 0 2px 4px rgba(16, 18, 24, 0.07), 0 8px 20px rgba(16, 18, 24, 0.07);
 }
 
 /* Codex utilitarian chrome — solid panes, no frost, tighter controls. */
@@ -316,18 +329,21 @@
   --glass-blur: 0;
   --glass-saturate: 1;
   --glass-surface: var(--glass-surface-solid);
-  --glass-shadow:
-    0 0 0 1px var(--border-subtle),
-    0 8px 24px rgba(0, 0, 0, 0.18);
+  --glass-shadow: 0 0 0 1px var(--border-subtle), var(--elev-2);
   --menu-surface: var(--glass-surface-solid);
   --menu-blur: 0;
   --menu-saturate: 1;
-  --menu-radius: 6px;
-  --modal-radius: 8px;
+  /* Gently rounded in-app panels. --radius-window stays square: rounding the
+     OS window was reviewed and rejected. */
+  --menu-radius: 10px;
+  --menu-item-radius: 8px;
+  --menu-context-radius: 10px;
+  --modal-radius: 14px;
   --input-min-height: 36px;
   --radius-window: 0px;
-  --radius-lg: 6px;
-  --radius-md: 4px;
+  --radius-lg: 12px;
+  --radius-md: 10px;
+  --radius-sm: 8px;
   --titlebar-height: 36px;
   --bg-sidebar: var(--bg-sidebar-solid);
 }

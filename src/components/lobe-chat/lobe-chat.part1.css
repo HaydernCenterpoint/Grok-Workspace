@@ -34,6 +34,14 @@
   --chat-r-sm: 8px;
 
   /*
+   * Activity chrome (thought rows, tool rails, fragments) tracks the column.
+   * `.lobe-chat__inner` already caps the reading measure via --chat-width-max;
+   * a second inner cap here only made these blocks narrower than the answer.
+   */
+  --chat-content-max: 100%;
+  --grok-act-max: 100%;
+
+  /*
    * Default = follow app design tokens (tokens.css on html[data-theme]).
    * Do NOT pin dark via `:root .lobe-chat` — that forced dark code chrome in
    * light theme and made fenced code unreadable (dark bg + wrong fg).
@@ -135,9 +143,11 @@
   box-sizing: border-box;
   width: 100%;
   /* Default = medium; overridden by html[data-chat-width] (Appearance). */
-  max-width: var(--chat-width-max, 800px);
+  max-width: var(--chat-width-max, 1120px);
   margin: 0 auto;
-  padding: 20px 20px 32px;
+  /* Thin gutters — on a 1200px window they are the difference between a
+     squeezed column and one that fills the pane. */
+  padding: 16px 14px 24px;
   display: flex;
   flex-direction: column;
   gap: var(--chat-list-gap, 4px);
@@ -205,7 +215,7 @@
   white-space: pre-wrap;
   word-break: break-word;
   border: none;
-  box-shadow: none;
+  box-shadow: var(--elev-1);
 }
 
 /* Plain / skill-mixed user body — same newline policy as the composer */

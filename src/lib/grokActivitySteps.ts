@@ -16,10 +16,12 @@ import {
   isBrowseToolKind,
   isContextToolKind,
   isSearchToolKind,
+  resolveToolPrimaryLabel,
   summarizeToolDisplay,
   toolInputDisplay,
   toolPathBase,
   type ToolDisplayKind,
+  type ToolLabelTr,
 } from "./toolDisplay";
 
 export type GrokActivityStep =
@@ -571,6 +573,88 @@ function buildStepsInternal(
   }
 
   return steps;
+}
+
+/**
+ * One-line plain-text label for a step — same wording as the expanded rail,
+ * without the markup. Rendered as the collapsed phase summary so a folded
+ * "Worked for 1m 2s" still names what the agent actually did.
+ */
+export function activityStepLabel(
+  step: GrokActivityStep,
+  tr: ToolLabelTr,
+): string | null {
+  switch (step.type) {
+    case "speech":
+      return null;
+    case "thought":
+      return step.summary || tr("chat.thinkingLabel");
+    case "bash-group":
+      return step.count === 1
+        ? tr("chat.ranCommandsOne")
+        : tr("chat.ranCommands", { n: String(step.count) });
+    case "edit-group":
+      return step.count === 1
+        ? tr("chat.editedFilesOne")
+        : tr("chat.editedFiles", { n: String(step.count) });
+    case "search-group":
+      return step.count === 1
+        ? tr("chat.ranSearch")
+        : tr("chat.ranSearches", { n: String(step.count) });
+    case "explore-group": {
+      const parts: string[] = [];
+      if (step.searches > 0) {
+        parts.push(
+          step.searches === 1
+            ? tr("chat.exploreSearchesOne")
+            : tr("chat.exploreSearches", { n: String(step.searches) }),
+        );
+      }
+      if (step.reads > 0) {
+        parts.push(
+          step.reads === 1
+            ? tr("chat.exploreFilesOne")
+            : tr("chat.exploreFiles", { n: String(step.reads) }),
+        );
+      }
+      const detail = parts.join(", ");
+      return detail
+        ? `${tr("chat.explored")} · ${detail}`
+        : tr("chat.explored");
+    }
+    case "web-search":
+      return `${tr("chat.searchedWebForPrefix")} ${step.query}`.trim();
+    case "browse":
+      return `${tr("chat.browsedPrefix")} ${step.url}`.trim();
+    case "tool":
+      return resolveToolPrimaryLabel(step.tool, tr);
+    default: {
+      const _never: never = step;
+      return _never;
+    }
+  }
+}
+
+/** Separator between collapsed-summary items. */
+const SUMMARY_SEP = " · ";
+
+/**
+ * Short "what happened" line for a collapsed work phase: the first few step
+ * labels in stream order (reasoning gist first when the burst started with a
+ * thought). CSS ellipsizes; no length math here.
+ */
+export function activityStepsSummary(
+  steps: GrokActivityStep[],
+  tr: ToolLabelTr,
+  max = 3,
+): string {
+  const labels: string[] = [];
+  for (const step of steps) {
+    if (labels.length >= max) break;
+    const label = activityStepLabel(step, tr)?.trim();
+    if (label) labels.push(label);
+  }
+  return labels.join(SUMMARY_SEP);
 }
 
 export function phaseItemsFromLegacy(

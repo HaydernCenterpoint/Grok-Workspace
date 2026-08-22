@@ -3,9 +3,9 @@
  * localStorage-only — no Rust AppSettings (avoids prefs schema conflicts).
  * Applied via `data-chat-width` on `document.documentElement`.
  *
- * - `narrow`  (~640px)
- * - `medium`  (~800px, default)
- * - `wide`    (~1000px)
+ * - `narrow`  (~760px)
+ * - `medium`  (~1120px, default)
+ * - `wide`    (~1440px)
  * - `full`    (no max-width)
  */
 
@@ -26,9 +26,9 @@ export const CHAT_WIDTHS: readonly ChatWidth[] = [
 
 /** Approximate max-width (px) for CSS; `full` is null (no cap). */
 export const CHAT_WIDTH_MAX_PX: Record<ChatWidth, number | null> = {
-  narrow: 640,
-  medium: 800,
-  wide: 1000,
+  narrow: 760,
+  medium: 1120,
+  wide: 1440,
   full: null,
 };
 

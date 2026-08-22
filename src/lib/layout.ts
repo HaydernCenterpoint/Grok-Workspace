@@ -9,8 +9,6 @@
  *   except to enforce chrome min / viewport max.
  */
 
-import { loadWorkbenchChrome } from "./workbenchChrome";
-
 export const LAYOUT_STORAGE_KEY = "grok-app.layout";
 
 /** Mirror phone CSS drawer breakpoint (`app.css` max-width: 820px). */
@@ -148,8 +146,12 @@ export const DEFAULT_LAYOUT: LayoutPrefs = {
   sidebarWidth: SIDEBAR_DEFAULT_WIDTH,
   /** Comfortable default: tabs + actions + light preview. */
   asideWidth: 400,
-  /** Codex chrome: tools pane open. Classic launch still collapses (see loadLayout). */
-  asideCollapsed: false,
+  /**
+   * Chat-first launch on every chrome. The tools pane is 400px of a 1200px
+   * window; opening a file / terminal / review uncollapses it on demand
+   * (`resourceOpenTarget`), so the conversation owns the frame until then.
+   */
+  asideCollapsed: true,
   /** Left session rail starts open; can fully hide via top-bar panel icon. */
   sidebarCollapsed: false,
 };
@@ -446,11 +448,12 @@ export function loadLayout(
 ): LayoutPrefs {
   try {
     const raw = storage.getItem(LAYOUT_STORAGE_KEY);
-    const chrome = loadWorkbenchChrome(storage);
     const base = raw
       ? parseLayout(JSON.parse(raw), opts)
       : { ...DEFAULT_LAYOUT };
-    return { ...base, asideCollapsed: chrome === "classic" };
+    // Launch chat-first regardless of chrome; parseLayout already pins the
+    // default rather than restoring the last open/closed state.
+    return { ...base, asideCollapsed: DEFAULT_LAYOUT.asideCollapsed };
   } catch {
     return { ...DEFAULT_LAYOUT };
   }

@@ -243,7 +243,7 @@
   max-height: 150px;
   border-radius: 12px;
   border: 1px solid var(--border-subtle);
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+  box-shadow: var(--elev-1);
   flex-shrink: 0;
 }
 
@@ -520,7 +520,7 @@
   border: 1px solid var(--border-subtle);
   background: var(--bg-elevated);
   overflow: hidden;
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+  box-shadow: var(--elev-1);
   vertical-align: middle;
 }
 
@@ -792,7 +792,14 @@ html[data-composer-min-rows="8"] .composer__input {
   color: var(--text-secondary);
   max-width: 140px;
   flex-shrink: 0;
-  transition: background 120ms ease, color 120ms ease;
+  transition:
+    background var(--motion-fast) var(--ease-out),
+    color var(--motion-fast) var(--ease-out),
+    transform var(--motion-fast) var(--ease-out);
+}
+
+.chip:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 .chip__label {

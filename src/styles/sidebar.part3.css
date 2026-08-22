@@ -102,6 +102,41 @@
   }
 }
 
+/*
+ * Panel entrance — opacity only. These panels are positioned by
+ * `floatingStyle`, which writes an inline `translateY(-100%)` when placing
+ * above a trigger; animating transform here would fight that and make the
+ * menu jump on open.
+ */
+@keyframes menu-pop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .composer-plus,
+  .c-select__menu,
+  .user-menu__pop,
+  .slash-palette,
+  .prompt-history,
+  .search-panel,
+  .effort-panel__pop,
+  .cmm__pop,
+  .auto-panel,
+  .menu-panel,
+  .ctx-menu,
+  .open-loc-menu,
+  .att-menu,
+  .rp-open-menu,
+  .project-menu {
+    animation: menu-pop-in var(--motion-fast) var(--ease-out);
+  }
+}
+
 /* Shared menu rows (buttons / options) */
 .ctx-menu button,
 .open-loc-menu__item,
@@ -126,6 +161,9 @@
   cursor: pointer;
   box-sizing: border-box;
   white-space: nowrap;
+  transition:
+    background var(--motion-fast) var(--ease-out),
+    color var(--motion-fast) var(--ease-out);
 }
 
 .menu-shortcut {

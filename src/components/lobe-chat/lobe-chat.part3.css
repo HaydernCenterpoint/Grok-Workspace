@@ -586,26 +586,27 @@ html[data-chat-density="comfortable"] .lobe-chat,
 }
 
 /*
- * Chat reading width (Settings → Appearance). Prefer html[data-chat-width] so
- * every .lobe-chat__inner picks it up without prop drilling.
- * narrow ~640 · medium ~800 · wide ~1000 · full = none
+ * Chat reading width (Settings → Appearance). Declared on the html root, not
+ * on `.lobe-chat`, so the docked composer — a sibling of the transcript —
+ * inherits the same measure and its edges line up with the messages.
+ * narrow ~760 · medium ~1120 · wide ~1440 · full = none
  */
-html[data-chat-width="narrow"] .lobe-chat,
+html[data-chat-width="narrow"],
 .lobe-chat[data-chat-width="narrow"] {
-  --chat-width-max: 640px;
+  --chat-width-max: 760px;
 }
 
-html[data-chat-width="medium"] .lobe-chat,
+html[data-chat-width="medium"],
 .lobe-chat[data-chat-width="medium"] {
-  --chat-width-max: 800px;
+  --chat-width-max: 1120px;
 }
 
-html[data-chat-width="wide"] .lobe-chat,
+html[data-chat-width="wide"],
 .lobe-chat[data-chat-width="wide"] {
-  --chat-width-max: 1000px;
+  --chat-width-max: 1440px;
 }
 
-html[data-chat-width="full"] .lobe-chat,
+html[data-chat-width="full"],
 .lobe-chat[data-chat-width="full"] {
   --chat-width-max: none;
 }

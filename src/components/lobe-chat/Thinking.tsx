@@ -6,7 +6,9 @@
  * - Done collapsed (default): 💡 思考了 / Thought for {duration}  >
  * - Done expanded: same header + muted body
  *
- * Never use gist / first-line body as the chrome label.
+ * The chrome label is always the duration, never the gist. Collapsed rows do
+ * append the gist as a separate muted line so a folded thought still says what
+ * it was about; clicking opens the full reasoning body.
  * Tool bursts use TimelinePhaseBlock (“工作了 / Worked for …”) instead.
  */
 
@@ -18,6 +20,7 @@ import { createT, type Locale } from "@/i18n";
 import { COLLAPSE_ALL_ACTIVITY_EVENT } from "@/lib/collapseAllActivity";
 import { formatWorkDuration } from "@/lib/formatWorkDuration";
 import { resolveThinkingChromeLabel } from "@/lib/thinkingChromeLabel";
+import { extractThinkingSummary } from "@/lib/thinkingSummary";
 import { resolveFoldExpanded } from "@/lib/toolStepsAutoCollapsePref";
 import {
   freezeThinkingDurationMs,
@@ -156,6 +159,14 @@ export const Thinking = memo(function Thinking({
     (typeof content === "string" && content.trim().length > 0) ||
     (content != null && typeof content !== "string");
 
+  // Short "what was it thinking about" line for the collapsed row. Only
+  // markdown thoughts have extractable text; a ReactNode body has none.
+  const gist = useMemo(
+    () => (typeof content === "string" ? extractThinkingSummary(content) : null),
+    [content],
+  );
+  const showGist = !!gist && hasBody && !expanded;
+
   const toggle = () => {
     if (!hasBody) return;
     // Per-block local state only — toggling one finished thought must NOT flip
@@ -178,7 +189,10 @@ export const Thinking = memo(function Thinking({
     >
       <button
         type="button"
-        className="grok-thought__header"
+        className={cn(
+          "grok-thought__header",
+          showGist && "grok-thought__header--sum",
+        )}
         aria-expanded={hasBody ? expanded : undefined}
         onClick={toggle}
         disabled={!hasBody}
@@ -194,6 +208,9 @@ export const Thinking = memo(function Thinking({
         >
           {chromeLabel}
         </span>
+        {showGist ? (
+          <span className="grok-thought__sum">{gist}</span>
+        ) : null}
         {hasBody ? (
           <span className="grok-thought__caret" aria-hidden>
             {expanded ? (

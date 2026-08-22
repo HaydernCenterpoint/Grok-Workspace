@@ -175,16 +175,18 @@ html[data-work-mode="office"] .lobe-chat-empty[data-office="true"] {
   }
 }
 
-html[data-work-mode="office"][data-chrome="codex"]
-  .main__stage:has(.composer-wrap--dock:not(.composer-wrap--side-dock))
-  [data-slot="conversation-content"] {
-  max-width: 40rem;
+/*
+ * Office is a document surface: one reading measure for the transcript and the
+ * composer (both read --chat-width-max), roomier leading, no coding column.
+ * Two attributes so this always beats the html[data-chat-width] ladder.
+ */
+html[data-work-mode="office"][data-chat-width] {
+  --chat-width-max: 52rem;
 }
 
-html[data-work-mode="office"][data-chrome="codex"]
-  .composer-wrap--dock:not(.composer-wrap--side-dock)
-  .composer-stack {
-  max-width: 40rem;
+html[data-work-mode="office"] .lobe-chat {
+  /* Reading, not scanning. */
+  --chat-lh: 1.75;
 }
 
 html[data-work-mode="office"][data-chrome="codex"]
@@ -303,12 +305,14 @@ html[data-work-mode="office"] .office-docx-host {
   border-radius: 0 12px 12px 0;
   border-left: 3px solid color-mix(in srgb, var(--office-paper, #c4a574) 70%, transparent);
   background: color-mix(in srgb, var(--office-paper, #c4a574) 12%, var(--bg-elevated));
+  box-shadow: var(--elev-1);
 }
 
 .office-artifact__table-wrap {
   overflow: auto;
   margin: 10px 0;
   border-radius: 12px;
+  box-shadow: var(--elev-1);
 }
 
 .office-artifact__table-wrap table {
@@ -342,6 +346,7 @@ html[data-work-mode="office"] .office-docx-host {
   padding: 14px 16px;
   border-radius: 14px;
   background: color-mix(in srgb, var(--office-paper-strong, #e8dcc6) 18%, var(--bg-elevated));
+  box-shadow: var(--elev-1);
 }
 
 .office-artifact__slide-k {

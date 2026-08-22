@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { MessageToolSegment } from "./session";
 import {
+  activityStepsSummary,
   buildGrokActivitySteps,
   extractBrowseUrl,
   type GrokPhaseItem,
@@ -22,6 +23,38 @@ function tool(
     ...extra,
   };
 }
+
+describe("activityStepsSummary", () => {
+  // Collapsed work phases must still name the reasoning + tools.
+  const tr = (key: string, params?: Record<string, string | number>) =>
+    params ? `${key}(${Object.values(params).join(",")})` : key;
+
+  it("joins the leading step labels, reasoning gist first", () => {
+    const steps = buildGrokActivitySteps([
+      { kind: "thought", text: "**Locate the project** then read it" },
+      { kind: "tool", tool: tool("s1", "web_search", "Search A") },
+      { kind: "tool", tool: tool("c1", "bash", "run") },
+      { kind: "tool", tool: tool("c2", "bash", "run") },
+      { kind: "tool", tool: tool("c3", "bash", "run") },
+    ]);
+    expect(activityStepsSummary(steps, tr)).toBe(
+      "Locate the project · chat.searchedWebForPrefix Search A · chat.ranCommands(3)",
+    );
+  });
+
+  it("caps the item count and skips label-less steps", () => {
+    const steps = buildGrokActivitySteps([
+      { kind: "speech", text: "mid-turn prose" },
+      { kind: "tool", tool: tool("e1", "edit_file", "edit") },
+      { kind: "tool", tool: tool("e2", "edit_file", "edit") },
+    ]);
+    expect(activityStepsSummary(steps, tr, 1)).toBe("chat.editedFiles(2)");
+  });
+
+  it("is empty for a phase with nothing labelled", () => {
+    expect(activityStepsSummary([], tr)).toBe("");
+  });
+});
 
 describe("grokActivitySteps", () => {
   it("interleaves thoughts and tools in stream order", () => {

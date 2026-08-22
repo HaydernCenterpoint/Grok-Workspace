@@ -1,0 +1,25 @@
+/*
+ * Grok Build — coding workbench. Code, diffs and the tool rail are the payload
+ * here, so they get the elevation; Office and Studio restyle the same shell for
+ * documents and media.
+ *
+ * Build keeps the baseline reading measure: Settings → Appearance → Chat width
+ * owns it. Office narrows to a document column, Studio widens for media.
+ */
+
+/* Fenced code reads as a raised well, not an inline quote. */
+html[data-work-mode="code"] .chat-code {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--elev-1);
+}
+
+/*
+ * Open activity rail is its own region — a folded phase stays a plain gray
+ * line so the transcript is not a stack of boxes.
+ */
+html[data-work-mode="code"] .grok-act.is-open,
+html[data-work-mode="code"] .grok-act.is-live {
+  padding: 8px 10px;
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--bg-hover) 60%, transparent);
+}

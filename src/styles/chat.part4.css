@@ -292,11 +292,20 @@
   line-height: 0;
   appearance: none;
   -webkit-appearance: none;
+  transition:
+    background var(--motion-fast) var(--ease-out),
+    color var(--motion-fast) var(--ease-out),
+    transform var(--motion-fast) var(--ease-out);
 }
 
 .icon-btn:hover:not(:disabled) {
   color: var(--text-primary);
   background: var(--bg-active);
+}
+
+/* Press feedback — transform only, so nothing around the button reflows. */
+.icon-btn:active:not(:disabled) {
+  transform: scale(0.93);
 }
 
 .icon-btn--plus {

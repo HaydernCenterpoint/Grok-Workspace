@@ -1,4 +1,11 @@
-/* Grok Studio — Imagine pills on the normal chat composer. */
+/* Grok Studio — Imagine pills on the normal chat composer.
+   Media-first: the generated image / clip is the answer, so it gets the room
+   that code and prose get on the other two surfaces. */
+
+/* Two attributes so this always beats the html[data-chat-width] ladder. */
+html[data-work-mode="studio"][data-chat-width] {
+  --chat-width-max: 64rem;
+}
 
 html[data-work-mode="studio"] .lobe-chat-empty[data-studio="true"] {
   align-items: center;
@@ -51,6 +58,10 @@ html[data-work-mode="studio"] .lobe-chat-empty[data-studio="true"] {
   font: inherit;
   font-size: 12px;
   cursor: pointer;
+  transition:
+    background var(--motion-fast) var(--ease-out),
+    color var(--motion-fast) var(--ease-out),
+    transform var(--motion-fast) var(--ease-out);
 }
 
 .studio__pill.is-on,
@@ -59,8 +70,42 @@ html[data-work-mode="studio"] .lobe-chat-empty[data-studio="true"] {
   color: var(--text-primary);
 }
 
+/* Keyboard parity with hover — the pills carry the whole Imagine bar. */
+.studio__pill:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+.studio__pill:active:not(.is-locked) {
+  transform: scale(0.96);
+}
+
 .studio__pill.is-locked {
   cursor: default;
   background: var(--bg-hover);
   color: var(--text-primary);
+}
+
+/*
+ * Generated media at a usable size. ImageUi writes an inline 240×150 card box
+ * plus `--img-ar`; inside a Studio answer we drop the box and let the ratio
+ * drive height, so the frame still reserves its space (no CLS) but fills the
+ * reading column. Scoped to `.chat-md` so composer / attachment strips
+ * (`.lobe-chat-atts`) keep their chip sizing.
+ */
+html[data-work-mode="studio"] .chat-md .md-body__img-frame--card {
+  width: auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  max-width: min(100%, 34rem) !important;
+  aspect-ratio: var(--img-ar, 4 / 3) !important;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--elev-1);
+}
+
+html[data-work-mode="studio"] .chat-md .md-body__video-card {
+  max-width: min(100%, 40rem);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--elev-1);
 }
