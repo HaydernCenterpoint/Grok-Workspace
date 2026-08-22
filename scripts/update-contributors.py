@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Refresh circular-avatar contributor galleries in README files.
 
-Source of truth: GitHub Contributors API for RongleCat/grok-app.
+Source of truth: GitHub Contributors API for HaydernCenterpoint/grok-workspace.
 Replaces the block between <!-- CONTRIBUTORS:START --> and <!-- CONTRIBUTORS:END -->
-in README.md / README_EN.md / README_ZH.md / README_RU.md.
+in README.md.
 
 Rules (docs/llm-wiki/release.md):
   - One presentation only: circular avatars (no table, no contrib.rocks strip).
@@ -28,7 +28,7 @@ from datetime import date
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-REPO = "RongleCat/grok-app"
+REPO = "HaydernCenterpoint/grok-workspace"
 API = f"https://api.github.com/repos/{REPO}/contributors?per_page=100"
 MARKER_START = "<!-- CONTRIBUTORS:START -->"
 MARKER_END = "<!-- CONTRIBUTORS:END -->"
@@ -37,12 +37,7 @@ MARKER_END = "<!-- CONTRIBUTORS:END -->"
 AVATAR_PX = 72
 AVATAR_SRC_SIZE = 96
 
-README_FILES = (
-    "README.md",
-    "README_EN.md",
-    "README_ZH.md",
-    "README_RU.md",
-)
+README_FILES = ("README.md",)
 
 # Skip automation / bot accounts (not human contributors).
 BOT_LOGINS = {

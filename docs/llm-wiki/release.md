@@ -80,9 +80,9 @@ python3 scripts/changelog-for-release.py 0.1.0
 | 项 | 约定 |
 |----|------|
 | 脚本 | `python3 scripts/update-contributors.py` |
-| 数据源 | GitHub Contributors API（`RongleCat/grok-app`），过滤 bot |
-| 展示 | **仅圆形头像**（`border-radius:50%`），中英 README 同一结构 |
-| 写入位置 | `README.md` / `README_EN.md` / `README_ZH.md` / `README_RU.md` 内 `<!-- CONTRIBUTORS:START -->` … `END` |
+| 数据源 | GitHub Contributors API（`HaydernCenterpoint/grok-workspace`），过滤 bot |
+| 展示 | **仅圆形头像**（`border-radius:50%`） |
+| 写入位置 | `README.md` 内 `<!-- CONTRIBUTORS:START -->` … `END` |
 | 禁止 | 贡献者表格 + 方形头像 + `contrib.rocks` 条带（避免双轨维护） |
 
 发版前（工作区可先 dirty）：
@@ -90,7 +90,7 @@ python3 scripts/changelog-for-release.py 0.1.0
 ```bash
 # 需要网络；有 token 时更稳：export GITHUB_TOKEN="$(gh auth token)"
 python3 scripts/update-contributors.py
-git add README.md README_EN.md README_ZH.md README_RU.md
+git add README.md
 git commit -m "docs: refresh README contributors gallery"   # 若有变更
 ```
 
@@ -171,7 +171,7 @@ xattr -cr /Applications/Grok.app
 open /Applications/Grok.app
 ```
 
-改安装说明时改 `README.md` / `README_EN.md`。
+改安装说明时改 `README.md`。
 
 ## Windows 说明
 
@@ -236,4 +236,4 @@ pnpm build:win   # tauri + cargo-xwin + makensis
 | `scripts/publish-website-downloads.py` | 官网稳定别名 + `downloads.json` |
 | [website-downloads.md](./website-downloads.md) | 官网下载对接契约（完整） |
 | `docs/BUILD.md` | 本地构建细节 |
-| `README.md` / `README_EN.md` | 用户安装与 Gatekeeper |
+| `README.md` | 用户安装与 Gatekeeper |
