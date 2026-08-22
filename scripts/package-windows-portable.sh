@@ -12,11 +12,14 @@ if [[ -z "$TAG" ]]; then
 fi
 VER="${TAG#v}"
 
-# Tauri productName is "Grok" but Cargo package name may produce grok-app.exe.
+# productName is "Grok Workspace"; Cargo package name may still emit grok-app.exe.
 find_release_exe() {
   local name
-  for name in Grok.exe grok-app.exe; do
-    # Prefer top-level release binary (not under bundle/)
+  for name in "Grok Workspace.exe" Grok.exe grok-app.exe; do
+    if [[ -f "src-tauri/target/x86_64-pc-windows-msvc/release/${name}" ]]; then
+      echo "src-tauri/target/x86_64-pc-windows-msvc/release/${name}"
+      return 0
+    fi
     if [[ -f "src-tauri/target/release/${name}" ]]; then
       echo "src-tauri/target/release/${name}"
       return 0
@@ -46,23 +49,23 @@ echo "using EXE=$EXE"
 STAGE="dist-portable/Grok_${VER}_x64-portable"
 rm -rf dist-portable
 mkdir -p "$STAGE"
-# Always ship as Grok.exe for end users (product name).
-cp "$EXE" "$STAGE/Grok.exe"
+# Always ship as Grok Workspace.exe for end users (product name).
+cp "$EXE" "$STAGE/Grok Workspace.exe"
 python3 - "$VER" "$STAGE" <<'PY'
 import sys
 from pathlib import Path
 
 ver, stage = sys.argv[1], Path(sys.argv[2])
 (stage / "README-portable.txt").write_text(
-    f"""Grok App portable (绿色版) v{ver}
+    f"""Grok Workspace portable v{ver}
 ================================
-1. 解压本目录到任意位置（无需安装）。
-2. 双击 Grok.exe 运行。
-3. 需要系统已安装 Microsoft Edge WebView2 Runtime（Win10/11 通常已自带）。
-4. 真 Agent 能力仍需本机 Grok Build CLI（grok.exe）并完成登录。
-5. SmartScreen 可能提示未知发布者 → 更多信息 → 仍要运行。
+1. Extract this folder anywhere (no installer).
+2. Double-click Grok Workspace.exe.
+3. Microsoft Edge WebView2 Runtime is required (usually already on Windows 10/11).
+4. Agent sessions still need the Grok Build CLI (grok.exe) installed and signed in.
+5. SmartScreen may warn about an unknown publisher — More info → Run anyway.
 
-Extract anywhere and run Grok.exe. WebView2 required. Grok Build CLI still needed for agent sessions.
+Extract anywhere and run Grok Workspace.exe. WebView2 required. Grok Build CLI still needed for agent sessions.
 """,
     encoding="utf-8",
 )

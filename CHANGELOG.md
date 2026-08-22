@@ -12,7 +12,15 @@ See `docs/llm-wiki/release.md`.
 ## [Unreleased]
 
 ### Added
-- **Discord Rich Presence**: when Discord desktop is running, show the current project, Grok Build / Office / Studio, plan, progress, and elapsed time. Settings → General → App (on by default). Requires a Discord Application ID (Developer Portal app named Grok App) and a rebuilt Host — Vite HMR is not enough.
+
+## [1.0.0] - 2026-08-22
+
+> First public **Grok Workspace** build (Windows x64).
+>
+> **Highlight:** three surfaces on one desktop workbench — Grok Build, Grok Office, Grok Studio.
+
+### Added
+- **Discord Rich Presence**: when Discord desktop is running, show the current project, Grok Build / Office / Studio, plan, progress, and elapsed time. Settings → General → App (on by default). Requires a Discord Application ID (Developer Portal app named Grok Workspace) and a rebuilt Host — Vite HMR is not enough.
 - **Grok Studio**: third product surface (sidebar logo). Image and video generation on an Imagine-style canvas. `#/studio` / `/studio`. Uses official-aux `image_gen` and `image_to_video` (not a second agent).
 - **Grok Office**: second product **surface** next to Grok Build (not the same IDE with a different placeholder). Click the sidebar Grok logo to switch. Office hides kanban, terminal, worktrees, skills, review, and git chips; files + chat stay. `#/office` / `/office` still work. `/report` (palette **Write project report**) opens Office on the current Grok Build folder and drafts a project report. A new Office start screen offers report / slides / sheet starters above the composer. Not a Word/Excel clone.
 - **Grok Office document processor**: the agent writes `*.office.json` (paper / sheet / deck). Opening that file previews the report, management table, or slides and can compile Word, Excel, or PowerPoint. Entering Office installs a project `grok-office` skill so the model does not hand-author OOXML. Existing `.xlsx` / `.pptx` can be captured back into the JSON.
@@ -22,7 +30,7 @@ See `docs/llm-wiki/release.md`.
 - **Shortcuts help (Ctrl+/)**: the overlay now searches by label / id / chord, groups like Settings → Keyboard, and lists zoom, newline, prompt history, and type-to-focus. The list scrolls instead of clipping the last rows.
 
 **中文 · 新增**
-- **Discord Rich Presence**：Discord 桌面端运行时显示当前项目、Grok Build / Office / Studio、套餐、进度和本应用使用时长。设置 → 通用 → 应用（默认开）。需要 Discord Application ID（开发者后台应用名 Grok App），并重启 Host（仅 Vite HMR 不够）。
+- **Discord Rich Presence**：Discord 桌面端运行时显示当前项目、Grok Build / Office / Studio、套餐、进度和本应用使用时长。设置 → 通用 → 应用（默认开）。需要 Discord Application ID（开发者后台应用名 Grok Workspace），并重启 Host（仅 Vite HMR 不够）。
 - **Grok Studio**：第三个产品界面（侧栏 logo）。Imagine 风格画布上生成图片和短视频。`#/studio` / `/studio`。走 official-aux `image_gen` / `image_to_video`，不是第二套 agent。
 - **Grok Office**：与 Grok Build **完全不同的工作界面**（不是同一套 IDE 换一句 placeholder）。点侧栏 Grok logo 切换。Office 隐藏看板、终端、worktree、skills、review、git chips；留下聊天 + 文件。`#/office` / `/office` 仍可用。`/report`（命令面板「撰写项目报告」）会带着当前 Grok Build 文件夹进入 Office 并起草报告。新的 Office 起始页在输入框上方给出报告 / 幻灯片 / 表格三个起手式。不是 Word/Excel 套件。
 - **Grok Office 文档处理**：Agent 写 `*.office.json`（paper / sheet / deck）。打开后可预览报告、管理表或幻灯片，并编译成 Word / Excel / PowerPoint。进入 Office 会装项目级 `grok-office` skill，避免模型手写 OOXML。现有 `.xlsx` / `.pptx` 可再收成 JSON。
@@ -118,6 +126,14 @@ See `docs/llm-wiki/release.md`.
 - **长对话里图片/PDF 预览解码时不再往上弹（#771）**：不再在每一行高度变化时贴底；媒体尺寸的高度跳变合并成一次跟随。
 - **Win+Right 在矮屏上能贴真正半屏（#765）**：舒适下限仍是 900。Host 把系统 min 限制在当前显示器工作区的一半（高度同样），1440×900 会贴 720 而不是卡在 900（约 2/3）。拖到更大屏后 900 下限会回来。
 - **Windows Alt+Tab 后不用先点一下就能打字（#768）**：Tauri `unstable`（资源栏内嵌浏览器）把页面建成子窗口 `WRY_WEBVIEW`，Alt+Tab / 任务栏只激活外层 HWND。Host 现在把 `WM_SETFOCUS` / `WM_ACTIVATE` 转进该子窗口，输入框和快捷键立刻可用。
+
+### Notes
+- Unofficial. Needs Grok Build CLI 0.2.112+.
+- This tag is the first Grok Workspace GitHub Release. The Windows x64 installer is built on the maintainer machine; macOS / Linux artifacts arrive when Actions is green.
+
+**中文 · 说明**
+- 非官方。需要 Grok Build CLI 0.2.112+。
+- 本 tag 是 Grok Workspace 的首个 GitHub Release。Windows x64 安装包由维护者本机构建；macOS / Linux 等 Actions 跑通后再挂。
 
 ## [0.2.24] - 2026-08-21
 

@@ -295,7 +295,7 @@ jobs:
           projectPath: .
           # Prefer the pushed git tag; fallback replaces __VERSION__ from tauri.conf.json
           tagName: ${{ github.ref_type == 'tag' && github.ref_name || 'v__VERSION__' }}
-          releaseName: "Grok App v__VERSION__"
+          releaseName: "Grok Workspace v__VERSION__"
           releaseBody: ${{ env.RELEASE_BODY }}
           releaseDraft: false
           prerelease: false
