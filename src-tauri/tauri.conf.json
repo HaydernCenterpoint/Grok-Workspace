@@ -58,6 +58,9 @@
   },
   "bundle": {
     "active": true,
+    "copyright": "Copyright (c) 2026 Haydern - MIT",
+    "publisher": "Haydern",
+    "homepage": "https://github.com/HaydernCenterpoint/grok-workspace",
     "targets": [
       "app",
       "dmg",
@@ -91,10 +94,14 @@
       "nsis": {
         "installMode": "currentUser",
         "languages": [
-          "SimpChinese",
           "English"
         ],
-        "displayLanguageSelector": true
+        "displayLanguageSelector": false,
+        "installerIcon": "icons/icon.ico",
+        "uninstallerIcon": "icons/icon.ico",
+        "headerImage": "icons/nsis/header.bmp",
+        "sidebarImage": "icons/nsis/sidebar.bmp",
+        "installerHooks": "windows/nsis-hooks.nsh"
       }
     },
     "linux": {

@@ -12,6 +12,9 @@ node_modules
 dist
 dist-ssr
 dist-installers
+# scripts/package-windows-portable.sh output
+dist-portable
+/Grok_*_x64-portable.zip
 *.local
 # Root uses pnpm (pnpm-lock.yaml). Do not reintroduce npm's lock at repo root;
 # remote-bridge/ may keep its own package-lock.json for independent npm installs.

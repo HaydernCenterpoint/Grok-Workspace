@@ -138,6 +138,25 @@ src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Grok.app
 pnpm exec tauri build --runner cargo-xwin --target x86_64-pc-windows-msvc
 ```
 
+### Windows 安装包外观（NSIS）
+
+| 部分 | 位置 |
+|------|------|
+| 侧栏 164×314 / 页眉 150×57 位图 | `src-tauri/icons/nsis/{sidebar,header}.bmp`（**生成物**，已入库） |
+| 生成脚本 | `scripts/generate-nsis-branding.py`（源图：`docs/assets/grok-logo.png` + `src-tauri/icons/icon-source.png`） |
+| 页面配色与文案 | `src-tauri/windows/nsis-hooks.nsh` |
+| 接线 | `tauri.conf.json` → `bundle.windows.nsis`（`headerImage` / `sidebarImage` / `installerHooks` / `installerIcon`） |
+
+欢迎页与完成页走深色（`MUI_BGCOLOR 0A0A0A`），与侧栏位图同色；中间几页保留 Windows 原生外观，**页眉位图必须是白底**，否则白色页眉条上会出现黑块。
+
+换 logo 或改版本号后重新生成（位图里印了版本号）：
+
+```bash
+python scripts/generate-nsis-branding.py
+```
+
+不要 fork Tauri 的 `installer.nsi` 模板——用 `installerHooks` 加 MUI 定义即可。
+
 产物目录：
 
 ```
