@@ -1,0 +1,66 @@
+/* Grok Studio — Imagine pills on the normal chat composer. */
+
+html[data-work-mode="studio"] .lobe-chat-empty[data-studio="true"] {
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 42vh;
+  padding: 2rem 0 0.5rem;
+  text-align: center;
+}
+
+.studio-start {
+  width: 100%;
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 12px 8px 8px;
+}
+
+.studio-start__title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  text-align: center;
+}
+
+.studio-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.studio__pills {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.studio__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.studio__pill.is-on,
+.studio__pill:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.studio__pill.is-locked {
+  cursor: default;
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}

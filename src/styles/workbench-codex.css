@@ -1,0 +1,192 @@
+/* Codex chrome — docked composer, thin top bar, hide welcome mark. */
+
+[data-chrome="codex"] .composer-wrap--dock:not(.composer-wrap--side-dock) {
+  position: relative;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  z-index: 4;
+  pointer-events: auto;
+  padding: 10px 16px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  background: var(--bg-main);
+  border-top: none;
+}
+
+/* In-flow dock: do not also reserve float-pad inside the transcript. */
+[data-chrome="codex"]
+  .main__stage:has(.composer-wrap--dock:not(.composer-wrap--side-dock))
+  .lobe-chat__inner,
+[data-chrome="codex"]
+  .main__stage:has(.composer-wrap--dock:not(.composer-wrap--side-dock))
+  .messages__col {
+  padding-bottom: 16px;
+}
+
+[data-chrome="codex"]
+  .main__stage:has(.composer-wrap--dock:not(.composer-wrap--side-dock))
+  .lobe-chat-back-bottom {
+  inset-block-end: 12px;
+}
+
+[data-chrome="codex"]
+  .main__stage:has(.composer-wrap--dock:not(.composer-wrap--side-dock))
+  [data-slot="conversation-content"] {
+  max-width: 48rem;
+}
+
+[data-chrome="codex"] .composer-wrap--dock:not(.composer-wrap--side-dock) .composer-stack {
+  width: 100%;
+  max-width: 48rem;
+  pointer-events: auto;
+}
+
+[data-chrome="codex"]
+  .composer-wrap--dock:not(.composer-wrap--side-dock)
+  .composer-stack--with-context {
+  gap: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: var(--bg-elevated);
+}
+
+[data-chrome="codex"]
+  .composer-wrap--dock:not(.composer-wrap--side-dock)
+  .composer-stack--with-context:focus-within {
+  border-color: color-mix(in srgb, var(--text-primary) 22%, var(--border-subtle));
+}
+
+[data-chrome="codex"]
+  .composer-wrap--dock:not(.composer-wrap--side-dock)
+  .composer-stack--with-context
+  .composer__context-bar {
+  min-height: 28px;
+  padding: 6px 8px 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+[data-chrome="codex"]
+  .composer-wrap--dock:not(.composer-wrap--side-dock)
+  .composer-stack--with-context
+  .composer,
+[data-chrome="codex"] .composer-wrap--dock:not(.composer-wrap--side-dock) .composer {
+  width: 100%;
+  max-width: none;
+  border-radius: 12px;
+  box-shadow: none;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  padding: 6px 8px 8px;
+}
+
+[data-chrome="codex"]
+  .composer-wrap--dock:not(.composer-wrap--side-dock)
+  .composer-stack--with-context
+  .composer {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+[data-chrome="codex"] .composer-wrap--dock:not(.composer-wrap--side-dock) .composer__input {
+  min-height: 44px;
+  padding: 6px 6px 4px;
+}
+
+[data-chrome="codex"] .composer-wrap--dock:not(.composer-wrap--side-dock) .composer__row {
+  gap: 4px;
+  min-height: 28px;
+}
+
+[data-chrome="codex"] .composer-wrap--dock:not(.composer-wrap--side-dock) .icon-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+}
+
+[data-chrome="codex"] .composer-wrap--dock:not(.composer-wrap--side-dock) .icon-btn:hover:not(:disabled) {
+  background: var(--bg-hover);
+}
+
+[data-chrome="codex"] .composer-wrap--dock:not(.composer-wrap--side-dock) .icon-btn--plus.is-open {
+  transform: none;
+}
+
+[data-chrome="codex"] .composer-wrap--dock:not(.composer-wrap--side-dock) .icon-btn--primary {
+  background: var(--text-primary);
+  color: var(--bg-main);
+}
+
+[data-chrome="codex"] .composer-wrap--dock:not(.composer-wrap--side-dock) .cmm__trigger {
+  height: 28px;
+  border-radius: var(--radius-sm);
+}
+
+[data-chrome="codex"] .composer-wrap--dock:not(.composer-wrap--side-dock) .cmm--danger .cmm__trigger {
+  color: var(--text-secondary);
+}
+
+[data-chrome="codex"] .composer-wrap--dock:not(.composer-wrap--side-dock) .cmm--danger .cmm__icon {
+  color: var(--danger, #e07040);
+}
+
+[data-chrome="codex"] .composer-wrap--dock:not(.composer-wrap--side-dock) .cmm--danger .cmm__trigger:hover,
+[data-chrome="codex"] .composer-wrap--dock:not(.composer-wrap--side-dock) .cmm--danger.is-open .cmm__trigger {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+[data-chrome="codex"] .composer-welcome-mark {
+  display: none;
+}
+
+[data-chrome="codex"] .main__top {
+  min-height: var(--titlebar-height);
+  padding-block: 4px;
+}
+
+[data-chrome="codex"] .main__chrome-overflow-slot {
+  display: none;
+}
+
+[data-chrome="codex"] .sidebar-brand-row {
+  min-height: 36px;
+}
+
+[data-chrome="codex"] .sidebar {
+  width: 240px;
+}
+
+[data-chrome="codex"]:not([data-wallpaper="1"]) .sidebar,
+[data-chrome="codex"]:not([data-wallpaper="1"]) .main,
+[data-chrome="codex"]:not([data-wallpaper="1"]) .aside {
+  backdrop-filter: none;
+}
+
+[data-chrome="codex"]:not([data-wallpaper]) .app-wallpaper-media,
+[data-chrome="codex"]:not([data-wallpaper="1"]) .app-wallpaper-media {
+  display: none;
+}
+
+[data-chrome="codex"] .message__bubble--user {
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: var(--text-md);
+  line-height: var(--leading-normal);
+}
+
+html[data-chrome="codex"][data-chat-density="compact"] .lobe-chat {
+  --chat-list-gap: 2px;
+  --chat-item-pad-block: 6px;
+  --chat-item-gap: 4px;
+  --chat-item-body-gap: 6px;
+  --chat-bubble-pad-y: 6px;
+  --chat-bubble-pad-x: 12px;
+}

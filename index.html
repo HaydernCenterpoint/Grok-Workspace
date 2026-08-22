@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <script>
+      /* Pet overlay: kill boot splash before first paint. Must stay first in <head>. */
+      (function () {
+        var h = location.hash || "";
+        if (h !== "#/pet" && h.indexOf("#/pet?") !== 0) return;
+        document.documentElement.setAttribute("data-pet-shell", "1");
+        var s = document.createElement("style");
+        s.setAttribute("data-pet-boot", "1");
+        s.textContent =
+          "html,html[data-theme],html[data-theme] body,body,#root,.boot-gate{background:transparent!important;background-image:none!important;background-color:transparent!important;}html[data-pet-shell] .boot-gate,.boot-gate{display:none!important;visibility:hidden!important;opacity:0!important;}";
+        document.documentElement.appendChild(s);
+      })();
+    </script>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Grok</title>
+    <!--
+      Static boot shell: Grok mark only (no welcome / detecting copy).
+      Visible the moment the WebView paints — before the JS bundle arrives.
+      React replaces #root on mount with the same .grok-logo-loader motion.
+    -->
+    <style>
+      /*
+       * Boot splash mirrors setup-gate. Theme comes from Host via
+       * initialization_script (window.__GROK_BOOT_THEME__ + data-theme).
+       * Fallback: OS prefers-color-scheme before Host injects.
+       */
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        font-family:
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+      }
+      /* Default dark until data-theme is set */
+      html,
+      body,
+      .boot-gate {
+        background: #0d0d0d;
+        color: rgba(255, 255, 255, 0.92);
+        color-scheme: dark;
+      }
+      html[data-theme="light"],
+      html[data-theme="light"] body,
+      html[data-theme="light"] .boot-gate {
+        background: #f4f4f6;
+        color-scheme: light;
+        color: rgba(0, 0, 0, 0.88);
+      }
+      @media (prefers-color-scheme: light) {
+        html:not([data-theme]),
+        html:not([data-theme]) body,
+        html:not([data-theme]) .boot-gate {
+          background: #f4f4f6;
+          color: rgba(0, 0, 0, 0.88);
+        }
+      }
+      #root {
+        min-height: 100%;
+      }
+      .boot-gate {
+        position: fixed;
+        inset: 0;
+        z-index: 200;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        box-sizing: border-box;
+        background:
+          radial-gradient(
+            120% 80% at 50% -10%,
+            rgba(138, 164, 255, 0.14) 0%,
+            transparent 55%
+          ),
+          #0d0d0d;
+      }
+      html[data-theme="light"] .boot-gate {
+        background:
+          radial-gradient(
+            120% 80% at 50% -10%,
+            rgba(61, 95, 217, 0.1) 0%,
+            transparent 55%
+          ),
+          #f4f4f6;
+      }
+      @media (prefers-color-scheme: light) {
+        html:not([data-theme]) .boot-gate {
+          background:
+            radial-gradient(
+              120% 80% at 50% -10%,
+              rgba(61, 95, 217, 0.1) 0%,
+              transparent 55%
+            ),
+            #f4f4f6;
+        }
+      }
+      .grok-logo-loader {
+        display: grid;
+        place-items: center;
+        color: inherit;
+      }
+      .grok-logo-loader svg {
+        display: block;
+      }
+      .grok-logo-loader__mark {
+        transform-origin: 17.5px 16.5px;
+      }
+      .grok-logo-loader.is-active svg {
+        -webkit-mask-image: linear-gradient(
+          115deg,
+          #000 36%,
+          rgba(0, 0, 0, 0.22) 50%,
+          #000 64%
+        );
+        mask-image: linear-gradient(
+          115deg,
+          #000 36%,
+          rgba(0, 0, 0, 0.22) 50%,
+          #000 64%
+        );
+        -webkit-mask-size: 240% 100%;
+        mask-size: 240% 100%;
+        animation: grok-logo-sheen 1.7s ease-in-out 0.45s infinite;
+      }
+      .grok-logo-loader.is-active .grok-logo-loader__mark {
+        animation:
+          grok-logo-in 0.65s cubic-bezier(0.22, 1, 0.36, 1) both,
+          grok-logo-breathe 2.1s ease-in-out 0.65s infinite;
+      }
+      @keyframes grok-logo-in {
+        from {
+          opacity: 0;
+          transform: scale(0.84) rotate(-10deg);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1) rotate(0deg);
+        }
+      }
+      @keyframes grok-logo-breathe {
+        0%,
+        100% {
+          opacity: 0.7;
+        }
+        50% {
+          opacity: 1;
+        }
+      }
+      @keyframes grok-logo-sheen {
+        0% {
+          -webkit-mask-position: 120% 0;
+          mask-position: 120% 0;
+        }
+        100% {
+          -webkit-mask-position: -20% 0;
+          mask-position: -20% 0;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .grok-logo-loader.is-active svg,
+        .grok-logo-loader.is-active .grok-logo-loader__mark {
+          animation: none;
+        }
+      }
+    </style>
+    <script>
+      // Apply Host-injected theme + locale as early as possible (inline, before paint).
+      (function () {
+        try {
+          var t = window.__GROK_BOOT_THEME__;
+          if (t !== "light" && t !== "dark") {
+            t =
+              window.matchMedia &&
+              window.matchMedia("(prefers-color-scheme: light)").matches
+                ? "light"
+                : "dark";
+          }
+          document.documentElement.setAttribute("data-theme", t);
+        } catch (e) {
+          /* ignore */
+        }
+        var SHIPPED = {
+          de: 1,
+          en: 1,
+          es: 1,
+          fil: 1,
+          fr: 1,
+          id: 1,
+          it: 1,
+          ja: 1,
+          ko: 1,
+          "pt-BR": 1,
+          ru: 1,
+          ta: 1,
+          uk: 1,
+        };
+        try {
+          var loc = window.__GROK_BOOT_LOCALE__;
+          if (loc === "zh" || loc === "zh-TW") loc = "en";
+          if (!SHIPPED[loc]) {
+            var nav = String(
+              (navigator.languages && navigator.languages[0]) ||
+                navigator.language ||
+                "",
+            ).toLowerCase();
+            if (nav.indexOf("zh") === 0) {
+              loc = "en";
+            } else if (nav.indexOf("pt") === 0) {
+              loc = "pt-BR";
+            } else if (nav.indexOf("tl") === 0) {
+              loc = "fil";
+            } else if (nav.indexOf("in") === 0) {
+              loc = "id";
+            } else {
+              var primary = nav.split(/[-_]/)[0];
+              loc = SHIPPED[primary] ? primary : "en";
+            }
+          }
+          document.documentElement.setAttribute("lang", loc || "en");
+        } catch (e) {
+          /* ignore */
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root">
+      <div class="boot-gate" data-testid="setup-booting" role="status" aria-busy="true">
+        <div class="grok-logo-loader is-active" aria-hidden="true">
+          <svg
+            width="64"
+            height="64"
+            viewBox="0 0 35 33"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <g class="grok-logo-loader__mark">
+              <path
+                d="M13.2371 21.0407L24.3186 12.8506C24.8619 12.4491 25.6384 12.6057 25.8973 13.2294C27.2597 16.5185 26.651 20.4712 23.9403 23.1851C21.2297 25.8989 17.4581 26.4941 14.0108 25.1386L10.2449 26.8843C15.6463 30.5806 22.2053 29.6665 26.304 25.5601C29.5551 22.3051 30.562 17.8683 29.6205 13.8673L29.629 13.8758C28.2637 7.99809 29.9647 5.64871 33.449 0.844576C33.5314 0.730667 33.6139 0.616757 33.6964 0.5L29.1113 5.09055V5.07631L13.2343 21.0436"
+                fill="currentColor"
+              />
+              <path
+                d="M10.9503 23.0313C7.07343 19.3235 7.74185 13.5853 11.0498 10.2763C13.4959 7.82722 17.5036 6.82767 21.0021 8.2971L24.7595 6.55998C24.0826 6.07017 23.215 5.54334 22.2195 5.17313C17.7198 3.31926 12.3326 4.24192 8.67479 7.90126C5.15635 11.4239 4.0499 16.8403 5.94992 21.4622C7.36924 24.9165 5.04257 27.3598 2.69884 29.826C1.86829 30.7002 1.0349 31.5745 0.36364 32.5L10.9474 23.0341"
+                fill="currentColor"
+              />
+            </g>
+          </svg>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

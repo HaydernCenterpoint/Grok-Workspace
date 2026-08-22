@@ -1,0 +1,366 @@
+/* Grok Office — daily-work surface.
+   Completely different from Grok Build (coding IDE). Mixes into existing
+   tokens so appearance packs still apply; do not invent a second design system. */
+
+html[data-work-mode="office"] {
+  --office-paper: #c4a574;
+  --office-paper-strong: #e8dcc6;
+  /* Codex chrome pins --radius-md at 4px (almost square). Office wants a
+     light round on every control — not pills, not the OS window edge. */
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --menu-radius: 12px;
+  --menu-item-radius: 8px;
+  --menu-context-radius: 12px;
+  --modal-radius: 16px;
+}
+
+html[data-theme="light"][data-work-mode="office"] {
+  --office-paper: #c9a36a;
+  --office-paper-strong: #f3ead8;
+}
+
+html[data-work-mode="office"] .workbench {
+  background: color-mix(in srgb, var(--office-paper) 7%, var(--bg-app));
+}
+
+html[data-work-mode="office"] .sidebar {
+  background: color-mix(in srgb, var(--office-paper) 6%, var(--bg-sidebar-solid));
+}
+
+html[data-work-mode="office"] .main {
+  background: color-mix(in srgb, var(--office-paper-strong) 14%, var(--bg-main));
+}
+
+html[data-theme="light"][data-work-mode="office"] .main {
+  background: color-mix(in srgb, var(--office-paper-strong) 48%, var(--bg-main));
+}
+
+html[data-work-mode="office"] .aside {
+  background: color-mix(in srgb, var(--office-paper) 8%, var(--bg-aside));
+}
+
+/* Files column: quiet the wallpaper / chat behind it — frost, not a blackout. */
+html[data-work-mode="office"][data-wallpaper="1"] .aside {
+  background: color-mix(
+    in srgb,
+    var(--bg-aside) 76%,
+    transparent
+  ) !important;
+  backdrop-filter: blur(16px) saturate(1.12);
+  -webkit-backdrop-filter: blur(16px) saturate(1.12);
+}
+
+html[data-stream-perf="1"][data-work-mode="office"][data-wallpaper="1"] .aside {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/*
+ * Office start: left-aligned, sitting just above the composer.
+ * Build keeps the centered welcome mark; Office does not repeat it.
+ */
+html[data-work-mode="office"] .lobe-chat-empty[data-office="true"] {
+  align-items: stretch;
+  justify-content: flex-end;
+  min-height: 42vh;
+  padding: 2rem 0 0.5rem;
+  text-align: left;
+}
+
+.office-start {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+.office-start__title {
+  margin: 0;
+  font-size: clamp(1.5rem, 1.1rem + 1.4vw, 2rem);
+  font-weight: 560;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+  color: var(--text-primary);
+}
+
+.office-start__list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.office-start__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin: 0;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: var(--text-md);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--motion-fast, 120ms) ease,
+    color var(--motion-fast, 120ms) ease,
+    transform var(--motion-fast, 120ms) ease;
+}
+
+.office-start__row:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.office-start__row:focus-visible {
+  outline: 2px solid var(--border-focus, #6b8cff);
+  outline-offset: 2px;
+}
+
+.office-start__row:active {
+  transform: translateY(1px);
+}
+
+.office-start__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: color-mix(in srgb, var(--office-paper) 55%, var(--text-tertiary));
+}
+
+.office-start__label {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.office-start__go {
+  flex-shrink: 0;
+  opacity: 0;
+  transform: translateX(-3px);
+  transition:
+    opacity var(--motion-fast, 120ms) ease,
+    transform var(--motion-fast, 120ms) ease;
+}
+
+.office-start__row:hover .office-start__go,
+.office-start__row:focus-visible .office-start__go {
+  opacity: 0.6;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .office-start {
+    animation: office-start-in 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+}
+
+@keyframes office-start-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+html[data-work-mode="office"][data-chrome="codex"]
+  .main__stage:has(.composer-wrap--dock:not(.composer-wrap--side-dock))
+  [data-slot="conversation-content"] {
+  max-width: 40rem;
+}
+
+html[data-work-mode="office"][data-chrome="codex"]
+  .composer-wrap--dock:not(.composer-wrap--side-dock)
+  .composer-stack {
+  max-width: 40rem;
+}
+
+html[data-work-mode="office"][data-chrome="codex"]
+  .composer-wrap--dock:not(.composer-wrap--side-dock)
+  .composer-stack--with-context {
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--office-paper-strong) 10%, var(--bg-elevated));
+}
+
+html[data-work-mode="office"] .chip--office {
+  color: color-mix(in srgb, var(--office-paper) 55%, var(--text-primary));
+  background: color-mix(in srgb, var(--office-paper) 18%, var(--bg-active));
+}
+
+html[data-work-mode="office"] .chip--office:hover {
+  background: color-mix(in srgb, var(--office-paper) 26%, var(--bg-hover));
+}
+
+html[data-work-mode="office"] .lobe-chat {
+  --chat-bubble: color-mix(in srgb, var(--office-paper) 14%, var(--bg-user-bubble));
+}
+
+html[data-work-mode="office"] .message__bubble--user {
+  border-radius: 14px;
+}
+
+/* Belt-and-suspenders: coding chrome must not remain visible if a leftover mounts. */
+html[data-work-mode="office"] .bt {
+  display: none;
+}
+
+html[data-work-mode="office"] .rp-preview,
+html[data-work-mode="office"] .rp-editor {
+  border-radius: var(--radius-lg);
+}
+
+html[data-work-mode="office"] .rp-preview-office,
+html[data-work-mode="office"] .office-preview {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+html[data-work-mode="office"] .office-preview__bar {
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+html[data-work-mode="office"] .office-preview__fallback,
+html[data-work-mode="office"] .office-preview__sheet-scroll,
+html[data-work-mode="office"] .office-docx-host {
+  border-radius: var(--radius-md);
+}
+
+.office-artifact {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 16px 18px 28px;
+  color: var(--text-primary);
+}
+
+.office-artifact__kind {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--office-paper, #c4a574) 70%, var(--text-secondary));
+}
+
+.office-artifact__title {
+  margin: 4px 0 0;
+  font-size: 1.45rem;
+  font-weight: 560;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.office-artifact__sub,
+.office-artifact__note,
+.office-artifact__err {
+  margin: 6px 0 0;
+  color: var(--text-secondary);
+}
+
+.office-artifact__err {
+  color: var(--text-danger, #b42318);
+}
+
+.office-artifact__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.office-artifact__actions .btn {
+  border-radius: 999px;
+}
+
+.office-artifact__paper h2,
+.office-artifact__paper h3,
+.office-artifact__paper h4,
+.office-artifact__sheet h3,
+.office-artifact__slide h3 {
+  margin: 1.1em 0 0.4em;
+  font-weight: 560;
+}
+
+.office-artifact__paper p,
+.office-artifact__paper li {
+  line-height: 1.55;
+}
+
+.office-artifact__callout {
+  margin: 12px 0;
+  padding: 10px 12px;
+  border-radius: 0 12px 12px 0;
+  border-left: 3px solid color-mix(in srgb, var(--office-paper, #c4a574) 70%, transparent);
+  background: color-mix(in srgb, var(--office-paper, #c4a574) 12%, var(--bg-elevated));
+}
+
+.office-artifact__table-wrap {
+  overflow: auto;
+  margin: 10px 0;
+  border-radius: 12px;
+}
+
+.office-artifact__table-wrap table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.office-artifact__table-wrap th,
+.office-artifact__table-wrap td {
+  border-bottom: 1px solid var(--border-subtle, rgba(127, 127, 127, 0.25));
+  padding: 6px 8px;
+  text-align: left;
+}
+
+.office-artifact__table-wrap th {
+  background: color-mix(in srgb, var(--office-paper, #c4a574) 16%, var(--bg-elevated));
+  font-weight: 560;
+}
+
+.office-artifact__deck {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.office-artifact__slide {
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--office-paper-strong, #e8dcc6) 18%, var(--bg-elevated));
+}
+
+.office-artifact__slide-k {
+  margin: 0 0 4px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.office-artifact__cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.office-artifact__raw {
+  white-space: pre-wrap;
+  font-size: 12px;
+  opacity: 0.8;
+  border-radius: 12px;
+}
