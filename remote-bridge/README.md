@@ -1,6 +1,6 @@
 # remote-bridge (historical / reference)
 
-> **Deprecated for Grok App runtime.**  
+> **Deprecated for Grok Workspace runtime.**  
 > Remote IM connectors now run **in-process in Rust**: `src-tauri/src/remote_im/`.  
 > Host does **not** spawn this Node package.
 

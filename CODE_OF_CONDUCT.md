@@ -29,8 +29,7 @@ Examples of unacceptable behavior:
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported to the project maintainer via X [@cgnot996](https://x.com/cgnot996)
-or GitHub.
+reported via [GitHub Issues](https://github.com/HaydernCenterpoint/grok-workspace/issues).
 
 All complaints will be reviewed and investigated promptly and fairly.
 

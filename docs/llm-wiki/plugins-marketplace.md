@@ -51,6 +51,5 @@ All user-facing strings under `ext.plugins.*` / `ext.market.*` (en + zh + zh-TW)
 
 ## Roadmap (v2)
 
-Codex-first store + workbench + `@plugin.command` design:  
-[docs/plans/2026-07-29-plugin-system-v2-design.md](../plans/2026-07-29-plugin-system-v2-design.md).  
-（以 v2 为准；已删 panel-host 试验方向作废。）
+Codex-first store + workbench + `@plugin.command` is the intended direction.
+（已删 panel-host 试验方向作废。）

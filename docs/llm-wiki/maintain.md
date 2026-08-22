@@ -1,4 +1,4 @@
-# Open-source maintenance (Grok App)
+# Open-source maintenance (Grok Workspace)
 
 Single playbook for humans and AI maintainers: intake → triage → review → ship.
 

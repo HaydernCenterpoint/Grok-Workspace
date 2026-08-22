@@ -1,6 +1,6 @@
 # Desktop auto-update
 
-Grok App uses the same **Tauri 2 updater** shape as Minos / Buzz: signed release
+Grok Workspace uses the same **Tauri 2 updater** shape as Minos / Buzz: signed release
 artifacts, a rolling `latest.json` endpoint, in-app check/download/install, and
 a hard stop of managed agent / mirror / voice / IM processes before binary swap.
 
@@ -89,7 +89,7 @@ https://github.com/<owner>/grok-app/releases/download/grok-desktop-latest/latest
 
 Publish two GitHub releases per cut:
 
-1. **`vX.Y.Z`** — human installers + notes + **stable aliases** (`Grok_mac_x64.dmg`, `Grok_windows_x64-setup.exe`, …) + `downloads.json` for grok-app.com
+1. **`vX.Y.Z`** — human installers + notes + **stable aliases** (`Grok_mac_x64.dmg`, `Grok_windows_x64-setup.exe`, …)
 2. **`grok-desktop-latest`** — updater archives + `latest.json` (clobber each release)
 
 Do **not** point website download buttons at `grok-desktop-latest`. That tag is the silent updater channel. First-time installs use `/releases/latest/download/<stable-alias>` (see `docs/llm-wiki/release.md`).

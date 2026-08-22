@@ -1,6 +1,6 @@
-# ChatCut (Codex plugin) in Grok App
+# ChatCut (Codex plugin) in Grok Workspace
 
-Grok App consumes the **upstream ChatCut Codex package** (`ChatCut-Inc/agent-plugin` → `codex/`) without permanently forking skill bodies.
+Grok Workspace consumes the **upstream ChatCut Codex package** (`ChatCut-Inc/agent-plugin` → `codex/`) without permanently forking skill bodies.
 
 ## Package layout
 
@@ -34,7 +34,7 @@ Do **not** invent a `grok` surface value without upstream support — tools will
 
 Discovery of the authorization server is **per MCP URL** (RFC 9728 well-known on that origin). Do **not** fall back to ChatCut’s well-known endpoint for other servers — that sends Appwrite (and every other remote MCP) to `api.chatcut.io` (#605).
 
-ChatCut’s AS issues **short-lived access tokens** (`expires_in` ≈ 3600s) plus a **`refresh_token`** when scope includes `offline_access`. The official plugin does **not** refresh; Codex does (Keychain + silent refresh). Grok App Host must:
+ChatCut’s AS issues **short-lived access tokens** (`expires_in` ≈ 3600s) plus a **`refresh_token`** when scope includes `offline_access`. The official plugin does **not** refresh; Codex does (Keychain + silent refresh). Grok Workspace Host must:
 
 1. Persist `access_token` + `refresh_token` + `client_id` + `token_endpoint` in `mcp_credentials.json` (agent-home and `~/.grok`, mode `0600`).
 2. Before ACP `mcpServers` inject, **silent-refresh** when access is expired or within ~5 minutes of expiry.
@@ -44,7 +44,7 @@ Without a stored `refresh_token` (legacy one-shot authorize), the user must **au
 
 ## Editor handoff → system default browser
 
-Codex skills may request an in-app / “codex-internal-browser” handoff. Grok App **defaults to the OS system browser** instead: the side **Resources → EmbeddedBrowser** WebView cannot reliably play ChatCut media or run the full editor.
+Codex skills may request an in-app / “codex-internal-browser” handoff. Grok Workspace **defaults to the OS system browser** instead: the side **Resources → EmbeddedBrowser** WebView cannot reliably play ChatCut media or run the full editor.
 
 1. Tool result / link contains `browserHandoff`, `editorUrl`, `liveProject`, or `openStrategy.preferredMode: codex-internal-browser`.
 2. Pure helpers in `src/lib/chatcutHandoff.ts` choose:

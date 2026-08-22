@@ -1,6 +1,6 @@
 # Official Grok Build account
 
-Product rules for **official login, membership, quota, and usage** in Grok App.
+Product rules for **official login, membership, quota, and usage** in Grok Workspace.
 
 ## Goals
 

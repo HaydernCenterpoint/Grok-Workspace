@@ -1,6 +1,6 @@
-# Contributing to Grok App
+# Contributing to Grok Workspace
 
-感谢关注 **Grok App**！欢迎 Issue、PR 与使用反馈。
+感谢关注 **Grok Workspace**！欢迎 Issue、PR 与使用反馈。
 
 Thanks for your interest in contributing.
 
@@ -52,7 +52,7 @@ Default is the real **Grok Build** CLI (`grok agent stdio`).
 
 ## 约定 / Guidelines
 
-- 产品名：**Grok App**（窗口 / 安装包名多为 **Grok**）
+- 产品名：**Grok Workspace**
 - 会话与设置数据在 App data root（可用 `GROK_APP_HOME` 覆盖）
 - Agent 产品规则以 [`docs/llm-wiki/`](./docs/llm-wiki/) 为准
 - 不要提交 `node_modules`、`target`、`dist`、本地 token / `secrets.json` / `auth.json`
@@ -60,8 +60,7 @@ Default is the real **Grok Build** CLI (`grok agent stdio`).
 
 ## 交流 / Contact
 
-- X: [@cgnot996](https://x.com/cgnot996)
-- GitHub Issues: https://github.com/RongleCat/grok-app/issues
+- GitHub Issues: https://github.com/HaydernCenterpoint/grok-workspace/issues
 
 ## Releases
 

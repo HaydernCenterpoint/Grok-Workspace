@@ -1,4 +1,4 @@
-# Grok App 桌面端构建与发布
+# Grok Workspace desktop build and release
 
 支持平台：
 
@@ -79,7 +79,7 @@ pnpm build:linux
 AppImage 内置 Ubuntu 22.04 CI 容器的 WebKitGTK。部分 AMD + Hyprland 环境会报  
 `Could not create default EGL display: EGL_BAD_PARAMETER`，窗口全黑，但宿主进程（媒体、ACP、登录）仍正常。
 
-Issue [#539](https://github.com/RongleCat/grok-app/issues/539) 对照实验：相同 env 下仅换用**系统 WebKit** 即可恢复 UI——根因是**内置 WebKit 的 EGL 栈**，不是应用业务代码。`.deb` / `.rpm` 链接系统 WebKit，不受影响。
+对照实验：相同 env 下仅换用**系统 WebKit** 即可恢复 UI——根因是**内置 WebKit 的 EGL 栈**，不是应用业务代码。`.deb` / `.rpm` 链接系统 WebKit，不受影响。
 
 用户侧缓解：各 README 的「Linux blank/black window」段，或仓库脚本  
 `scripts/run-linux-appimage-system-webkit.sh`。

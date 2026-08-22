@@ -22,7 +22,7 @@ Update fixtures **in the same PR** as any change to:
 - `wire_*` / `decode_*` helpers in `src/acp_client.rs`
 - `mock_reply_for` / `chunk_text` / stream spawn in `src/mock_acp.rs`
 - `pick_option_id` mapping in `src/permission.rs`
-- Protocol notes in `docs/SPIKE-ACP.md`
+- Protocol notes in `docs/llm-wiki/session-continuity.md`
 
 CI runs the full `cargo test` suite on every PR; the golden module is required
 for ACP protocol changes.

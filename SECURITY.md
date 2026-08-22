@@ -8,11 +8,10 @@
 
 ## Reporting a Vulnerability
 
-If you discover a security issue in Grok App (for example token leakage, unsafe
+If you discover a security issue in Grok Workspace (for example token leakage, unsafe
 agent process spawning, or local secrets exposure), please report it privately:
 
-- Open a GitHub Security Advisory on [RongleCat/grok-app](https://github.com/RongleCat/grok-app), or
-- Contact the maintainer on X: [@cgnot996](https://x.com/cgnot996)
+- Open a GitHub Security Advisory on [HaydernCenterpoint/grok-workspace](https://github.com/HaydernCenterpoint/grok-workspace)
 
 Please include:
 - A clear description of the issue

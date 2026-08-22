@@ -18,7 +18,7 @@ Toggle: Settings → General → App → **Show status on Discord** (`settings-a
 
 `src-tauri/src/discord_presence.rs` talks to Discord IPC (`discord-ipc-0`…`9`). Soft-fail if Discord is closed. Commands: `discord_presence_update` / `discord_presence_clear` / `discord_presence_probe`.
 
-Discord shows the **Developer Portal application name**, not a string we invent. Create an app named **Grok App** at [Discord Developer Portal](https://discord.com/developers/applications) and paste the Application ID in Settings (or set `GROK_DISCORD_CLIENT_ID`). Vite HMR does not load new Host commands — fully quit and start `pnpm dev` / the desktop binary after this feature lands.
+Discord shows the **Developer Portal application name**, not a string we invent. Create an app named **Grok Workspace** at [Discord Developer Portal](https://discord.com/developers/applications) and paste the Application ID in Settings (or set `GROK_DISCORD_CLIENT_ID`). Vite HMR does not load new Host commands — fully quit and start `pnpm dev` / the desktop binary after this feature lands.
 
 Settings status keys: `settings.discordPresence.status.*`.
 

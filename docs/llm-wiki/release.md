@@ -156,12 +156,6 @@ GitHub → **Settings → Actions → General → Workflow permissions**
 
 未配置完整 `APPLE_CERTIFICATE` + App Store Connect API secrets 时 macOS 包**未公证**，属预期；README 保留 `xattr` 说明。Secrets 齐且 `release.yml` 已接线后，正式 tag 会 codesign + notarize。**v0.2.19** 是第一个公证成功的正式版；README 已改成「官方 Release 已公证，`xattr` 仅留给 fork / 旧包」。
 
-## 官网下载契约（grok-app.com）
-
-对接细节（稳定 URL、`downloads.json` 字段、官网构建、短链、禁止事项）见 **[website-downloads.md](./website-downloads.md)**。
-
-摘要：官网另仓静态站，按钮 **302 / 直链** 到 `/releases/latest/download/Grok_mac_*.dmg` 等稳定别名；不要托管或反代安装包；不要用 `grok-desktop-latest`。生成脚本 `scripts/publish-website-downloads.py`。
-
 ## macOS「已损坏 / 无法打开」
 
 未签名下载后 Gatekeeper 可能拦截。**用户说明放在 README**（不要每个 Release 正文再贴一遍）：
@@ -233,7 +227,5 @@ pnpm build:win   # tauri + cargo-xwin + makensis
 | `scripts/changelog-for-release.py` | Release body = 该版本 CHANGELOG 章节（精简） |
 | `scripts/release-tag.sh` | bump + tag |
 | `.github/workflows/release.yml` | 三端构建与上传 |
-| `scripts/publish-website-downloads.py` | 官网稳定别名 + `downloads.json` |
-| [website-downloads.md](./website-downloads.md) | 官网下载对接契约（完整） |
 | `docs/BUILD.md` | 本地构建细节 |
 | `README.md` | 用户安装与 Gatekeeper |

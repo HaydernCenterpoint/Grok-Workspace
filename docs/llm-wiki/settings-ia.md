@@ -84,7 +84,6 @@ Agent / 贡献者维护设置 UI 时**必读**。目标：层次清晰、可搜�
 
 ## 相关
 
-- 计划：`docs/plans/2026-07-26-settings-ia-reorg.md`
 - i18n：`docs/llm-wiki/i18n.md`
 - 账户分栏：`docs/llm-wiki/account.md`
 - 插件市场：`docs/llm-wiki/plugins-marketplace.md`

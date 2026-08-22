@@ -1,6 +1,6 @@
 # Local session API（列表 + 续跑）
 
-#626 第一刀。给**同一台机器上的外部应用**列 Grok App 会话，再用 **App session id + 提示词**续跑**同一条**。
+#626 第一刀。给**同一台机器上的外部应用**列 Grok Workspace 会话，再用 **App session id + 提示词**续跑**同一条**。
 
 不是 Remote IM，也不是自动化新建会话。
 
@@ -16,7 +16,7 @@
 
 ## 身份
 
-- **session id** = Grok App session id（侧栏「复制会话 ID」）。默认**不是** CLI agent session id。见 [session-continuity.md](./session-continuity.md)。
+- **session id** = Grok Workspace session id（侧栏「复制会话 ID」）。默认**不是** CLI agent session id。见 [session-continuity.md](./session-continuity.md)。
 - 列表字段：`id` · `title` · `projectId` · `projectName` · `updatedAt` · `archived` · `pinned`。
 
 ## HTTP（仅 127.0.0.1，token 门）
@@ -94,10 +94,10 @@ grok-app --session-send <session-id> --prompt "…" --idempotency-key k1
 
 ### Windows 代理
 
-Grok App **启动时**读系统代理，子进程继承 App 环境。命令行派活的 CLI **自身**不读系统代理设置。若子进程连不上上游（握手 wedge）：
+Grok Workspace **启动时**读系统代理，子进程继承 App 环境。命令行派活的 CLI **自身**不读系统代理设置。若子进程连不上上游（握手 wedge）：
 
 1. 把 `HTTPS_PROXY` / `HTTP_PROXY` 设成**用户级/系统级环境变量**
-2. **彻底退出再启动** Grok App（托盘右键退出，不是关窗口）
+2. **彻底退出再启动** Grok Workspace（托盘右键退出，不是关窗口）
 
 ### 派活建议
 

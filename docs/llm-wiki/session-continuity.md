@@ -6,7 +6,7 @@ When the user pastes a **session id** (UUID) into chat or issues for debugging:
 
 | Default | Meaning |
 |---------|---------|
-| **Grok App session id** | UI journal under `{app_data}/sessions/<id>/` (`messages.json`, title, model prefs). This is what **复制会话 ID** / sidebar copy produce. |
+| **Grok Workspace session id** | UI journal under `{app_data}/sessions/<id>/` (`messages.json`, title, model prefs). This is what **复制会话 ID** / sidebar copy produce. |
 | Agent session id | CLI id under `{GROK_HOME}/sessions/<encoded-cwd>/<agentSessionId>/` (`chat_history.jsonl`, `events.jsonl`). Linked as `agentSessionId` in `sessions_index.json`. |
 
 **Lookup order for pasted UUIDs (unless the user explicitly says “agent session” / CLI id):**
@@ -16,11 +16,11 @@ When the user pastes a **session id** (UUID) into chat or issues for debugging:
 
 App data root (macOS typical): `~/Library/Application Support/com.grokapp.grok-app/`.
 
-External apps on this machine that need to **list chats and continue one by id** use the local session API — see [session-api.md](./session-api.md). That surface takes a **Grok App session id**, not an agent session id.
+External apps on this machine that need to **list chats and continue one by id** use the local session API — see [session-api.md](./session-api.md). That surface takes a **Grok Workspace session id**, not an agent session id.
 
 ## Problem
 
-Grok App keeps a **UI journal** (`~/.…/sessions/<appSessionId>/messages.json`) separate from the **Agent session** under `GROK_HOME` (`agent-home/sessions/<encoded-cwd>/<agentSessionId>/`).
+Grok Workspace keeps a **UI journal** (`~/.…/sessions/<appSessionId>/messages.json`) separate from the **Agent session** under `GROK_HOME` (`agent-home/sessions/<encoded-cwd>/<agentSessionId>/`).
 
 If the Host always called `session/new` on reconnect, the model only saw the latest user turn while the UI still showed full history — context looked “broken”.
 
@@ -261,7 +261,7 @@ the turn is how answers got truncated mid-sentence while the chat kept spinning.
 
 ### Host process death (false-complete heal)
 
-When the **App host** dies mid-turn (Windows cold start, no shutdown log), the stdio agent dies with it. `session/load` cannot resume at the permission / tool boundary (`docs/SPIKE-ACP.md` in-flight continuity gap).
+When the **App host** dies mid-turn (Windows cold start, no shutdown log), the stdio agent dies with it. `session/load` cannot resume at the permission / tool boundary (in-flight continuity gap).
 
 Host persists `{app_data}/sessions/<id>/turn_lease.json` while `prompt_in_flight` is true. On **process start** (dirty active leases) and after a successful **session connect** (not during journal reconcile, which can run mid-turn):
 

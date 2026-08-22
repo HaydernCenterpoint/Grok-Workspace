@@ -1,6 +1,5 @@
 # Git worktrees
 
-Community request: [issue #42](https://github.com/RongleCat/grok-app/issues/42).  
 CLI alignment: Grok Build **0.2.114+** `--worktree` / `--worktree-ref` and `~/.grok/worktrees/`.
 
 ## Behavior

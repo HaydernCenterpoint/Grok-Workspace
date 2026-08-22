@@ -4,7 +4,7 @@ Product rules for **OpenAI-compatible relays** (CPA / sub2api / OneAPI / self-ho
 
 ## Agent transport (shared with Grok Desktop)
 
-Both Grok App and community **Grok Desktop** drive intelligence the same way:
+Both Grok Workspace and community **Grok Desktop** drive intelligence the same way:
 
 | Layer | Implementation |
 |-------|----------------|
@@ -248,4 +248,4 @@ preserve the previous generic import behavior.
 
 ## Sponsorship (L3, future)
 
-Recommended catalog / paid naming sits **above** L2 as templates only. Keys always user-owned. See `docs/分析-Grok-Desktop对照报告.md` §7.
+Recommended catalog / paid naming sits **above** L2 as templates only. Keys always user-owned.
