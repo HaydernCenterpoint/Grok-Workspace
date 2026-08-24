@@ -21,7 +21,10 @@ pub enum Locale {
     Ru,
     Ta,
     Uk,
+    /// Parked: OS / Settings `zh*` fall back to English. Catalogs stay on disk.
+    #[allow(dead_code)]
     Zh,
+    #[allow(dead_code)]
     ZhTw,
 }
 
@@ -693,7 +696,7 @@ mod tests {
         assert_eq!(Locale::parse("zh-TW"), Locale::En);
         assert_eq!(Locale::parse("zh-Hant"), Locale::En);
         assert_eq!(strings(Locale::Ru).settings, "Настройки…");
-        assert_eq!(strings(Locale::Ja).settings.is_empty(), false);
+        assert!(!strings(Locale::Ja).settings.is_empty());
     }
 
     #[test]
