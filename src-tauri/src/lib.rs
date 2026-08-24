@@ -1,4 +1,4 @@
-//! Grok App Host — real ACP default (`grok agent stdio`).
+//! Grok App Host â€” real ACP default (`grok agent stdio`).
 
 mod account;
 
@@ -282,7 +282,7 @@ pub fn run() {
 
     // Attach `tauri-plugin-updater` only when release CI injected GROK_UPDATER_*
 
-    // (build.rs → cfg) and this is a non-debug binary. Crate is always linked for ACL.
+    // (build.rs â†’ cfg) and this is a non-debug binary. Crate is always linked for ACL.
 
     fn maybe_register_updater(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<tauri::Wry> {
         #[cfg(grok_updater_enabled)]
@@ -335,7 +335,7 @@ pub fn run() {
 
             let kind = skin_deeplink::ingest_argv_into(app, &argv);
             if kind != skin_deeplink::ArgvIngest::FireDue {
-                // Same restore path as tray Open — taskbar + shell styles included.
+                // Same restore path as tray Open â€” taskbar + shell styles included.
                 tray::show_main_window(app);
             }
         }))
@@ -345,7 +345,7 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         // Native OS notifications (polyfills Web Notification API in the WebView).
         // Without this, WKWebView reports Notification.permission=denied and the app
-        // never appears in System Settings → Notifications — desktop alerts stay dead.
+        // never appears in System Settings â†’ Notifications â€” desktop alerts stay dead.
         .plugin(tauri_plugin_notification::init())
         // Login-item plugin only; never auto-enable. Enable/disable is driven by
         // AppSettings.launch_at_login in setup + settings_set. Safe for `cargo test`
@@ -362,13 +362,13 @@ pub fn run() {
                         | StateFlags::MAXIMIZED
                         | StateFlags::FULLSCREEN,
                 )
-                // Primary workbench only — secondary `session-*` windows keep defaults.
+                // Primary workbench only â€” secondary `session-*` windows keep defaults.
                 .with_filter(|label| label == "main")
                 // Do NOT auto-restore on window-ready: that runs deferred on the main
-                // thread (after the window is already shown), so the default 1200×800
+                // thread (after the window is already shown), so the default 1200Ã—800
                 // frame flashes first and then snaps to the saved bounds. The main
                 // window starts hidden (visible:false in tauri conf) and setup creates
-                // it at the saved geometry — see setup below.
+                // it at the saved geometry â€” see setup below.
                 .skip_initial_state("main")
                 // Do not restore VISIBLE: close-to-tray leaves the window hidden; a
                 // saved `visible:false` would make the next launch appear headless.
@@ -395,7 +395,7 @@ pub fn run() {
 
         .manage(pending_skin)
 
-        // Range-capable media streaming (video/audio/pdf) — never loads multi‑GB into RAM.
+        // Range-capable media streaming (video/audio/pdf) â€” never loads multiâ€‘GB into RAM.
 
         // Bounded pool + catch_unwind: unbounded spawn + protocol panics have aborted the
 
@@ -408,7 +408,7 @@ pub fn run() {
             media_protocol::dispatch(request, responder);
 
         })
-        // Side-browser blob:/data: download bridge (ChatCut export etc. — WKWebView
+        // Side-browser blob:/data: download bridge (ChatCut export etc. â€” WKWebView
         // does not fire on_download for createObjectURL + <a download>).
         .register_asynchronous_uri_scheme_protocol("sbdl", |ctx, request, responder| {
             let app = ctx.app_handle().clone();
@@ -420,13 +420,13 @@ pub fn run() {
 
         // When close-to-tray is off, prevent default so App can confirm if agents are busy
 
-        // — unless keep_tray_for_schedules is on and any automation is enabled (still tray).
+        // â€” unless keep_tray_for_schedules is on and any automation is enabled (still tray).
 
         // Tray "Quit Grok" emits the same event (see tray.rs). Force exit: `app_force_quit`.
 
         // Close button / Alt+F4 on **main**: hide to tray (default) or ask frontend to quit.
 
-        // Secondary session windows (`session-*`) always close for real — they must not
+        // Secondary session windows (`session-*`) always close for real â€” they must not
 
         // hide the whole app to tray or trigger busy-quit confirm for a view-only pane.
 
@@ -443,7 +443,7 @@ pub fn run() {
             match event {
                 WindowEvent::CloseRequested { api, .. } => {
                     // Pet overlay: hide (keep prefs in sync). Do not destroy the HWND
-                    // via File>Close — that used to leave the toggle stuck.
+                    // via File>Close â€” that used to leave the toggle stuck.
                     if window.label() == pet_window::PET_WINDOW_LABEL {
                         api.prevent_close();
                         let _ = pet_window::hide_pet(window.app_handle());
@@ -469,7 +469,7 @@ pub fn run() {
                         // flushes on Exit by default).
                         tray::hide_to_tray(window.app_handle());
                     } else {
-                        // Always prevent_close so FE can confirm when busy — but arm a
+                        // Always prevent_close so FE can confirm when busy â€” but arm a
                         // host failsafe so a wedged WebView cannot trap the process.
                         api.prevent_close();
                         // Flush latest size before quit-confirm so a kill during the
@@ -493,6 +493,12 @@ pub fn run() {
                     if window.label() == "main" => {
                         schedule_persist_main_window_state(window.app_handle());
                     }
+                WindowEvent::Focused(focused) => {
+                    if window.label() == "main" {
+                        stream_emit::set_main_window_focused(*focused);
+                    }
+                    let _ = window.emit(stream_emit::WINDOW_FOCUSED_EVENT, *focused);
+                }
                 _ => {}
             }
         })
@@ -503,7 +509,7 @@ pub fn run() {
 
             use tauri::Manager;
 
-            // ── 1) Main window first so the WebView starts loading the UI while
+            // â”€â”€ 1) Main window first so the WebView starts loading the UI while
             // host services (media/relay/tray/prewarm) come up in parallel.
             // create:false + baked geometry; never flash default size then snap.
             let saved_geometry = load_restored_main_geometry(app);
@@ -606,7 +612,7 @@ pub fn run() {
             // Lock WebView / native form chrome to the boot theme on every OS.
             // Windows WebView2 otherwise follows the OS scheme, so number/date/time
             // inputs paint as black boxes on a light Settings page (Agent tab).
-            // Live follow-system on Windows is os_theme::watch → frontend — this
+            // Live follow-system on Windows is os_theme::watch â†’ frontend â€” this
             // lock freezes prefers-color-scheme inside WebView2.
             let _ = window.set_theme(Some(if boot_theme == "light" {
                 tauri::Theme::Light
@@ -622,7 +628,7 @@ pub fn run() {
                 .map(|g| g.maximized)
                 .unwrap_or(false);
             if want_maximized {
-                // Maximize is async on macOS — one main-loop tick while hidden so
+                // Maximize is async on macOS â€” one main-loop tick while hidden so
                 // the first visible frame is already full-size.
                 let _ = window.maximize();
                 let w = window.clone();
@@ -631,13 +637,13 @@ pub fn run() {
                     let _ = w.set_focus();
                 });
             } else {
-                // Show immediately — do not block_on host services first (that
+                // Show immediately â€” do not block_on host services first (that
                 // freezes the main loop and delays WebView paint).
                 let _ = window.show();
                 let _ = window.set_focus();
             }
 
-            // ── 2) Non-UI host work off the critical path (WebView already open).
+            // â”€â”€ 2) Non-UI host work off the critical path (WebView already open).
 
             // Editors / terminals / git GUIs: non-blocking background scan + cache.
             editors::start_background_scan_on_launch(app.handle().clone());
@@ -659,7 +665,7 @@ pub fn run() {
                         Err(e) => {
                             tracing::error!(
                                 error = %e,
-                                "media server failed to start — local media previews may break"
+                                "media server failed to start â€” local media previews may break"
                             );
                         }
                     }
@@ -671,7 +677,7 @@ pub fn run() {
                         Err(e) => {
                             tracing::error!(
                                 error = %e,
-                                "session api failed to start — external list/send is unavailable"
+                                "session api failed to start â€” external list/send is unavailable"
                             );
                         }
                     }
@@ -704,21 +710,21 @@ pub fn run() {
                 });
             }
 
-            // App menu: own ⌘W / Ctrl+W so FE can close side tabs before the window.
+            // App menu: own âŒ˜W / Ctrl+W so FE can close side tabs before the window.
             // Replaces Tauri's default PredefinedMenuItem::close_window binding.
             if let Err(e) = app_menu::install(app.handle()) {
                 tracing::warn!("app menu setup: {e}");
             }
 
-            // Menu-bar / system tray — logo.svg tray icon (not dock app icon)
+            // Menu-bar / system tray â€” logo.svg tray icon (not dock app icon)
             if let Err(e) = tray::setup_tray(app.handle()) {
                 tracing::warn!("tray setup: {e}");
             }
 
-            // Windows: AppsUseLightTheme → frontend (WebView2 matchMedia stays frozen).
+            // Windows: AppsUseLightTheme â†’ frontend (WebView2 matchMedia stays frozen).
             os_theme::watch(app.handle());
 
-            // Cold-start argv: grok:// or *.grokskin → pending. Never steal fire-due.
+            // Cold-start argv: grok:// or *.grokskin â†’ pending. Never steal fire-due.
             if !automation_runner::wants_fire_due_schedules() {
                 let args: Vec<String> = std::env::args().collect();
                 skin_deeplink::ingest_argv_into(app.handle(), &args);
@@ -778,7 +784,7 @@ pub fn run() {
                 // Scheduled automations: host tick works while window is in tray
                 // (and with --start-in-tray / keep_tray_for_schedules). No daemon.
                 // One-shot `--fire-due-schedules`: fire at most one due task then exit
-                // (honest helper — not KeepAlive continuous daemon).
+                // (honest helper â€” not KeepAlive continuous daemon).
                 if automation_runner::wants_fire_due_schedules() {
                     automation_runner::start_oneshot(app.handle().clone(), mgr);
                 } else {
@@ -823,7 +829,7 @@ pub fn run() {
                 remote_im::start_health_watchdog(rim_watch);
             }
 
-            // Headless mirror auto-start (GROK_MIRROR_HEADLESS=1) — off by default.
+            // Headless mirror auto-start (GROK_MIRROR_HEADLESS=1) â€” off by default.
 
             {
 
@@ -1800,7 +1806,7 @@ fn load_restored_main_geometry(app: &tauri::App) -> Option<RestoredMainGeometry>
     })
 }
 
-/// The monitor intersecting the saved bounds, if any — mirrors the plugin's
+/// The monitor intersecting the saved bounds, if any â€” mirrors the plugin's
 /// monitor-intersection guard so a disconnected display cannot strand the
 /// window off-screen.
 fn saved_on_monitor(app: &tauri::App, g: &RestoredMainGeometry) -> Option<tauri::Monitor> {
@@ -1822,7 +1828,7 @@ fn saved_on_monitor(app: &tauri::App, g: &RestoredMainGeometry) -> Option<tauri:
 }
 
 /// Scale factor to convert saved physical bounds into the logical pixels the
-/// window builder expects — prefers the monitor the window will land on.
+/// window builder expects â€” prefers the monitor the window will land on.
 fn scale_factor_for_saved(app: &tauri::App, g: Option<&RestoredMainGeometry>) -> f64 {
     if let Some(g) = g {
         if let Some(m) = saved_on_monitor(app, g) {

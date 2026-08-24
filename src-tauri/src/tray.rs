@@ -20,6 +20,10 @@ use crate::tray_i18n::{self, TrayStrings};
 
 const TRAY_ID: &str = "grok-main-tray";
 
+/// Shared Personalize waiter retry (app theme + tray badge). Not a 1s poll.
+#[cfg_attr(not(test), allow(dead_code))]
+const TRAY_THEME_NOTIFY_RETRY_SECS: u64 = crate::os_theme::OS_THEME_NOTIFY_RETRY_SECS;
+
 /// Build ChatGPT-style tray menu: Recent · More · Usage · New Chat · Open · Quit.
 /// Labels follow `settings.locale` (zh / en).
 pub fn build_menu(app: &AppHandle) -> Result<Menu<Wry>, tauri::Error> {
@@ -418,31 +422,30 @@ fn apply_tray_icon(app: &AppHandle) -> Result<(), String> {
 }
 
 /// Swap the Windows tray badge when the user flips the taskbar theme.
-/// Poll on a background thread; apply `set_icon` on the main thread so we
-/// never hold `Mutex<TrayIcon>` while Windows marshals to the UI thread
-/// (#735-style AB deadlock with `tray_set_busy_count`).
+///
+/// Shares the single Personalize `RegNotifyChangeKeyValue` waiter in
+/// `os_theme` (no second blocked notify thread). Apply `set_icon` on the
+/// main thread so we never hold `Mutex<TrayIcon>` while Windows marshals
+/// to the UI thread (#735-style AB deadlock with `tray_set_busy_count`).
+/// Taskbar DWORD stays independent of in-app `AppsUseLightTheme`.
 #[cfg(windows)]
-fn watch_taskbar_theme(app: AppHandle) {
-    std::thread::Builder::new()
-        .name("grok-tray-theme".into())
-        .spawn(move || {
-            let mut last = taskbar_uses_light_theme();
-            loop {
-                std::thread::sleep(std::time::Duration::from_secs(1));
-                let now = taskbar_uses_light_theme();
-                if now == last {
-                    continue;
-                }
-                last = now;
-                let app2 = app.clone();
-                let _ = app.run_on_main_thread(move || {
-                    if let Err(e) = apply_tray_icon(&app2) {
-                        tracing::debug!(error = %e, "tray icon theme swap failed");
-                    }
-                });
+fn register_taskbar_theme_watch(app: &AppHandle) {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    let app = app.clone();
+    let last = AtomicBool::new(taskbar_uses_light_theme());
+    crate::os_theme::on_personalize_tray_badge(move || {
+        let now = taskbar_uses_light_theme();
+        let prev = last.swap(now, Ordering::Relaxed);
+        if !crate::os_theme::tray_badge_changed(prev, now) {
+            return;
+        }
+        let app2 = app.clone();
+        let _ = app.run_on_main_thread(move || {
+            if let Err(e) = apply_tray_icon(&app2) {
+                tracing::debug!(error = %e, "tray icon theme swap failed");
             }
-        })
-        .ok();
+        });
+    });
 }
 
 /// Create menu-bar / system tray at startup.
@@ -498,7 +501,7 @@ pub fn setup_tray(app: &AppHandle) -> Result<(), String> {
     let tray = builder.build(app).map_err(|e| e.to_string())?;
     app.manage(Mutex::new(tray));
     #[cfg(windows)]
-    watch_taskbar_theme(app.clone());
+    register_taskbar_theme_watch(app);
     Ok(())
 }
 
@@ -721,6 +724,22 @@ mod badge_tests {
         assert!(taskbar_is_light_from_dwords(None, Some(1)));
         assert!(!taskbar_is_light_from_dwords(None, Some(0)));
         assert!(!taskbar_is_light_from_dwords(None, None));
+    }
+
+    #[test]
+    fn tray_theme_watch_shares_personalize_waiter() {
+        assert!(TRAY_THEME_NOTIFY_RETRY_SECS >= 15);
+        assert_ne!(TRAY_THEME_NOTIFY_RETRY_SECS, 1);
+        assert_eq!(
+            TRAY_THEME_NOTIFY_RETRY_SECS,
+            crate::os_theme::OS_THEME_NOTIFY_RETRY_SECS
+        );
+        let only_taskbar = crate::os_theme::personalize_fanout("dark", "dark", true, false);
+        assert!(!only_taskbar.app_theme);
+        assert!(only_taskbar.tray_badge);
+        let only_app = crate::os_theme::personalize_fanout("dark", "light", false, false);
+        assert!(only_app.app_theme);
+        assert!(!only_app.tray_badge);
     }
 
     #[test]

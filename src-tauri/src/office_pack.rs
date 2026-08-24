@@ -29,7 +29,11 @@ fn dest_ext_ok(relative: &str) -> bool {
 }
 
 fn sanitize_entry_path(raw: &str) -> Result<String, String> {
-    let n = raw.replace('\\', "/").trim().trim_start_matches('/').to_string();
+    let n = raw
+        .replace('\\', "/")
+        .trim()
+        .trim_start_matches('/')
+        .to_string();
     if n.is_empty() {
         return Err("empty zip entry path".into());
     }
@@ -41,7 +45,9 @@ fn sanitize_entry_path(raw: &str) -> Result<String, String> {
 
 fn write_dest(path: &Path, bytes: &[u8], relative: String) -> Result<FsWriteResult, String> {
     if bytes.len() > MAX_PACK_BYTES {
-        return Err(format!("office export too large (max {MAX_PACK_BYTES} bytes)"));
+        return Err(format!(
+            "office export too large (max {MAX_PACK_BYTES} bytes)"
+        ));
     }
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|e| format!("create parent: {e}"))?;

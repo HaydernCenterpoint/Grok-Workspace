@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 
 use chrono::{DateTime, Utc};
@@ -2449,16 +2450,32 @@ pub struct AutomationInput {
     pub next_run_at: Option<DateTime<Utc>>,
 }
 
+/// True until a load/save proves no enabled schedule exists. Starts true so a
+/// leftover file from a previous process is still picked up once.
+static AUTOMATIONS_MAYBE_ENABLED: AtomicBool = AtomicBool::new(true);
+
+fn note_automations_list(list: &[Automation]) {
+    AUTOMATIONS_MAYBE_ENABLED.store(list.iter().any(|a| a.enabled), Ordering::Relaxed);
+}
+
+/// Host scheduler can skip disk + session locks when this is false.
+pub fn automations_maybe_enabled() -> bool {
+    AUTOMATIONS_MAYBE_ENABLED.load(Ordering::Relaxed)
+}
+
 pub fn load_automations() -> Vec<Automation> {
     let _ = ensure_app_dirs();
     let mut list: Vec<Automation> = read_json(&automations_file());
     list.sort_by_key(|b| std::cmp::Reverse(b.updated_at));
+    note_automations_list(&list);
     list
 }
 
 pub fn save_automations(list: &[Automation]) -> Result<(), String> {
     let _ = ensure_app_dirs();
-    write_json(&automations_file(), &list)
+    write_json(&automations_file(), &list)?;
+    note_automations_list(list);
+    Ok(())
 }
 
 pub fn create_automation(input: AutomationInput) -> Result<Automation, String> {
@@ -2989,6 +3006,37 @@ mod tests {
     use super::*;
     use chrono::TimeZone;
     use std::thread;
+
+    #[test]
+    fn automations_maybe_enabled_tracks_enabled_rows() {
+        note_automations_list(&[]);
+        assert!(!automations_maybe_enabled());
+        let now = Utc::now();
+        let disabled = Automation {
+            id: "a".into(),
+            title: "t".into(),
+            prompt: "p".into(),
+            enabled: false,
+            project_id: None,
+            model_id: None,
+            effort: None,
+            frequency: "daily".into(),
+            time: "09:00".into(),
+            weekdays: vec![],
+            notify: "all".into(),
+            created_at: now,
+            updated_at: now,
+            last_run_at: None,
+            next_run_at: None,
+        };
+        note_automations_list(&[disabled.clone()]);
+        assert!(!automations_maybe_enabled());
+        let mut enabled = disabled;
+        enabled.enabled = true;
+        note_automations_list(&[enabled]);
+        assert!(automations_maybe_enabled());
+        AUTOMATIONS_MAYBE_ENABLED.store(true, Ordering::Relaxed);
+    }
 
     #[test]
     fn non_plan_mode_heals_plan_default() {

@@ -2,13 +2,20 @@
 //!
 //! Mid-stream assistant persistence must not rewrite `messages.json` on every
 //! token. Flush at most every [`DEFAULT_JOURNAL_FLUSH_MS`], on paragraph
-//! boundaries, or when forced (turn end / stop / disconnect).
+//! boundaries while the main window is focused, or when forced (turn end /
+//! stop / disconnect). Unfocused climbs honor [`BACKGROUND_JOURNAL_FLUSH_MS`]
+//! even when the chunk contains `\n\n`.
 
 #![allow(dead_code)] // residual-clippy: accessor methods
 use std::time::{Duration, Instant};
 
 /// Spec default: ≥500ms between mid-stream journal flushes.
 pub const DEFAULT_JOURNAL_FLUSH_MS: u64 = 500;
+/// Unfocused main window — fewer `messages.json` rewrites. Force (turn end /
+/// stop) still flushes immediately. Paragraph-immediate is focused-only:
+/// a multi-paragraph climb used to rewrite the whole journal on every `\n\n`
+/// and ignore this interval while ConversationThread was not painting.
+pub const BACKGROUND_JOURNAL_FLUSH_MS: u64 = 2_000;
 
 /// Hard clamp for custom intervals (tests / future settings).
 pub const MIN_JOURNAL_FLUSH_MS: u64 = 50;
@@ -19,9 +26,36 @@ pub fn normalize_journal_flush_ms(raw: u64) -> u64 {
     raw.clamp(MIN_JOURNAL_FLUSH_MS, MAX_JOURNAL_FLUSH_MS)
 }
 
+/// Mid-stream cadence: snappy while watched, cheaper when the window is not.
+pub fn live_journal_flush_interval() -> Duration {
+    Duration::from_millis(if crate::stream_emit::main_window_focused() {
+        DEFAULT_JOURNAL_FLUSH_MS
+    } else {
+        BACKGROUND_JOURNAL_FLUSH_MS
+    })
+}
+
+/// Mid-stream journal persists `messages.json` only. Rewriting the sessions
+/// index on every 500ms / 2s flush was a second exclusive lock + pretty JSON
+/// write just to bump `updated_at`. Turn-end (`force`) still persists the row.
+pub fn should_persist_session_index_on_journal(force: bool) -> bool {
+    force
+}
+
 /// True when a stream chunk is a natural paragraph boundary (double newline).
 pub fn is_paragraph_break(chunk: &str) -> bool {
     chunk.contains("\n\n")
+}
+
+/// Paragraph-immediate flush is for the focused window (crash-recover complete
+/// paras while watching). Unfocused already uses [`BACKGROUND_JOURNAL_FLUSH_MS`].
+pub fn honor_paragraph_flush(paragraph_break: bool, focused: bool) -> bool {
+    focused && paragraph_break
+}
+
+/// [`is_paragraph_break`] gated by whether the main window is being watched.
+pub fn effective_paragraph_break(chunk: &str, focused: bool) -> bool {
+    honor_paragraph_flush(is_paragraph_break(chunk), focused)
 }
 
 /// Pure decision: whether a journal flush is allowed at `now`.
@@ -74,15 +108,19 @@ impl JournalWriteThrottle {
         self.last_flush
     }
 
-    /// Whether a flush should run now.
+    /// Whether a flush should run now (uses the throttle's configured interval).
     pub fn should_flush(&self, now: Instant, force: bool, paragraph_break: bool) -> bool {
-        should_flush_journal(
-            self.last_flush,
-            self.min_interval,
-            now,
-            force,
-            paragraph_break,
-        )
+        self.should_flush_interval(now, force, paragraph_break, self.min_interval)
+    }
+
+    pub fn should_flush_interval(
+        &self,
+        now: Instant,
+        force: bool,
+        paragraph_break: bool,
+        min_interval: Duration,
+    ) -> bool {
+        should_flush_journal(self.last_flush, min_interval, now, force, paragraph_break)
     }
 
     pub fn mark_flushed(&mut self, now: Instant) {
@@ -100,6 +138,22 @@ mod tests {
     use super::*;
 
     #[test]
+    fn background_interval_is_slower() {
+        assert!(BACKGROUND_JOURNAL_FLUSH_MS > DEFAULT_JOURNAL_FLUSH_MS);
+        crate::stream_emit::set_main_window_focused(true);
+        assert_eq!(
+            live_journal_flush_interval(),
+            Duration::from_millis(DEFAULT_JOURNAL_FLUSH_MS)
+        );
+        crate::stream_emit::set_main_window_focused(false);
+        assert_eq!(
+            live_journal_flush_interval(),
+            Duration::from_millis(BACKGROUND_JOURNAL_FLUSH_MS)
+        );
+        crate::stream_emit::set_main_window_focused(true);
+    }
+
+    #[test]
     fn normalize_clamps() {
         assert_eq!(normalize_journal_flush_ms(0), MIN_JOURNAL_FLUSH_MS);
         assert_eq!(normalize_journal_flush_ms(500), 500);
@@ -112,6 +166,16 @@ mod tests {
         assert!(is_paragraph_break("\n\n"));
         assert!(!is_paragraph_break("hello\nworld"));
         assert!(!is_paragraph_break("token"));
+    }
+
+    #[test]
+    fn unfocused_paragraph_does_not_flush_immediately() {
+        assert!(effective_paragraph_break("hello\n\nworld", true));
+        assert!(!effective_paragraph_break("hello\n\nworld", false));
+        assert!(!effective_paragraph_break("token", true));
+        assert!(honor_paragraph_flush(true, true));
+        assert!(!honor_paragraph_flush(true, false));
+        assert!(!honor_paragraph_flush(false, true));
     }
 
     #[test]
@@ -187,5 +251,11 @@ mod tests {
     #[test]
     fn default_matches_spec() {
         assert_eq!(DEFAULT_JOURNAL_FLUSH_MS, 500);
+    }
+
+    #[test]
+    fn session_index_waits_for_turn_end() {
+        assert!(!should_persist_session_index_on_journal(false));
+        assert!(should_persist_session_index_on_journal(true));
     }
 }

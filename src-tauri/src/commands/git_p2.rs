@@ -109,6 +109,24 @@ mod git_status_parse_tests {
     }
 
     #[test]
+    fn porcelain_branch_header() {
+        assert_eq!(
+            parse_porcelain_branch_header("## main...origin/main [ahead 1]").as_deref(),
+            Some("main")
+        );
+        assert_eq!(
+            parse_porcelain_branch_header("## feature/foo").as_deref(),
+            Some("feature/foo")
+        );
+        assert_eq!(
+            parse_porcelain_branch_header("## No commits yet on main").as_deref(),
+            Some("main")
+        );
+        assert_eq!(parse_porcelain_branch_header("## HEAD (no branch)"), None);
+        assert_eq!(parse_porcelain_branch_header(" M src/app.ts"), None);
+    }
+
+    #[test]
     fn kind_helpers() {
         assert_eq!(git_status_kind('?', '?'), "untracked");
         assert_eq!(git_status_kind('M', ' '), "modified");
