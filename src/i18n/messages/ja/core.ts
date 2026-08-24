@@ -2,7 +2,7 @@
 export const jaCore = {
   "app.name": "Grok",
   "app.tagline": "MIT · 非公式 · 姉妹プロジェクト grok-go",
-  "app.versionFooter": "Grok v1.0.0 · MIT · 非公式 · 姉妹プロジェクト grok-go",
+  "app.versionFooter": "Grok v1.1.0 · MIT · 非公式 · 姉妹プロジェクト grok-go",
   "window.minimize": "最小化",
   "window.maximize": "最大化",
   "window.restore": "元のサイズに戻す",

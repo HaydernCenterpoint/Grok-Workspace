@@ -483,9 +483,13 @@ pnpm typecheck && pnpm test
 ```
 
 <!-- CONTRIBUTORS:START -->
+Thanks to everyone who has contributed to Grok App. All human GitHub contributors (by commit count, updated 2026-08-24).
+
 <p align="center">
-  <a href="https://github.com/HaydernCenterpoint"><img src="https://github.com/HaydernCenterpoint.png?size=96" width="72" height="72" alt="HaydernCenterpoint" title="HaydernCenterpoint" /></a>
+  <a href="https://github.com/HaydernCenterpoint" title="HaydernCenterpoint"><img src="https://github.com/HaydernCenterpoint.png?size=96" width="72" height="72" alt="HaydernCenterpoint" style="border-radius:50%" /></a>
 </p>
+
+[Full contributors graph →](https://github.com/HaydernCenterpoint/grok-workspace/graphs/contributors)
 <!-- CONTRIBUTORS:END -->
 
 ---

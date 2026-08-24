@@ -2,7 +2,7 @@
 export const deCore = {
   "app.name": "Grok",
   "app.tagline": "MIT · Inoffiziell · Schwesterprojekt grok-go",
-  "app.versionFooter": "Grok v1.0.0 · MIT · Inoffiziell · Schwesterprojekt grok-go",
+  "app.versionFooter": "Grok v1.1.0 · MIT · Inoffiziell · Schwesterprojekt grok-go",
   "window.minimize": "Minimieren",
   "window.maximize": "Maximieren",
   "window.restore": "Wiederherstellen",

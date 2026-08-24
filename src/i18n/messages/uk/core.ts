@@ -2,7 +2,7 @@
 export const ukCore = {
   "app.name": "Grok",
   "app.tagline": "MIT · Неофіційний · Сестринський проєкт grok-go",
-  "app.versionFooter": "Grok v1.0.0 · MIT · Неофіційний · Сестринський проєкт grok-go",
+  "app.versionFooter": "Grok v1.1.0 · MIT · Неофіційний · Сестринський проєкт grok-go",
   "window.minimize": "Згорнути",
   "window.maximize": "Розгорнути",
   "window.restore": "Відновити",

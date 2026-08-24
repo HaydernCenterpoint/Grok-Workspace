@@ -77,31 +77,31 @@ ver = os.environ["VER"]
 
 # package.json
 p = Path("package.json")
-data = json.loads(p.read_text())
+data = json.loads(p.read_text(encoding="utf-8"))
 data["version"] = ver
-p.write_text(json.dumps(data, indent=2) + "\n")
+p.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
 print("package.json ->", ver)
 
 # tauri.conf.json
 p = Path("src-tauri/tauri.conf.json")
-data = json.loads(p.read_text())
+data = json.loads(p.read_text(encoding="utf-8"))
 data["version"] = ver
-p.write_text(json.dumps(data, indent=2) + "\n")
+p.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
 print("tauri.conf.json ->", ver)
 
 # Cargo.toml [package] version only (first match)
 p = Path("src-tauri/Cargo.toml")
-text = p.read_text()
+text = p.read_text(encoding="utf-8")
 text2, n = re.subn(r'(?m)^version\s*=\s*"[^"]+"', f'version = "{ver}"', text, count=1)
 if n != 1:
     raise SystemExit("failed to patch Cargo.toml version")
-p.write_text(text2)
+p.write_text(text2, encoding="utf-8")
 print("Cargo.toml ->", ver)
 
 # Cargo.lock package stanza for this crate
 p = Path("src-tauri/Cargo.lock")
 if p.is_file():
-    lock = p.read_text()
+    lock = p.read_text(encoding="utf-8")
     lock2, n = re.subn(
         r'(name = "grok-app"\nversion = ")[^"]+(")',
         rf"\g<1>{ver}\2",
@@ -110,7 +110,7 @@ if p.is_file():
     )
     if n != 1:
         raise SystemExit("failed to patch Cargo.lock grok-app version")
-    p.write_text(lock2)
+    p.write_text(lock2, encoding="utf-8")
     print("Cargo.lock grok-app ->", ver)
 
 # i18n version footer in every locale catalog (en is the key authority)
@@ -120,10 +120,10 @@ found = 0
 for p in core_files + legacy:
     if not p.is_file():
         continue
-    t = p.read_text()
+    t = p.read_text(encoding="utf-8")
     t2, n = re.subn(r"(Grok v)[0-9]+\.[0-9]+\.[0-9]+", rf"\g<1>{ver}", t)
     if n:
-        p.write_text(t2)
+        p.write_text(t2, encoding="utf-8")
         print(f"{p} versionFooter ->", ver)
         found += 1
     else:
