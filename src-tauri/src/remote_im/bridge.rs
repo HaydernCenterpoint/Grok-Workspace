@@ -483,6 +483,6 @@ mod tests {
         assert_eq!(health_watchdog_sleep_secs(false), None);
         assert_eq!(health_watchdog_sleep_secs(true), Some(HEALTH_TICK_SECS));
         assert_eq!(HEALTH_TICK_SECS, 15);
-        assert!(HEALTH_BOOT_GRACE_SECS >= HEALTH_TICK_SECS);
+        const { assert!(HEALTH_BOOT_GRACE_SECS >= HEALTH_TICK_SECS) };
     }
 }
