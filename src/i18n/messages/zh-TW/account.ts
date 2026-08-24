@@ -30,6 +30,7 @@ export const zhTWAccount = {
   "account.weeklyTitle": "SuperGrok 週配額",
   "account.quota": "額度使用",
   "account.quotaRemaining": "剩餘",
+  "account.usage": "用量",
   "account.quotaUsed": "已用",
   "account.quotaUnknown": "尚未取得用量",
   "account.period": "帳期",

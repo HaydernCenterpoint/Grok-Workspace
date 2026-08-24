@@ -129,7 +129,10 @@ mod tests {
         assert_eq!(t("en", MessageKey::StopSignalSent), "Stop signal sent.");
         assert_eq!(t("zh", MessageKey::NoInFlightTurn), "No in-flight turn.");
         assert_eq!(t("zh-TW", MessageKey::StopSignalSent), "Stop signal sent.");
-        assert_eq!(t("zh-Hant", MessageKey::NoInFlightTurn), "No in-flight turn.");
+        assert_eq!(
+            t("zh-Hant", MessageKey::NoInFlightTurn),
+            "No in-flight turn."
+        );
         assert!(t("en", MessageKey::NoAvailableProject).contains("/p"));
         assert!(t("zh", MessageKey::NoAvailableProject).contains("/p"));
     }

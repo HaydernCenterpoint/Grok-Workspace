@@ -14,6 +14,7 @@ import {
   resolveUpdateChannelHonestyPreferHost,
   isUpdateAffordanceVisible,
   shouldInstallWhenReady,
+  shouldSilentAutoDownload,
   shouldShowInstallButton,
   shouldShowInstallProgress,
   shouldShowManualDownloadCtas,
@@ -433,6 +434,27 @@ describe("user-initiated check must not auto-install", () => {
     expect(shouldInstallWhenReady("check")).toBe(false);
     expect(shouldInstallWhenReady("background")).toBe(false);
     expect(shouldInstallWhenReady("apply")).toBe(true);
+  });
+
+  it("silent auto-download requires signed path + pref on", () => {
+    expect(
+      shouldSilentAutoDownload({
+        autoUpdateSupported: true,
+        autoDownloadEnabled: true,
+      }),
+    ).toBe(true);
+    expect(
+      shouldSilentAutoDownload({
+        autoUpdateSupported: true,
+        autoDownloadEnabled: false,
+      }),
+    ).toBe(false);
+    expect(
+      shouldSilentAutoDownload({
+        autoUpdateSupported: false,
+        autoDownloadEnabled: true,
+      }),
+    ).toBe(false);
   });
 
   it("About check stops at ready / downloading and only downloads when available", () => {

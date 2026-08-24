@@ -492,6 +492,10 @@ fn stream_journal_prepare_snapshots_and_throttles_without_disk_io() {
         .expect("first chunk flushes immediately");
     assert_eq!(pending.session_id, "journal-1");
     assert_eq!(pending.message.content, "hello");
+    assert!(
+        !pending.persist_index,
+        "mid-stream journal must not rewrite the sessions index"
+    );
     let mid = s.streaming_message_id.clone().expect("message id assigned");
     assert_eq!(pending.message.id, mid);
 
@@ -510,6 +514,42 @@ fn stream_journal_prepare_snapshots_and_throttles_without_disk_io() {
         .expect("force flush bypasses throttle");
     assert_eq!(final_pending.message.id, mid);
     assert_eq!(final_pending.message.content, "hello world");
+    assert!(
+        final_pending.persist_index,
+        "turn-end force still persists sessions-index updated_at"
+    );
     assert!(final_pending.message.created_at >= pending.message.created_at);
     assert!(final_pending.meta.updated_at >= pending.meta.updated_at);
+}
+
+/// A 60-paragraph climb used to call `append_message` on every `\n\n` even
+/// when the main window was OS-unfocused (ConversationThread not painting).
+/// Unfocused honors the 2s interval; focused paragraph still bypasses.
+#[test]
+fn unfocused_paragraph_does_not_bypass_journal_throttle() {
+    struct RestoreFocus;
+    impl Drop for RestoreFocus {
+        fn drop(&mut self) {
+            crate::stream_emit::set_main_window_focused(true);
+        }
+    }
+    let _restore = RestoreFocus;
+    crate::stream_emit::set_main_window_focused(false);
+    let mut s = bare_live_session("journal-para", "p-journal");
+    s.stream_buf.push_str("hello");
+    assert!(
+        SessionManager::prepare_stream_journal_flush(&mut s, false, true).is_some(),
+        "first unfocused chunk still flushes (no prior mark)"
+    );
+    s.stream_buf.push_str("\n\nworld");
+    assert!(
+        SessionManager::prepare_stream_journal_flush(&mut s, false, true).is_none(),
+        "unfocused paragraph must honor BACKGROUND_JOURNAL_FLUSH_MS"
+    );
+    crate::stream_emit::set_main_window_focused(true);
+    assert!(
+        SessionManager::prepare_stream_journal_flush(&mut s, false, true).is_some(),
+        "focused paragraph still flushes immediately"
+    );
+    crate::stream_emit::set_main_window_focused(true);
 }

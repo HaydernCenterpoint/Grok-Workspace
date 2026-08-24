@@ -15,6 +15,52 @@
 
 import type { ChatMessage } from "@/lib/session";
 import { resolveTranscriptContentNotifyMs } from "@/lib/streamRenderPolicy";
+import {
+  readWindowFocusedFlag,
+  subscribeWindowFocused,
+} from "@/lib/windowFocusFlag";
+
+/** Test-only: force hidden/visible without a real Document. */
+let visibilityOverride: DocumentVisibilityState | null = null;
+/** Test-only: force OS window focus without a Host event. */
+let focusOverride: boolean | null = null;
+
+export function __testSetTranscriptVisibility(
+  state: DocumentVisibilityState | null,
+): void {
+  visibilityOverride = state;
+}
+
+export function __testSetTranscriptWindowFocused(
+  focused: boolean | null,
+): void {
+  focusOverride = focused;
+}
+
+/**
+ * Skip ConversationThread paint while the window is hidden **or**
+ * OS-unfocused (WebView can stay `document.hasFocus()` while another app
+ * is key). Tokens still land in `this.messages`; flush on show/refocus.
+ */
+function transcriptPaintDeferred(): boolean {
+  if (visibilityOverride === "hidden") return true;
+  if (visibilityOverride !== "visible") {
+    if (
+      typeof document !== "undefined" &&
+      document.visibilityState === "hidden"
+    ) {
+      return true;
+    }
+  }
+  if (focusOverride === false) return true;
+  if (focusOverride === true) return false;
+  if (typeof document !== "undefined") {
+    if (readWindowFocusedFlag(document.documentElement.dataset) === false) {
+      return true;
+    }
+  }
+  return false;
+}
 
 export type TranscriptMeta = {
   /** Message count in the viewing transcript. */
@@ -112,6 +158,9 @@ class SessionTranscriptStore {
   /** Leading+trailing throttle for non-structural content growth. */
   private contentThrottleTimer: ReturnType<typeof setTimeout> | null = null;
   private contentNotifyQueued = false;
+  /** Content grew while hidden/unfocused — flush once on show/refocus. */
+  private hiddenDeferred = false;
+  private visBound = false;
 
   /** Full viewing messages — for ConversationThread / export. */
   subscribeContent = (listener: Listener): (() => void) => {
@@ -176,12 +225,42 @@ class SessionTranscriptStore {
     for (const l of this.contentListeners) l();
   }
 
+  private bindVisibility(): void {
+    if (this.visBound || typeof document === "undefined") return;
+    this.visBound = true;
+    document.addEventListener("visibilitychange", () => {
+      if (!transcriptPaintDeferred()) this.flushHiddenContent();
+    });
+    subscribeWindowFocused((focused) => {
+      if (focused) this.flushHiddenContent();
+    });
+  }
+
+  /** Apply deferred stream paints after the window is shown or OS-refocused. */
+  flushHiddenContent(): void {
+    if (!this.hiddenDeferred) return;
+    this.hiddenDeferred = false;
+    this.flushContentListeners();
+  }
+
   /**
    * Content listeners: structural changes notify immediately; pure token growth
    * uses leading+trailing throttle so ConversationThread is not re-rendered on
    * every coalesced stream flush.
+   * Hidden or OS-unfocused window: keep the text, skip React until
+   * shown/refocused. Reconnect / pet keep their own WebView stores.
    */
   private scheduleContentNotify(immediate: boolean): void {
+    this.bindVisibility();
+    if (transcriptPaintDeferred()) {
+      this.hiddenDeferred = true;
+      if (this.contentThrottleTimer != null) {
+        clearTimeout(this.contentThrottleTimer);
+        this.contentThrottleTimer = null;
+      }
+      this.contentNotifyQueued = false;
+      return;
+    }
     if (immediate) {
       if (this.contentThrottleTimer != null) {
         clearTimeout(this.contentThrottleTimer);
@@ -396,6 +475,9 @@ class SessionTranscriptStore {
       this.contentThrottleTimer = null;
     }
     this.contentNotifyQueued = false;
+    this.hiddenDeferred = false;
+    visibilityOverride = null;
+    focusOverride = null;
     this.messages = [];
     this.messagesOwnerSessionId = null;
     this.hydratedSessionIds.clear();

@@ -4,6 +4,8 @@ import {
   REQUIRED_CHANNEL_IDS,
   RETIRED_CHANNEL_IDS,
   filterActiveChannels,
+  filterPickerChannels,
+  isPickerVisibleChannel,
   getChannelSchema,
   isRetiredChannel,
   parseIdSecretPair,
@@ -18,6 +20,16 @@ describe("remoteIm channelSchemas", () => {
     for (const id of REQUIRED_CHANNEL_IDS) {
       expect(ids.has(id), `missing channel ${id}`).toBe(true);
     }
+  });
+
+  it("REQUIRED_CHANNEL_IDS is the five picker channels", () => {
+    expect([...REQUIRED_CHANNEL_IDS]).toEqual([
+      "telegram",
+      "slack",
+      "discord",
+      "matrix",
+      "line",
+    ]);
   });
 
   it("excludes retired WPS channels from REQUIRED_CHANNEL_IDS", () => {
@@ -59,6 +71,22 @@ describe("remoteIm channelSchemas", () => {
     });
     expect(withLegacy.some((c) => c.id === "wps-xiezuo")).toBe(true);
     expect(withLegacy.some((c) => c.id === "wps-agentspace")).toBe(false);
+  });
+
+  it("hides domestic channels from the Remote control picker", () => {
+    const picker = filterPickerChannels();
+    expect(picker.map((c) => c.id)).toEqual([
+      "telegram",
+      "slack",
+      "discord",
+      "matrix",
+      "line",
+    ]);
+    expect(isPickerVisibleChannel("telegram")).toBe(true);
+    expect(isPickerVisibleChannel("feishu")).toBe(false);
+    expect(isPickerVisibleChannel("wecom")).toBe(false);
+    expect(isPickerVisibleChannel("wps-agentspace")).toBe(false);
+    expect(picker.every((c) => c.group === "overseas")).toBe(true);
   });
 
   it("orders domestic then overseas then other groups", () => {

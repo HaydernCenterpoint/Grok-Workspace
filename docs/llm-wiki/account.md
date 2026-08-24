@@ -6,7 +6,7 @@ Product rules for **official login, membership, quota, and usage** in Grok Works
 
 1. Sign in with the **same** Grok Build CLI auth (`grok login`), not a parallel OAuth stack.
 2. Show account + membership at two depths:
-   - **User menu sheet** (sidebar footer click): compact identity, plan, quota bar, login/logout, jump to settings.
+   - **User menu sheet** (sidebar footer click): ChatGPT-style compact list — identity, Usage (remaining %), settings, theme, login/logout. Plan, reset clock, and quota bar live in Settings → Account / the usage modal.
    - **Settings → Account**: full profile, subscription, quota, token activity heatmap, recent session call logs, CLI path, Doctor.
 3. Never log tokens, API keys, or `auth.json` secrets (redact).
 
@@ -86,7 +86,7 @@ Never tell the user that official OAuth alone fixes a bad custom relay key.
 
 - After successful login, Host **auto-snapshots** auth into `accounts/<id>/auth.json`.
 - Switch copies snapshot → `~/.grok/auth.json` + agent-home, then disconnects live ACP.
-- UI: the sidebar **user menu** lists saved official accounts (honest remaining %, click → `account_switch`). Clicking the active row still opens **Settings → Account**. Custom-provider / signed-out cards stay unchanged. Settings → Account keeps the full switcher / remove / rename UI.
+- UI: the sidebar **footer** shows the **profile display name** (`accountDisplayName`). Opening the **user menu** lists saved official accounts as one-line rows whose label is the **subscription plan** (`subscriptionTier` / `tierLabel` — SuperGrok, SuperGrok Heavy, …). Honest remaining % sits on the right (never invents 0% / 100% on a failed probe). Click another account to `account_switch`; click the active row for Settings → Account. A **Usage** row opens the usage-limit modal. Custom-provider / signed-out identity stays one line. Settings → Account keeps the full switcher / remove / rename UI.
   **「添加账号」** saves the current profile (if signed in) then starts OAuth login.
 
 ### Login failures (Access denied)
@@ -157,7 +157,7 @@ Cache successes under `~/.grok-app/account_billing_cache.json`.
 
 ### Auto-refresh (10 minutes)
 
-Official SuperGrok quota is re-probed **every 10 minutes** in the background (plus on boot, opening Settings → Account, opening the user menu, login / switch, and the manual **Refresh quota** button). The same `account` snapshot feeds:
+Official SuperGrok quota is re-probed **every 10 minutes while the window is visible** (plus on boot, opening Settings → Account, opening the user menu, login / switch, and the manual **Refresh quota** button). A hidden / tray-idle window parks the timer — no Host billing I/O until the window is shown again (one due check on show). The same `account` snapshot feeds:
 
 - Settings → Account
 - Sidebar footer + user-menu sheet (bottom-left)

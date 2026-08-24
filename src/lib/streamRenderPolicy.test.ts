@@ -7,8 +7,11 @@ import {
   resolveStreamOverscanScale,
   resolveMarkdownPaintSource,
   resolveTranscriptContentNotifyMs,
+  releaseWallpaperVideoElement,
+  shouldParkWallpaperVideo,
   shouldPlayWallpaperVideo,
   shouldUsePlainStreamBody,
+  wallpaperVideoIsCompositing,
   STREAM_COALESCE_FLUSH_MS,
   STREAM_MARKDOWN_PARSE_MS,
   STREAM_PLAIN_TEXT_CHAR_THRESHOLD,
@@ -87,10 +90,18 @@ describe("streamRenderPolicy", () => {
     expect(readStreamPerfFlag({ streamPerf: "1" })).toBe(true);
   });
 
-  it("pauses wallpaper video when hidden or stream-perf", () => {
+  it("pauses wallpaper video when hidden, unfocused, setup gate, or stream-perf", () => {
     expect(shouldPlayWallpaperVideo({})).toBe(true);
     expect(shouldPlayWallpaperVideo({ visibilityState: "visible" })).toBe(true);
     expect(shouldPlayWallpaperVideo({ visibilityState: "hidden" })).toBe(false);
+    expect(
+      shouldPlayWallpaperVideo({
+        visibilityState: "visible",
+        hasFocus: false,
+      }),
+    ).toBe(false);
+    expect(shouldPlayWallpaperVideo({ hasFocus: false })).toBe(false);
+    expect(shouldPlayWallpaperVideo({ setupGate: true })).toBe(false);
     expect(shouldPlayWallpaperVideo({ streamPerf: true })).toBe(false);
     expect(
       shouldPlayWallpaperVideo({
@@ -98,5 +109,79 @@ describe("streamRenderPolicy", () => {
         streamPerf: true,
       }),
     ).toBe(false);
+  });
+
+  it("parks (unload) on hidden, OS-unfocus, or setup gate — not stream-perf", () => {
+    expect(shouldParkWallpaperVideo({})).toBe(false);
+    expect(shouldParkWallpaperVideo({ visibilityState: "visible" })).toBe(false);
+    expect(shouldParkWallpaperVideo({ visibilityState: "hidden" })).toBe(true);
+    expect(
+      shouldParkWallpaperVideo({
+        visibilityState: "visible",
+        hasFocus: false,
+      }),
+    ).toBe(true);
+    expect(shouldParkWallpaperVideo({ hasFocus: false })).toBe(true);
+    expect(shouldParkWallpaperVideo({ setupGate: true })).toBe(true);
+    expect(shouldParkWallpaperVideo({ visibilityState: "visible", setupGate: false })).toBe(
+      false,
+    );
+  });
+
+  it("treats park as not compositing (unmounted or src cleared)", () => {
+    expect(
+      wallpaperVideoIsCompositing({
+        parked: true,
+        mounted: true,
+        src: "https://example.com/wall.mp4",
+      }),
+    ).toBe(false);
+    expect(
+      wallpaperVideoIsCompositing({
+        parked: true,
+        mounted: false,
+        src: null,
+      }),
+    ).toBe(false);
+    expect(
+      wallpaperVideoIsCompositing({
+        parked: false,
+        mounted: true,
+        src: "",
+      }),
+    ).toBe(false);
+    expect(
+      wallpaperVideoIsCompositing({
+        parked: false,
+        mounted: false,
+        src: "https://example.com/wall.mp4",
+      }),
+    ).toBe(false);
+    expect(
+      wallpaperVideoIsCompositing({
+        parked: false,
+        mounted: true,
+        src: "https://example.com/wall.mp4",
+      }),
+    ).toBe(true);
+  });
+
+  it("releases src + load so park does not unmount a live decoder", () => {
+    const calls: string[] = [];
+    const el = {
+      pause: () => {
+        calls.push("pause");
+      },
+      removeAttribute: (name: string) => {
+        calls.push(`remove:${name}`);
+      },
+      src: "blob:http://tauri.localhost/clip",
+      load: () => {
+        calls.push("load");
+      },
+    };
+    releaseWallpaperVideoElement(el);
+    expect(el.src).toBe("");
+    expect(calls).toEqual(["pause", "remove:src", "load"]);
   });
 });

@@ -3,8 +3,8 @@
  * localStorage-only — no Rust AppSettings (avoids prefs schema conflicts).
  * Applied via `data-sidebar-density` on `document.documentElement`.
  *
- * - `comfortable` (default): current `.tree-l3` spacing (30px + 2px gap)
- * - `compact`: tighter session rows (24px + 0 gap)
+ * - `comfortable` (default): `.tree-l3` spacing (24px + 2px gap)
+ * - `compact`: tighter session rows (19px + 0 gap)
  *
  * VirtualList rowHeight/gap must match CSS — use `sidebarSessionRowMetrics`.
  */
@@ -25,8 +25,8 @@ export const SIDEBAR_DENSITIES: readonly SidebarDensity[] = [
 
 /** Row metrics for VirtualList — keep in sync with app.css `.tree-l3` rules. */
 export const SIDEBAR_DENSITY_METRICS = {
-  comfortable: { rowHeight: 30, gap: 2 },
-  compact: { rowHeight: 24, gap: 0 },
+  comfortable: { rowHeight: 24, gap: 2 },
+  compact: { rowHeight: 19, gap: 0 },
 } as const satisfies Record<
   SidebarDensity,
   { rowHeight: number; gap: number }

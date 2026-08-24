@@ -11,8 +11,8 @@ use crate::acp_client::{AcpClient, StreamKind};
 use crate::session_fsm::SessionState;
 use crate::store::{self, ChatMessageStored};
 use crate::stream_emit::{
-    should_flush_stream_emit, stream_emit_can_merge, DEFAULT_STREAM_EMIT_MAX_CHARS,
-    DEFAULT_STREAM_EMIT_MS,
+    should_flush_stream_emit, stream_emit_can_merge, stream_emit_interval_ms,
+    stream_emit_max_chars,
 };
 use crate::stream_stall::{
     journal_tool_is_terminal, normalize_stream_stall_seconds, should_prune_open_tool_id,
@@ -120,6 +120,8 @@ pub(super) struct PendingStreamJournalFlush {
     pub(super) session_id: String,
     pub(super) message: ChatMessageStored,
     pub(super) meta: store::SessionMeta,
+    /// False on mid-stream ticks — `messages.json` is enough until turn end.
+    pub(super) persist_index: bool,
 }
 
 impl SessionManager {
@@ -782,7 +784,20 @@ impl SessionManager {
             return None;
         }
         let now = Instant::now();
-        if !s.journal_throttle.should_flush(now, force, paragraph_break) {
+        // Unfocused: ignore paragraph-immediate so BACKGROUND_JOURNAL_FLUSH_MS
+        // is real. `append_message` still read+parses+rewrites the whole
+        // `messages.json` on every allowed flush — do not also do that once
+        // per `\n\n` while the window is not watching.
+        let paragraph_break = crate::journal_throttle::honor_paragraph_flush(
+            paragraph_break,
+            crate::stream_emit::main_window_focused(),
+        );
+        if !s.journal_throttle.should_flush_interval(
+            now,
+            force,
+            paragraph_break,
+            crate::journal_throttle::live_journal_flush_interval(),
+        ) {
             return None;
         }
         let mid = s
@@ -820,17 +835,21 @@ impl SessionManager {
             session_id: s.app_session_id.clone(),
             message,
             meta: s.meta.clone(),
+            persist_index: crate::journal_throttle::should_persist_session_index_on_journal(force),
         })
     }
 
-    /// Disk half of a stream journal flush: journal upsert + session meta
-    /// bump. Callers on hot paths must not hold `inner` / `background` /
-    /// `parked` here (see `prepare_stream_journal_flush`).
+    /// Disk half of a stream journal flush: `messages.json` upsert, plus a
+    /// sessions-index bump on turn-end force. Mid-stream ticks skip the index
+    /// so the 500ms / 2s path is one lock + write, not two. Callers on hot
+    /// paths must not hold `inner` / `background` / `parked` here (see
+    /// `prepare_stream_journal_flush`).
     pub(super) fn commit_stream_journal_flush(pending: PendingStreamJournalFlush) {
         let PendingStreamJournalFlush {
             session_id,
             message,
             meta,
+            persist_index,
         } = pending;
         if let Err(e) = store::append_message(&session_id, message) {
             // Row id is stable and buffers are cumulative — the next flush
@@ -840,6 +859,9 @@ impl SessionManager {
                 session = %session_id,
                 "stream journal append failed: {e}"
             );
+            return;
+        }
+        if !persist_index {
             return;
         }
         if let Err(e) = store::update_session_meta(&meta) {
@@ -920,8 +942,8 @@ impl SessionManager {
                 pending.text.len(),
                 now,
                 force,
-                DEFAULT_STREAM_EMIT_MAX_CHARS,
-                Duration::from_millis(DEFAULT_STREAM_EMIT_MS),
+                stream_emit_max_chars(),
+                Duration::from_millis(stream_emit_interval_ms()),
             );
             if flush {
                 Self::flush_pending_stream_emit(s, app);
@@ -966,49 +988,55 @@ impl SessionManager {
     ) {
         let mgr = Arc::clone(self);
         tauri::async_runtime::spawn(async move {
-            tokio::time::sleep(Duration::from_millis(DEFAULT_STREAM_EMIT_MS)).await;
-            mgr.flush_stream_emit_if_gen(&app, &session_id, gen);
+            loop {
+                tokio::time::sleep(Duration::from_millis(stream_emit_interval_ms())).await;
+                if !mgr.flush_stream_emit_if_gen(&app, &session_id, gen) {
+                    break;
+                }
+            }
         });
     }
 
-    pub(super) fn flush_stream_emit_if_gen(&self, app: &AppHandle, session_id: &str, gen: u64) {
+    /// `true` when this gen is still pending (focus/interval changed mid-wait).
+    pub(super) fn flush_stream_emit_if_gen(
+        &self,
+        app: &AppHandle,
+        session_id: &str,
+        gen: u64,
+    ) -> bool {
         {
             let mut guard = self.inner.lock();
             if let Some(s) = guard.as_mut() {
                 if s.app_session_id == session_id && s.stream_emit_flush_gen == gen {
-                    if let Some(p) = s.pending_stream_emit.as_ref() {
-                        if should_flush_stream_emit(
-                            p.first_at,
-                            p.text.len(),
-                            Instant::now(),
-                            false,
-                            DEFAULT_STREAM_EMIT_MAX_CHARS,
-                            Duration::from_millis(DEFAULT_STREAM_EMIT_MS),
-                        ) {
-                            Self::flush_pending_stream_emit(s, app);
-                        }
-                    }
-                    return;
+                    return Self::flush_pending_stream_if_due(s, app);
                 }
             }
         }
         let mut bg = self.background.lock();
         if let Some(s) = bg.get_mut(session_id) {
             if s.stream_emit_flush_gen == gen {
-                if let Some(p) = s.pending_stream_emit.as_ref() {
-                    if should_flush_stream_emit(
-                        p.first_at,
-                        p.text.len(),
-                        Instant::now(),
-                        false,
-                        DEFAULT_STREAM_EMIT_MAX_CHARS,
-                        Duration::from_millis(DEFAULT_STREAM_EMIT_MS),
-                    ) {
-                        Self::flush_pending_stream_emit(s, app);
-                    }
-                }
+                return Self::flush_pending_stream_if_due(s, app);
             }
         }
+        false
+    }
+
+    fn flush_pending_stream_if_due(s: &mut LiveSession, app: &AppHandle) -> bool {
+        let Some(p) = s.pending_stream_emit.as_ref() else {
+            return false;
+        };
+        if should_flush_stream_emit(
+            p.first_at,
+            p.text.len(),
+            Instant::now(),
+            false,
+            stream_emit_max_chars(),
+            Duration::from_millis(stream_emit_interval_ms()),
+        ) {
+            Self::flush_pending_stream_emit(s, app);
+            return false;
+        }
+        true
     }
 
     /// Open-tool heartbeat: re-arm stall progress + emit explicit protocol event.

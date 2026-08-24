@@ -23,7 +23,8 @@ import {
   createDefaultInstance,
   deleteChannelInstance,
   deriveStatus,
-  filterActiveChannels,
+  filterPickerChannels,
+  isPickerVisibleChannel,
   instancesForChannel,
   isRemoteChannelId,
   isRetiredChannel,
@@ -36,6 +37,7 @@ import {
   saveChannelInstances,
   upsertInstance,
 } from "@/lib/remoteIm";
+import { startVisibleInterval } from "@/lib/visibleInterval";
 import { RemoteImOverview } from "@/components/RemoteImOverview";
 import { RemoteImChannelPanel } from "@/components/RemoteImChannelPanel";
 import { GlassModal } from "@/components/GlassModal";
@@ -73,7 +75,11 @@ function parseHashSelection(): RemoteImSelection {
     idx = 3;
   }
   const channel = parts[idx];
-  if (channel && isRemoteChannelId(channel)) {
+  if (
+    channel &&
+    isRemoteChannelId(channel) &&
+    isPickerVisibleChannel(channel)
+  ) {
     return {
       kind: "channel",
       channelId: channel,
@@ -136,10 +142,9 @@ export function RemoteImLayout({
       st !== "stopped";
     const rateLimited = !!bridge?.rateLimited;
     if (!recovering && !rateLimited) return;
-    const id = window.setInterval(() => {
+    return startVisibleInterval(() => {
       void refreshBridge();
     }, 3000);
-    return () => window.clearInterval(id);
   }, [
     bridge?.enabled,
     bridge?.state,
@@ -184,6 +189,11 @@ export function RemoteImLayout({
   }, []);
 
   const select = useCallback((sel: RemoteImSelection) => {
+    if (sel.kind === "channel" && !isPickerVisibleChannel(sel.channelId)) {
+      setSelection({ kind: "bridge" });
+      writeHashSelection({ kind: "bridge" });
+      return;
+    }
     setSelection(sel);
     writeHashSelection(sel);
   }, []);
@@ -323,14 +333,14 @@ export function RemoteImLayout({
     }
   }, [danger, instances, persistInstances, refreshBridge, select]);
 
-  const groups: Array<{
-    key: "domestic" | "overseas" | "other";
-    labelKey: string;
-  }> = [
-    { key: "domestic", labelKey: "settings.remoteIm.group.domestic" },
-    { key: "overseas", labelKey: "settings.remoteIm.group.overseas" },
-    { key: "other", labelKey: "settings.remoteIm.group.other" },
-  ];
+  const pickerChannels = useMemo(
+    () =>
+      filterPickerChannels(CHANNEL_SCHEMAS, {
+        includeRetiredWithInstances: true,
+        instances,
+      }),
+    [instances],
+  );
 
   return (
     <div className="rim-layout">
@@ -361,48 +371,30 @@ export function RemoteImLayout({
           />
         </button>
 
-        {groups.map((g) => {
-          // Hide soft-retired WPS channels by default; re-show when legacy instances exist.
-          const channels = filterActiveChannels(
-            CHANNEL_SCHEMAS.filter((c) => c.group === g.key),
-            { includeRetiredWithInstances: true, instances },
-          );
-          if (channels.length === 0) return null;
+        {pickerChannels.map((ch) => {
+          const tone = channelStatus(ch);
+          const active =
+            selection.kind === "channel" && selection.channelId === ch.id;
+          const count = instancesForChannel(instances, ch.id).filter(
+            (i) => i.hasCredentials,
+          ).length;
           return (
-            <div key={g.key} className="rim-sidebar__group">
-              <div className="rim-sidebar__group-label">{t(g.labelKey)}</div>
-              {channels.map((ch) => {
-                const tone = channelStatus(ch);
-                const active =
-                  selection.kind === "channel" &&
-                  selection.channelId === ch.id;
-                const count = instancesForChannel(instances, ch.id).filter(
-                  (i) => i.hasCredentials,
-                ).length;
-                return (
-                  <button
-                    key={ch.id}
-                    type="button"
-                    className={
-                      "rim-sidebar__item" + (active ? " is-active" : "")
-                    }
-                    data-channel={ch.id}
-                    onClick={() =>
-                      select({ kind: "channel", channelId: ch.id })
-                    }
-                  >
-                    <span className="rim-sidebar__icon" aria-hidden>
-                      <IconChat size={15} />
-                    </span>
-                    <span className="rim-sidebar__label">{t(ch.nameKey)}</span>
-                    {count > 0 ? (
-                      <span className="rim-sidebar__badge">{count}</span>
-                    ) : null}
-                    <RimStatusDot tone={tone} />
-                  </button>
-                );
-              })}
-            </div>
+            <button
+              key={ch.id}
+              type="button"
+              className={"rim-sidebar__item" + (active ? " is-active" : "")}
+              data-channel={ch.id}
+              onClick={() => select({ kind: "channel", channelId: ch.id })}
+            >
+              <span className="rim-sidebar__icon" aria-hidden>
+                <IconChat size={15} />
+              </span>
+              <span className="rim-sidebar__label">{t(ch.nameKey)}</span>
+              {count > 0 ? (
+                <span className="rim-sidebar__badge">{count}</span>
+              ) : null}
+              <RimStatusDot tone={tone} />
+            </button>
           );
         })}
       </aside>
@@ -413,7 +405,9 @@ export function RemoteImLayout({
             locale={locale}
             bridge={bridge}
             busy={busy}
-            instances={instances}
+            instances={instances.filter((i) =>
+              isPickerVisibleChannel(i.channel),
+            )}
             onStart={async () => {
               setBusy("start");
               try {

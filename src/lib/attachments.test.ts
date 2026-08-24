@@ -400,6 +400,31 @@ also /tmp/other.png and /tmp/clip.mp4 and not a file.`;
     expect(out![0]!.name).toBe("notes.txt");
   });
 
+  it("filterAttachmentsNotInlined keeps media that is only a prose path", () => {
+    const win: Attachment[] = [
+      {
+        path: "C:\\Users\\me\\AppData\\Roaming\\grok\\images\\1.jpg",
+        name: "1.jpg",
+        isDir: false,
+      },
+    ];
+    expect(
+      filterAttachmentsNotInlined(
+        "Saved the robot image to C:\\Users\\me\\AppData\\Roaming\\grok\\images\\1.jpg",
+        win,
+      ),
+    ).toEqual(win);
+    const posix: Attachment[] = [
+      { path: "/Users/me/grok/images/1.jpg", name: "1.jpg", isDir: false },
+    ];
+    expect(
+      filterAttachmentsNotInlined(
+        "Generating done. Path: /Users/me/grok/images/1.jpg",
+        posix,
+      ),
+    ).toEqual(posix);
+  });
+
   it("filterEchoedUserAttachments drops assistant copies of the user's own files", () => {
     const user = [
       {

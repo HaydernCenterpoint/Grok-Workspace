@@ -72,18 +72,17 @@ mod tests {
 
     #[test]
     fn catalog_matches_required_sidebar_ids() {
-        // Align with frontend REQUIRED_CHANNEL_IDS (active picker; WPS retired)
-        let required = [
-            "feishu", "lark", "dingtalk", "wecom", "weixin", "weibo", "qq", "qqbot", "telegram",
-            "slack", "discord", "matrix", "line",
-        ];
-        for id in required {
+        // Align with frontend REQUIRED_CHANNEL_IDS (picker only).
+        for id in channels::GUI_CHANNELS {
             assert!(
-                CATALOG_CHANNELS.contains(&id),
+                CATALOG_CHANNELS.contains(id),
                 "missing catalog channel {id}"
             );
+            assert!(channels::is_gui_channel(id), "{id} must be a GUI channel");
             let _ = channels::protocol_for(id);
         }
+        assert!(!channels::is_gui_channel("feishu"));
+        assert!(!channels::is_gui_channel("wecom"));
         // Soft-retired WPS ids remain in Host catalog for legacy instance dispatch
         assert!(CATALOG_CHANNELS.contains(&"wps-xiezuo"));
         assert!(CATALOG_CHANNELS.contains(&"wps-agentspace"));

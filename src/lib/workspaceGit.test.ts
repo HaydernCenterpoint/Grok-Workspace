@@ -3,6 +3,9 @@ import {
   classifyGitStatusCode,
   classifyGitStatusString,
   filterWorkspaceGitEntries,
+  gitDirtyPollMs,
+  GIT_DIRTY_POLL_BUSY_MS,
+  GIT_DIRTY_POLL_IDLE_MS,
   gitDirtySummariesEqual,
   isSafeDiscardCandidate,
   normalizeWorkspaceGitEntries,
@@ -162,6 +165,14 @@ describe("labels / badge / discard", () => {
         name: "n.ts",
       }),
     ).toBe(false);
+  });
+});
+
+describe("gitDirtyPollMs", () => {
+  it("polls slower when no turn is live", () => {
+    expect(gitDirtyPollMs(true)).toBe(GIT_DIRTY_POLL_BUSY_MS);
+    expect(gitDirtyPollMs(false)).toBe(GIT_DIRTY_POLL_IDLE_MS);
+    expect(GIT_DIRTY_POLL_IDLE_MS).toBeGreaterThan(GIT_DIRTY_POLL_BUSY_MS);
   });
 });
 

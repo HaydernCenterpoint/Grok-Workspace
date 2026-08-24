@@ -423,6 +423,8 @@ export const jaSettingsUi = {
   "settings.autoUpdateError.other": "更新に失敗しました。GitHub のリリースページを開いて手動でインストールできます。",
   "settings.autoUpdateChannelUnsupported": "更新チャネル: 手動インストール（このパッケージ形式は自動更新できません）",
   "settings.autoUpdateChannelHostOnly": "更新チャネル: デスクトップアプリのみ（ここでは利用できません）",
+  "settings.autoDownloadUpdates": "アップデートを自動でダウンロード",
+  "settings.autoDownloadUpdatesDesc": "署名済みリリースはバックグラウンドでダウンロードし、「インストールして再起動」の確認を待ちます。未署名・ローカルビルドは GitHub を開くだけで、静かにインストールしません。オフにすると自分でダウンロードを開始します。",
   "settings.askDemo.title": "Ask-user のデモ経路",
   "settings.askDemo.desc": "Ask と YOLO を設定探しなしで比べるためのおすすめ経路です。アプリが用意するのはポリシーとサンプルプロンプトだけです — 実際の質問票はモデルと CLI に依存します。",
   "settings.askDemo.honesty": "正直に: 本物の `ask_user_question` はモデルと Grok Build CLI に依存します。アプリがプロンプトを自動送信することはなく、エージェントが必ず聞くとも言いません。",

@@ -1,6 +1,8 @@
 /**
- * Background SuperGrok quota probe — 10 minutes.
- * Updates the same `account` snapshot the Account page, user menu, and tray read.
+ * Background SuperGrok quota probe — 10 minutes while the window is visible.
+ * Hidden windows park the timer (no Host billing I/O). Showing the window
+ * runs one due check. Updates the same `account` snapshot the Account page,
+ * user menu, and tray read.
  *
  * Dispose (unmount / disable) clears the interval + visibility listener and
  * flips `isCurrent` so a late Host reply cannot setState on a dead tree.

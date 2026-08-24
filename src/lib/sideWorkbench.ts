@@ -147,6 +147,18 @@ export function isPickerCreatableKind(
   return kind === "file" || kind === "browser";
 }
 
+/**
+ * Office may auto-uncollapse the files pane on first enter this session.
+ * After the user closes it, surface switches must not force it back.
+ */
+export function shouldAutoUncollapseOfficeFilesAside(input: {
+  alreadyOpenedThisSession: boolean;
+  asideCollapsed: boolean;
+}): boolean {
+  if (input.alreadyOpenedThisSession && input.asideCollapsed) return false;
+  return true;
+}
+
 /** Drop coding-only side tabs when entering Grok Office. */
 export function filterSideTabsForWorkMode(
   state: SideWorkbenchState,

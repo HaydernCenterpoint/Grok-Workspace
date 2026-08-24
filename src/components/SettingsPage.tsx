@@ -14,6 +14,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { nextIndex } from "@/lib/a11yFocus";
+import { startVisibleInterval } from "@/lib/visibleInterval";
 import { memoryClearErrorMessageKey } from "@/lib/agentMemory";
 import {
   IconArrowLeft,
@@ -709,8 +710,7 @@ export function SettingsPage({
   // Re-check quiet-hours "active now" about once a minute while Settings is open.
   const [notifyClockMs, setNotifyClockMs] = useState(() => Date.now());
   useEffect(() => {
-    const id = window.setInterval(() => setNotifyClockMs(Date.now()), 60_000);
-    return () => window.clearInterval(id);
+    return startVisibleInterval(() => setNotifyClockMs(Date.now()), 60_000);
   }, []);
   // Re-probe OS permission when Settings mounts: Tauri's notification plugin
   // polyfill resolves async after load (starts default → granted on desktop).
@@ -819,8 +819,7 @@ export function SettingsPage({
   useEffect(() => {
     if (!themeSchedule.enabled) return;
     setThemeScheduleClock(new Date());
-    const id = window.setInterval(() => setThemeScheduleClock(new Date()), 30_000);
-    return () => window.clearInterval(id);
+    return startVisibleInterval(() => setThemeScheduleClock(new Date()), 30_000);
   }, [themeSchedule.enabled, themeSchedule.lightFrom, themeSchedule.darkFrom]);
   const themeScheduleHonesty = useMemo(
     () =>

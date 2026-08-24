@@ -172,6 +172,10 @@
           animation: none;
         }
       }
+      html[data-splash-park="1"] .grok-logo-loader.is-active svg,
+      html[data-splash-park="1"] .grok-logo-loader.is-active .grok-logo-loader__mark {
+        animation: none;
+      }
     </style>
     <script>
       // Apply Host-injected theme + locale as early as possible (inline, before paint).
@@ -258,6 +262,36 @@
         </div>
       </div>
     </div>
+    <script>
+      /* Park boot sheen when hidden — before the JS bundle.
+       * Unfocused-but-visible is handled after React mounts (hasFocus is
+       * unreliable on the first WebView2 paint). */
+      (function () {
+        function sync() {
+          var hidden = false;
+          try {
+            hidden = document.visibilityState === "hidden";
+          } catch (e) {
+            /* ignore */
+          }
+          try {
+            if (hidden) {
+              document.documentElement.setAttribute("data-splash-park", "1");
+            } else {
+              document.documentElement.removeAttribute("data-splash-park");
+            }
+          } catch (e) {
+            /* ignore */
+          }
+          var el = document.querySelector(".boot-gate .grok-logo-loader");
+          if (!el) return;
+          if (hidden) el.classList.remove("is-active");
+          else el.classList.add("is-active");
+        }
+        document.addEventListener("visibilitychange", sync);
+        sync();
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

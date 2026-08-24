@@ -6,11 +6,8 @@
 
 .lobe-chat {
   /* Type */
-  --chat-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
-    "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei",
-    system-ui, sans-serif;
-  --chat-mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas,
-    "Liberation Mono", monospace;
+  --chat-font: var(--font-sans);
+  --chat-mono: var(--font-mono);
 
   /* Defaults = md; overridden by html[data-chat-font] (Appearance). */
   --chat-fs: 14px;
@@ -142,7 +139,7 @@
 .lobe-chat__inner {
   box-sizing: border-box;
   width: 100%;
-  /* Default = medium; overridden by html[data-chat-width] (Appearance). */
+  /* Workspaces pin this to --composer-width-max (see lobe-chat.part3.css). */
   max-width: var(--chat-width-max, 1120px);
   margin: 0 auto;
   /* Thin gutters — on a 1200px window they are the difference between a
@@ -792,4 +789,12 @@ html[data-msg-actions="always"] .lobe-chat-item__actions {
   font-weight: 400;
   font-family: inherit;
   letter-spacing: -0.01em;
+}
+
+/* Live / open rail — same on Build, Office, and Studio. */
+.grok-act.is-open,
+.grok-act.is-live {
+  padding: 8px 10px;
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--bg-hover) 60%, transparent);
 }

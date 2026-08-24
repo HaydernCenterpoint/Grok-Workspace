@@ -364,9 +364,21 @@ html.platform-win .window-edge-n {
 .platform-linux .sidebar,
 .platform-other .sidebar,
 .has-custom-chrome .sidebar {
-  background: var(--bg-sidebar-solid, var(--bg-sidebar));
+  background:
+    var(--sidebar-wash),
+    var(--bg-sidebar-solid, var(--bg-sidebar));
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+  border-right: none;
+  box-shadow: var(--sidebar-edge-inset);
+}
+
+/* Chat canvas sits a step above the rail — no 1px stroke, just a soft lift. */
+.platform-win .main,
+.platform-linux .main,
+.platform-other .main,
+.has-custom-chrome .main {
+  box-shadow: -12px 0 28px rgba(0, 0, 0, 0.18);
 }
 
 /* Maximized: square corners */
@@ -716,9 +728,59 @@ html.platform-mac[data-theme="light"] .settings-page__content {
   opacity: 0.55;
 }
 
-.sidebar-product-switch__pop {
-  padding: 6px;
-  min-width: 240px;
+.cmm__pop.sidebar-product-switch__pop {
+  padding: 8px;
+  min-width: 268px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--bg-elevated) 46%, transparent);
+  backdrop-filter: blur(32px) saturate(1.55);
+  -webkit-backdrop-filter: blur(32px) saturate(1.55);
+  border: 1px solid color-mix(in srgb, var(--glass-border) 85%, transparent);
+  box-shadow:
+    0 0 0 0.5px color-mix(in srgb, var(--text-primary) 8%, transparent) inset,
+    var(--glass-shadow);
+}
+
+.sidebar-product-switch__pop .cmm__opt {
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px 11px 14px;
+  border-radius: 12px;
+}
+
+.sidebar-product-switch__pop .cmm__opt.is-active {
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+}
+
+.sidebar-product-switch__pop .cmm__opt-title {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.sidebar-product-switch__pop .cmm__opt-desc {
+  font-size: 12px;
+}
+
+.sidebar-product-switch__pop .cmm__opt-check {
+  margin-top: 0;
+  color: var(--text-primary);
+}
+
+@supports not (
+  (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
+) {
+  .cmm__pop.sidebar-product-switch__pop {
+    background: var(--glass-surface-solid);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cmm__pop.sidebar-product-switch__pop {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: var(--glass-surface-solid);
+  }
 }
 
 /* Swappable provider brand marks — height-locked for size parity.
@@ -919,16 +981,16 @@ html.platform-mac[data-theme="light"] .settings-page__content {
   height: 28px;
   padding: 0 8px 0 0;
   border-radius: var(--radius-md);
-  color: var(--text-tertiary);
-  font-size: 11px;
-  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 700;
   letter-spacing: 0.02em;
   text-align: left;
 }
 
 .tree-l1__head:hover {
   background: var(--bg-hover);
-  color: var(--text-secondary);
+  color: var(--text-primary);
 }
 
 .tree-l1__head--toggle,
@@ -944,6 +1006,13 @@ html.platform-mac[data-theme="light"] .settings-page__content {
 
 .tree-l1__label {
   flex: 1;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.tree-l1__head.is-current {
+  color: var(--text-primary);
 }
 
 .space-switcher {
@@ -962,9 +1031,9 @@ html.platform-mac[data-theme="light"] .settings-page__content {
   height: 28px;
   padding: 0 6px 0 0;
   border-radius: var(--radius-md);
-  color: var(--text-tertiary);
-  font-size: 11px;
-  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 700;
   letter-spacing: 0.02em;
   text-align: left;
 }
@@ -972,7 +1041,7 @@ html.platform-mac[data-theme="light"] .settings-page__content {
 .space-switcher__btn:hover,
 .space-switcher.is-open .space-switcher__btn {
   background: var(--bg-hover);
-  color: var(--text-secondary);
+  color: var(--text-primary);
 }
 
 .space-switcher__label {
@@ -1137,7 +1206,7 @@ html.platform-mac[data-theme="light"] .settings-page__content {
   padding: 0 6px 0 var(--tree-l2-pad);
   border-radius: 8px;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: 16px;
   cursor: pointer;
   position: relative;
 }
@@ -1197,10 +1266,35 @@ html.platform-mac[data-theme="light"] .settings-page__content {
 }
 
 .tree-l2.is-session-drop,
-.tree-l1__head.is-session-drop {
+.tree-l1.is-session-drop,
+.tree-l1__head.is-session-drop,
+.tree-project.is-session-drop > .tree-l2,
+.tree-surface.is-session-drop > .tree-l1,
+.tree-l3.is-session-drop {
   outline: 1.5px dashed var(--accent, #3b82f6);
   outline-offset: -2px;
   background: var(--bg-hover);
+}
+
+.tree-l3--drop-before::before,
+.tree-l3--drop-after::after {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--accent, #3b82f6);
+  pointer-events: none;
+  z-index: 3;
+}
+
+.tree-l3--drop-before::before {
+  top: 0;
+}
+
+.tree-l3--drop-after::after {
+  bottom: 0;
 }
 
 /* Source header is a faint placeholder; children (sessions) stay laid out. */

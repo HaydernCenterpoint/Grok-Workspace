@@ -97,6 +97,17 @@ describe("sidebarDateGroupId / localDayOffset", () => {
 });
 
 describe("compareSessionsPinThenUpdated", () => {
+  it("compares parsed timestamps, not locale relative-time strings", () => {
+    // Same instant, different RFC3339 shapes — string/locale compare can flip these.
+    const z = { updatedAt: "2026-08-23T10:00:00.000Z", pinned: false };
+    const offset = { updatedAt: "2026-08-23T10:00:00+00:00", pinned: false };
+    expect(compareSessionsPinThenUpdated(z, offset)).toBe(0);
+    const newer = { updatedAt: "2026-08-23T11:37:00.000Z", pinned: false };
+    const older = { updatedAt: "2026-08-23T05:00:00.000Z", pinned: false };
+    expect(compareSessionsPinThenUpdated(newer, older)).toBeLessThan(0);
+    expect(compareSessionsPinThenUpdated(older, newer)).toBeGreaterThan(0);
+  });
+
   it("orders pinned first, then newest updatedAt", () => {
     const a = { updatedAt: isoLocal(2026, 2, 15, 10), pinned: false };
     const b = { updatedAt: isoLocal(2026, 2, 15, 11), pinned: true };

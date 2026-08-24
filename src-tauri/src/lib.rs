@@ -75,6 +75,8 @@ mod editors;
 mod error;
 
 mod extensions;
+
+mod external_import;
 mod mcp_oauth;
 
 mod fs_browser;
@@ -493,6 +495,12 @@ pub fn run() {
                     if window.label() == "main" => {
                         schedule_persist_main_window_state(window.app_handle());
                     }
+                WindowEvent::Focused(focused) => {
+                    if window.label() == "main" {
+                        stream_emit::set_main_window_focused(*focused);
+                    }
+                    let _ = window.emit(stream_emit::WINDOW_FOCUSED_EVENT, *focused);
+                }
                 _ => {}
             }
         })
@@ -715,7 +723,8 @@ pub fn run() {
                 tracing::warn!("tray setup: {e}");
             }
 
-            // Windows: AppsUseLightTheme → frontend (WebView2 matchMedia stays frozen).
+            // Windows: one Personalize waiter → app theme + tray badge fan-out
+            // (WebView2 matchMedia stays frozen; tray still uses taskbar DWORD).
             os_theme::watch(app.handle());
 
             // Cold-start argv: grok:// or *.grokskin → pending. Never steal fire-due.
@@ -1170,6 +1179,10 @@ pub fn run() {
             commands::skills_list,
 
             commands::skills_compat_set,
+
+            commands::external_import_scan,
+
+            commands::external_import_apply,
 
             commands::skill_read,
 

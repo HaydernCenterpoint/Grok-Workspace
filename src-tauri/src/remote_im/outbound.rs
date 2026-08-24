@@ -139,6 +139,9 @@ impl OutboundRouter {
             "telegram" => {
                 super::channels::telegram::send_card(&cred.secrets, chat_id, card, thread_id).await
             }
+            "slack" => super::channels::slack::send_card(&cred.secrets, chat_id, card).await,
+            "discord" => super::channels::discord::send_card(&cred.secrets, chat_id, card).await,
+            "line" => super::channels::line::send_card(&cred.secrets, chat_id, card).await,
             _ => {
                 // Fallback: dump card as text menu summary
                 let text = format!(
@@ -185,6 +188,12 @@ impl OutboundRouter {
                     thread_id,
                 )
                 .await
+            }
+            "slack" => {
+                super::channels::slack::edit_card(&cred.secrets, chat_id, message_id, card).await
+            }
+            "discord" => {
+                super::channels::discord::edit_card(&cred.secrets, chat_id, message_id, card).await
             }
             _ => {
                 self.reply_card(instance_id, chat_id, None, card, thread_id)

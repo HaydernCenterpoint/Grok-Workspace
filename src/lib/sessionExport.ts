@@ -1,5 +1,7 @@
 /** Build a markdown export for a whole chat session. */
 
+import { UI_SANS_STACK } from "@/lib/uiFontStack";
+
 export type ExportableMessage = {
   role: "user" | "assistant" | "tool" | string;
   content: string;
@@ -355,7 +357,7 @@ export function messagesToHtml(
   return parts.join("\n\n");
 }
 
-const HTML_EXPORT_STYLES = `body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.5;max-width:48rem;margin:1.5rem auto;padding:0 1rem;color:#111;background:#fff}
+const HTML_EXPORT_STYLES = `body{font-family:${UI_SANS_STACK};line-height:1.5;max-width:48rem;margin:1.5rem auto;padding:0 1rem;color:#111;background:#fff}
 h1{font-size:1.5rem;margin:0 0 .75rem}
 .meta{list-style:none;padding:0;margin:0 0 1rem;color:#555;font-size:.875rem}
 .meta li{margin:.15rem 0}

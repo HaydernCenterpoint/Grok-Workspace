@@ -79,7 +79,7 @@ body > .composer-wrap.composer-wrap--side-dock {
 .composer-wrap--side-dock .composer {
   pointer-events: auto !important;
   width: 100%;
-  max-width: min(42rem, calc(100% - 8px));
+  max-width: min(var(--composer-width-max, 52rem), calc(100% - 8px));
   /* Compressed chrome */
   padding: 6px 10px 6px;
   gap: 4px;

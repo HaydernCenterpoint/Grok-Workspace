@@ -20,21 +20,19 @@ describe("resolveChatTranscriptEmptyState", () => {
     ).toBeNull();
   });
 
-  it("shows start chatting for a new draft", () => {
+  it("shows the Grok welcome slogan for a new draft", () => {
     expect(resolveChatTranscriptEmptyState({ empty: true })).toEqual({
-      kind: "start",
-      titleKey: "main.startTitle",
-      hintKey: "main.startHint",
+      kind: "welcome",
+      titleKey: "main.welcomeSlogan",
     });
   });
 
-  it("uses Imagine copy in Grok Studio", () => {
+  it("uses the Grok slogan in Grok Studio", () => {
     expect(
       resolveChatTranscriptEmptyState({ empty: true, studioMode: true }),
     ).toEqual({
       kind: "start",
-      titleKey: "studio.headline.image",
-      hintKey: "studio.placeholder",
+      titleKey: "studio.welcomeSlogan",
     });
   });
 

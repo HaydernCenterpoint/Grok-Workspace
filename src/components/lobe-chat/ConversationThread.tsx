@@ -13,6 +13,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type ReactNode,
   type UIEvent,
   type MouseEvent as ReactMouseEvent,
@@ -52,6 +53,7 @@ import {
   filterEchoedUserAttachments,
   isImagePath,
   isMediaPath,
+  mergeMessageAttachments,
   pathBasename,
 } from "@/lib/attachments";
 import {
@@ -92,6 +94,12 @@ import {
 } from "@/lib/thinkingStartAnchor";
 import { formatMessageTime, formatRelativeTime } from "@/lib/accountUi";
 import type { MessageTimeFormat } from "@/lib/messageTimeFormatPref";
+import {
+  getRelativeTimeTick,
+  getRelativeTimeTickServerSnapshot,
+  subscribeRelativeTimeTick,
+  subscribeRelativeTimeTickNoop,
+} from "@/lib/relativeTimeTickStore";
 import { computeMessageLength } from "@/lib/messageLength";
 import {
   formatCompactBeforeAfterRange,
@@ -156,10 +164,12 @@ import {
   shouldShowTrailingLiveThinking,
 } from "@/lib/timelinePhases";
 import { resolveChatTranscriptEmptyState } from "@/lib/chatTranscriptEmpty";
+import { BuildWelcome } from "@/components/BuildWelcome";
 import { OfficeStart } from "@/components/OfficeStart";
 import { StudioStart } from "@/components/StudioSurface";
+import { GrokLogo } from "@/components/GrokLogo";
+import type { BuildWelcomeKind } from "@/lib/buildWelcome";
 import type { OfficeStartKind } from "@/lib/grokOffice";
-import type { StudioKind } from "@/lib/studio";
 import { Spinner } from "@/components/ui/spinner";
 import {
   BACK_BOTTOM_ALWAYS_CHANGE_EVENT,
@@ -606,7 +616,7 @@ export interface ConversationThreadProps {
   sessionState: SessionState;
   sessionKey?: string;
   projectPath?: string | null;
-  /** When true, suppress generic empty copy (brand mark lives above composer). */
+  /** When true, suppress generic empty copy (Office / Studio own their start). */
   suppressEmptyCopy?: boolean;
   /** Grok Office empty copy — daily work, not “start chatting”. */
   officeMode?: boolean;
@@ -614,9 +624,10 @@ export interface ConversationThreadProps {
   officeProjectName?: string | null;
   /** Office start rows seed the composer; omit to keep plain empty copy. */
   onOfficeStart?: (kind: OfficeStartKind) => void;
-  /** Grok Studio empty copy — Imagine headline on the chat column. */
+  /** Build welcome cards seed the composer; omit to keep logo + slogan only. */
+  onBuildStart?: (kind: BuildWelcomeKind) => void;
+  /** Grok Studio empty copy — Grok mark + slogan on the chat column. */
   studioMode?: boolean;
-  studioKind?: StudioKind;
   /** Selected session journal is still loading — not a fresh draft. */
   journalLoading?: boolean;
   /** Viewing an existing session (not a new draft). */
@@ -1354,9 +1365,9 @@ const TranscriptMessageRow = memo(function TranscriptMessageRow({
       break;
     }
   }
-  const displayAttachments = filterEchoedUserAttachments(
-    m.attachments,
-    precedingUserAtts,
+  const displayAttachments = mergeMessageAttachments(
+    filterEchoedUserAttachments(m.attachments, precedingUserAtts),
+    m.content,
   );
   const isActiveAssistant = activeAssistantId === m.id;
   const hasInlinedRunningTool = segs.some(
@@ -1752,8 +1763,8 @@ export function ConversationThread({
   officeMode = false,
   officeProjectName = null,
   onOfficeStart,
+  onBuildStart,
   studioMode = false,
-  studioKind = "image",
   journalLoading = false,
   hasExistingSession = false,
   journalHydrated,
@@ -1801,17 +1812,13 @@ export function ConversationThread({
   void _onOpenSessionChanges;
   void _onOpenModifiedPath;
 
-  /** Re-render relative labels roughly once a minute. */
-  const [relativeTick, setRelativeTick] = useState(0);
-  useEffect(() => {
-    if (!showTimestamps || messageTimeFormat !== "relative") return;
-    const id = window.setInterval(() => {
-      setRelativeTick((n) => n + 1);
-    }, 60_000);
-    return () => window.clearInterval(id);
-  }, [showTimestamps, messageTimeFormat]);
-  // Keep tick in the render graph so interval updates recompute labels.
-  void relativeTick;
+  const relativeTick = useSyncExternalStore(
+    showTimestamps && messageTimeFormat === "relative"
+      ? subscribeRelativeTimeTick
+      : subscribeRelativeTimeTickNoop,
+    getRelativeTimeTick,
+    getRelativeTimeTickServerSnapshot,
+  );
 
   /**
    * Force stick-to-bottom when a new user turn starts **and** when the turn
@@ -2712,20 +2719,35 @@ export function ConversationThread({
         <div ref={contentRef} className="lobe-chat__inner">
           {emptyCopy ? (
             <div
-              className="lobe-chat-empty"
+              className={
+                "lobe-chat-empty" +
+                (emptyCopy.kind === "welcome" || showStudioStart
+                  ? " lobe-chat-empty--welcome"
+                  : "")
+              }
               data-kind={emptyCopy.kind}
               data-office={officeMode ? "true" : undefined}
               data-studio={studioMode ? "true" : undefined}
               aria-busy={emptyCopy.kind === "loading" ? true : undefined}
             >
               {showStudioStart ? (
-                <StudioStart locale={locale} kind={studioKind} />
+                <StudioStart locale={locale} />
               ) : showOfficeStart && onOfficeStart ? (
                 <OfficeStart
                   locale={locale}
                   projectName={officeProjectName}
                   onStart={onOfficeStart}
                 />
+              ) : emptyCopy.kind === "welcome" ? (
+                <>
+                  <GrokLogo size={56} />
+                  <h3 className="lobe-chat-empty__slogan">
+                    {tr(emptyCopy.titleKey, emptyCopy.vars)}
+                  </h3>
+                  {onBuildStart ? (
+                    <BuildWelcome locale={locale} onStart={onBuildStart} />
+                  ) : null}
+                </>
               ) : (
                 <>
                   {emptyCopy.kind === "loading" ? (
@@ -2734,9 +2756,11 @@ export function ConversationThread({
                   <h3 className="lobe-chat-empty__title">
                     {tr(emptyCopy.titleKey, emptyCopy.vars)}
                   </h3>
-                  <p className="lobe-chat-empty__desc">
-                    {tr(emptyCopy.hintKey, emptyCopy.vars)}
-                  </p>
+                  {emptyCopy.hintKey ? (
+                    <p className="lobe-chat-empty__desc">
+                      {tr(emptyCopy.hintKey, emptyCopy.vars)}
+                    </p>
+                  ) : null}
                 </>
               )}
             </div>

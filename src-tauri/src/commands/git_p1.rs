@@ -238,6 +238,29 @@ fn git_probe_work_tree(project: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// `## main...origin/main [ahead 1]` → `main`. Detached HEAD → None.
+fn parse_porcelain_branch_header(chunk: &str) -> Option<String> {
+    let rest = chunk.strip_prefix("##")?.trim();
+    if rest.is_empty() {
+        return None;
+    }
+    let rest = rest.strip_prefix("No commits yet on ").unwrap_or(rest);
+    if rest.starts_with("HEAD") {
+        return None;
+    }
+    let name = rest
+        .split("...")
+        .next()
+        .unwrap_or(rest)
+        .split_whitespace()
+        .next()?;
+    if name.is_empty() || name == "HEAD" {
+        None
+    } else {
+        Some(name.to_string())
+    }
+}
+
 /// `git -C <project> -c core.quotepath=false …` — keeps UTF-8 paths unescaped so
 /// Chinese / non-ASCII names don't arrive as `"\346\211…"`.
 fn git_in_project(project: &str) -> std::process::Command {
@@ -462,7 +485,38 @@ pub async fn git_status(project_path: String) -> Result<GitStatusResult, String>
         });
     }
 
-    if let Err(reason) = git_probe_work_tree(&project) {
+    // One spawn: `-b` carries the branch header. Probe + rev-parse were 3 extra
+    // processes on every composer dirty-chip poll.
+    let out = git_in_project(&project)
+        .args([
+            "status",
+            "--porcelain=v1",
+            "--untracked-files=normal",
+            "-z",
+            "-b",
+        ])
+        .output();
+    let out = match out {
+        Ok(o) => o,
+        Err(_) => {
+            return Ok(GitStatusResult {
+                available: false,
+                files: vec![],
+                branch: None,
+                reason: Some("git not available".into()),
+            });
+        }
+    };
+
+    if !out.status.success() {
+        let err = String::from_utf8_lossy(&out.stderr).trim().to_string();
+        let reason = if err.contains("not a git repository") {
+            "not a git repository".into()
+        } else if err.is_empty() {
+            "git status failed".into()
+        } else {
+            err.chars().take(200).collect()
+        };
         return Ok(GitStatusResult {
             available: false,
             files: vec![],
@@ -471,55 +525,12 @@ pub async fn git_status(project_path: String) -> Result<GitStatusResult, String>
         });
     }
 
-    let branch = crate::process_util::command("git")
-        .args(["-C", &project, "rev-parse", "--abbrev-ref", "HEAD"])
-        .output()
-        .ok()
-        .and_then(|o| {
-            if o.status.success() {
-                let b = String::from_utf8_lossy(&o.stdout).trim().to_string();
-                if b.is_empty() || b == "HEAD" {
-                    None
-                } else {
-                    Some(b)
-                }
-            } else {
-                None
-            }
-        });
-
-    // Porcelain v1: untracked as `??`, no ignored noise, relative paths.
-    let out = crate::process_util::command("git")
-        .args([
-            "-C",
-            &project,
-            "status",
-            "--porcelain=v1",
-            "--untracked-files=normal",
-            "-z",
-        ])
-        .output()
-        .map_err(|e| e.to_string())?;
-
-    if !out.status.success() {
-        let err = String::from_utf8_lossy(&out.stderr).trim().to_string();
-        return Ok(GitStatusResult {
-            available: false,
-            files: vec![],
-            branch,
-            reason: Some(if err.is_empty() {
-                "git status failed".into()
-            } else {
-                err.chars().take(200).collect()
-            }),
-        });
-    }
-
     // -z: records separated by NUL. Each record is `XY path` or for renames
     // `XY` + space + old + NUL + new (git uses two NUL fields for rename).
     // Actually with -z: "XY path\0" and for rename "R  oldpath\0newpath\0".
     let raw = out.stdout;
     let mut files: Vec<GitStatusEntry> = Vec::new();
+    let mut branch: Option<String> = None;
     let mut i = 0;
     while i < raw.len() {
         // find next NUL
@@ -533,6 +544,13 @@ pub async fn git_status(project_path: String) -> Result<GitStatusResult, String>
         }
         let chunk = String::from_utf8_lossy(&raw[i..end]).into_owned();
         i = end + 1;
+
+        if chunk.starts_with("##") {
+            if branch.is_none() {
+                branch = parse_porcelain_branch_header(&chunk);
+            }
+            continue;
+        }
 
         if chunk.len() < 3 {
             continue;

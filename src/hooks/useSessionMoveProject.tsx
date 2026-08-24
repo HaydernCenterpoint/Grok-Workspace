@@ -18,6 +18,7 @@ import {
 } from "@/lib/app/sidebarModels";
 import * as api from "@/lib/api";
 import type { MessageKey } from "@/i18n";
+import type { WorkMode } from "@/lib/grokOffice";
 import {
   applySessionMoveMeta,
   buildSessionMoveMenuTargets,
@@ -26,6 +27,10 @@ import {
   sessionMoveConfirmKeys,
   sessionMoveErrorKey,
 } from "@/lib/sessionMoveProject";
+
+export type SessionMovePlaceOpts = {
+  workMode?: WorkMode;
+};
 
 type Tr = (key: MessageKey, vars?: Record<string, string>) => string;
 
@@ -44,6 +49,11 @@ export function useSessionMoveProject(opts: {
   onViewingMoved: (sessionId: string) => void;
   refreshSessions: () => Promise<void>;
   onMoved?: () => void;
+  onPlaced?: (
+    ids: string[],
+    targetProjectId: string | null,
+    opts?: SessionMovePlaceOpts,
+  ) => void;
 }) {
   const {
     tr,
@@ -60,10 +70,15 @@ export function useSessionMoveProject(opts: {
     onViewingMoved,
     refreshSessions,
     onMoved,
+    onPlaced,
   } = opts;
 
   const applyMove = useCallback(
-    async (rows: SessionRow[], targetProjectId: string | null) => {
+    async (
+      rows: SessionRow[],
+      targetProjectId: string | null,
+      placeOpts?: SessionMovePlaceOpts,
+    ) => {
       if (!api.isTauri()) {
         showToast(tr("error.needTauri"), 4000);
         return;
@@ -101,6 +116,7 @@ export function useSessionMoveProject(opts: {
           onViewingMoved(viewingSessionId);
         }
         await refreshSessions();
+        onPlaced?.(movedIds, targetProjectId, placeOpts);
         onMoved?.();
         const projectName = target
           ? projectDisplayName(target, tr)
@@ -133,6 +149,7 @@ export function useSessionMoveProject(opts: {
     },
     [
       onMoved,
+      onPlaced,
       onViewingMoved,
       projects,
       refreshSessions,
@@ -147,7 +164,11 @@ export function useSessionMoveProject(opts: {
   );
 
   const requestMove = useCallback(
-    (rows: SessionRow[], targetProjectId: string | null) => {
+    (
+      rows: SessionRow[],
+      targetProjectId: string | null,
+      placeOpts?: SessionMovePlaceOpts,
+    ) => {
       const unique = rows.filter(
         (r, i, a) => a.findIndex((x) => x.id === r.id) === i,
       );
@@ -217,7 +238,7 @@ export function useSessionMoveProject(opts: {
         }),
         confirmLabel: tr(keys.action, { n: String(toMove.length) }),
         onConfirm: () => {
-          void applyMove(toMove, pid);
+          void applyMove(toMove, pid, placeOpts);
         },
       });
     },

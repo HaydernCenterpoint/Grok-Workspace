@@ -313,6 +313,16 @@
   color: var(--text-primary);
 }
 
+.composer__row .icon-btn--plus,
+.composer__row .icon-btn--skills {
+  color: var(--text-primary);
+}
+
+.composer__row .icon-btn--plus .g-icon svg,
+.composer__row .icon-btn--skills .g-icon svg {
+  stroke-width: 2.35;
+}
+
 .icon-btn--plus.is-open {
   background: var(--bg-active);
   transform: rotate(45deg);
@@ -331,6 +341,130 @@
 
 .icon-btn--primary:disabled {
   opacity: 0.35;
+}
+
+/*
+ * Counter-rotating concentric gimbal rings on the shared send square.
+ * Inset overlay so composer overflow:hidden cannot clip them; icon stays still.
+ */
+.composer__send.composer__send--gimbal {
+  --send-gimbal-outer-period: 4s;
+  --send-gimbal-inner-period: 2.8s;
+  --send-gimbal-stroke: color-mix(in srgb, currentColor 46%, transparent);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  perspective: 32px;
+}
+
+.composer__send.composer__send--gimbal > .g-icon {
+  position: relative;
+  z-index: 1;
+}
+
+.composer__send-gimbal__ring {
+  position: absolute;
+  z-index: 0;
+  box-sizing: border-box;
+  border: 1.25px solid var(--send-gimbal-stroke);
+  border-radius: 50%;
+  pointer-events: none;
+  transform-style: preserve-3d;
+  transition: border-color var(--motion-fast) var(--ease-out);
+}
+
+.composer__send-gimbal__ring--outer {
+  inset: 6%;
+  animation: composer-send-gimbal-outer var(--send-gimbal-outer-period) linear
+    infinite;
+}
+
+.composer__send-gimbal__ring--inner {
+  inset: 20%;
+  border-width: 1px;
+  --send-gimbal-stroke: color-mix(in srgb, currentColor 38%, transparent);
+  animation: composer-send-gimbal-inner var(--send-gimbal-inner-period) linear
+    infinite;
+}
+
+.composer__send.composer__send--gimbal:is(:hover, :focus-visible):not(:disabled) {
+  --send-gimbal-outer-period: 2.8s;
+  --send-gimbal-inner-period: 1.9s;
+  --send-gimbal-stroke: color-mix(in srgb, currentColor 68%, transparent);
+}
+
+.composer__send.composer__send--gimbal:is(:hover, :focus-visible):not(:disabled)
+  .composer__send-gimbal__ring--inner {
+  --send-gimbal-stroke: color-mix(in srgb, currentColor 58%, transparent);
+}
+
+.composer__send.composer__send--gimbal:disabled .composer__send-gimbal__ring--outer,
+.composer__send.composer__send--gimbal:disabled .composer__send-gimbal__ring--inner {
+  animation: none;
+}
+
+.composer__send.composer__send--gimbal:disabled .composer__send-gimbal__ring--outer {
+  transform: rotateX(68deg) rotateY(8deg);
+  --send-gimbal-stroke: color-mix(in srgb, currentColor 28%, transparent);
+}
+
+.composer__send.composer__send--gimbal:disabled .composer__send-gimbal__ring--inner {
+  transform: rotateY(70deg) rotateX(8deg);
+  --send-gimbal-stroke: color-mix(in srgb, currentColor 22%, transparent);
+}
+
+@keyframes composer-send-gimbal-outer {
+  from {
+    transform: rotateX(68deg) rotateY(8deg) rotateZ(0deg);
+  }
+  to {
+    transform: rotateX(68deg) rotateY(8deg) rotateZ(360deg);
+  }
+}
+
+@keyframes composer-send-gimbal-inner {
+  from {
+    transform: rotateY(70deg) rotateX(8deg) rotateZ(0deg);
+  }
+  to {
+    transform: rotateY(70deg) rotateX(8deg) rotateZ(-360deg);
+  }
+}
+
+html[data-window-hidden="1"]
+  .composer__send.composer__send--gimbal
+  .composer__send-gimbal__ring--outer,
+html[data-window-hidden="1"]
+  .composer__send.composer__send--gimbal
+  .composer__send-gimbal__ring--inner {
+  animation: none;
+}
+
+html[data-window-hidden="1"]
+  .composer__send.composer__send--gimbal
+  .composer__send-gimbal__ring--outer {
+  transform: rotateX(68deg) rotateY(8deg);
+}
+
+html[data-window-hidden="1"]
+  .composer__send.composer__send--gimbal
+  .composer__send-gimbal__ring--inner {
+  transform: rotateY(70deg) rotateX(8deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .composer__send.composer__send--gimbal .composer__send-gimbal__ring--outer,
+  .composer__send.composer__send--gimbal .composer__send-gimbal__ring--inner {
+    animation: none;
+  }
+
+  .composer__send.composer__send--gimbal .composer__send-gimbal__ring--outer {
+    transform: rotateX(68deg) rotateY(8deg);
+  }
+
+  .composer__send.composer__send--gimbal .composer__send-gimbal__ring--inner {
+    transform: rotateY(70deg) rotateX(8deg);
+  }
 }
 
 .icon-btn--danger {

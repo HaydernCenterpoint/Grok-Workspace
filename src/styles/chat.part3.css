@@ -227,6 +227,7 @@
   box-sizing: border-box;
   margin: 10px 0;
   overflow: hidden;
+  cursor: pointer;
   background: color-mix(in srgb, var(--bg-hover) 80%, transparent);
   vertical-align: middle;
   /* Chat cards set height inline; pane leaves auto + aspect-ratio */

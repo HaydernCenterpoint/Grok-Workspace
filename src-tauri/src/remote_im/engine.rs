@@ -506,13 +506,13 @@ impl Engine {
                 }
             }
             CardAction::Page { menu, page } => {
-                self.handle_telegram_page(&menu, page, &binding, &scope, msg)
+                self.handle_selection_page(&menu, page, &binding, &scope, msg)
                     .await;
             }
         }
     }
 
-    async fn handle_telegram_page(
+    async fn handle_selection_page(
         &self,
         menu: &str,
         page: usize,
@@ -520,7 +520,10 @@ impl Engine {
         scope: &str,
         msg: &IncomingMessage,
     ) {
-        if msg.channel != "telegram" {
+        if !matches!(
+            msg.channel.as_str(),
+            "telegram" | "slack" | "discord" | "line"
+        ) {
             return;
         }
         let card = match menu {
@@ -541,7 +544,12 @@ impl Engine {
                         accounts: vec![],
                     },
                 );
-                control_plane::build_telegram_project_card(&projects, &self.lang(), page)
+                control_plane::build_channel_project_card(
+                    &msg.channel,
+                    &projects,
+                    &self.lang(),
+                    page,
+                )
             }
             "session" => {
                 let sessions = app_sessions::sessions_for_project(binding.project_id.as_deref());
@@ -560,7 +568,12 @@ impl Engine {
                         accounts: vec![],
                     },
                 );
-                control_plane::build_telegram_session_card(&sessions, &self.lang(), page)
+                control_plane::build_channel_session_card(
+                    &msg.channel,
+                    &sessions,
+                    &self.lang(),
+                    page,
+                )
             }
             "account" => {
                 let listed = account_profiles::list_accounts();
@@ -592,7 +605,13 @@ impl Engine {
                         accounts: profiles,
                     },
                 );
-                control_plane::build_telegram_account_card(&text, &choices, &self.lang(), page)
+                control_plane::build_channel_account_card(
+                    &msg.channel,
+                    &text,
+                    &choices,
+                    &self.lang(),
+                    page,
+                )
             }
             _ => return,
         };
@@ -797,12 +816,18 @@ impl Engine {
                 },
             );
         }
-        if msg.channel == "telegram" && !profiles.is_empty() {
+        if self.channel_prefers_cards(msg) && !profiles.is_empty() {
             let choices: Vec<(String, String)> = profiles
                 .iter()
                 .map(|account| (account.id.clone(), account.label.clone()))
                 .collect();
-            let card = control_plane::build_telegram_account_card(&text, &choices, &self.lang(), 0);
+            let card = control_plane::build_channel_account_card(
+                &msg.channel,
+                &text,
+                &choices,
+                &self.lang(),
+                0,
+            );
             let _ = self
                 .outbound
                 .reply_card(
@@ -1251,13 +1276,8 @@ impl Engine {
 
         // Menu: native cards/buttons where supported, text otherwise.
         if self.channel_prefers_cards(msg) {
-            let card = match msg.channel.as_str() {
-                "dingtalk" => control_plane::build_dingtalk_project_card(&projects, &self.lang()),
-                "telegram" => {
-                    control_plane::build_telegram_project_card(&projects, &self.lang(), 0)
-                }
-                _ => control_plane::build_feishu_project_card(&projects, &self.lang()),
-            };
+            let card =
+                control_plane::build_channel_project_card(&msg.channel, &projects, &self.lang(), 0);
             let _ = self
                 .outbound
                 .reply_card(
@@ -1372,13 +1392,8 @@ impl Engine {
         }
 
         if self.channel_prefers_cards(msg) {
-            let card = match msg.channel.as_str() {
-                "dingtalk" => control_plane::build_dingtalk_session_card(&sessions, &self.lang()),
-                "telegram" => {
-                    control_plane::build_telegram_session_card(&sessions, &self.lang(), 0)
-                }
-                _ => control_plane::build_feishu_session_card(&sessions, &self.lang()),
-            };
+            let card =
+                control_plane::build_channel_session_card(&msg.channel, &sessions, &self.lang(), 0);
             let _ = self
                 .outbound
                 .reply_card(

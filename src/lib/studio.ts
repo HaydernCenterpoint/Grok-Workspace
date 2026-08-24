@@ -12,18 +12,48 @@ import {
 export type StudioKind = "image" | "video";
 export type StudioResolution = "480p" | "720p" | "1080p";
 export type StudioDuration = 6 | 10 | 15;
+export const STUDIO_IMAGE_COUNTS = [1, 2, 3, 4] as const;
+export type StudioImageCount = (typeof STUDIO_IMAGE_COUNTS)[number];
+export const STUDIO_IMAGE_COUNT_MAX = 4;
 
 export const STUDIO_ASPECTS = [
-  "1:1",
-  "16:9",
-  "9:16",
-  "4:3",
-  "3:4",
   "2:3",
   "3:2",
+  "4:3",
+  "1:1",
+  "9:16",
+  "16:9",
+  "21:9",
+  "5:2",
+  "3:4",
 ] as const;
 
 export type StudioAspect = (typeof STUDIO_ASPECTS)[number];
+
+export const STUDIO_ASPECT_NAME_KEY = {
+  "2:3": "studio.aspect.poster",
+  "3:2": "studio.aspect.photo",
+  "4:3": "studio.aspect.presentation",
+  "1:1": "studio.aspect.square",
+  "9:16": "studio.aspect.story",
+  "16:9": "studio.aspect.widescreen",
+  "21:9": "studio.aspect.cinematic",
+  "5:2": "studio.aspect.banner",
+  "3:4": "studio.aspect.portrait",
+} as const;
+
+export function isStudioAspect(value: string): value is StudioAspect {
+  return (STUDIO_ASPECTS as readonly string[]).includes(value);
+}
+
+/** Width / height units for the aspect preview frame. */
+export function studioAspectBox(ratio: string): { w: number; h: number } {
+  const [a, b] = ratio.split(":").map(Number);
+  if (!a || !b || !Number.isFinite(a) || !Number.isFinite(b)) {
+    return { w: 1, h: 1 };
+  }
+  return { w: a, h: b };
+}
 
 export type StudioItem = {
   id: string;
@@ -38,7 +68,20 @@ export type StudioGenerateInput = {
   aspect: StudioAspect;
   resolution: StudioResolution;
   duration: StudioDuration;
+  count?: StudioImageCount;
 };
+
+export function isStudioImageCount(value: number): value is StudioImageCount {
+  return (STUDIO_IMAGE_COUNTS as readonly number[]).includes(value);
+}
+
+export function clampStudioImageCount(value: number): StudioImageCount {
+  if (!Number.isFinite(value)) return 1;
+  const n = Math.round(value);
+  if (n <= 1) return 1;
+  if (n >= STUDIO_IMAGE_COUNT_MAX) return STUDIO_IMAGE_COUNT_MAX;
+  return n as StudioImageCount;
+}
 
 export type StudioErrorCode = "empty" | "auth" | "cli" | "failed";
 
@@ -129,6 +172,7 @@ export function wrapStudioAgentText(
     aspect: StudioAspect;
     resolution: StudioResolution;
     duration: StudioDuration;
+    count?: number;
   },
 ): string {
   const body = userText.trim();
@@ -136,15 +180,25 @@ export function wrapStudioAgentText(
     return `${body}
 
 [Grok Studio] Generate a short video for the prompt above.
-1. Call image_gen with aspect_ratio ${opts.aspect}.
+1. Call image_gen (or official-aux__image_gen) with aspect_ratio ${opts.aspect}. Do not load a skill first.
 2. Then call image_to_video on that image (duration ${opts.duration}, resolution_name ${opts.resolution}).
 3. Report each absolute output path. Do not invent paths. Do not draw with code.`;
+  }
+  const count = clampStudioImageCount(opts.count ?? 1);
+  if (count > 1) {
+    return `${body}
+
+[Grok Studio] Generate exactly ${count} images for the prompt above.
+Call the Imagine tool image_gen (or official-aux__image_gen) ${count} times with aspect_ratio ${opts.aspect} (one image per call).
+Do not load a skill first. Do not draw with code. Do not invent paths.
+After each tool completes, report the absolute filesystem path. Produce ${count} images, no more.`;
   }
   return `${body}
 
 [Grok Studio] Generate an image for the prompt above.
-Call image_gen with aspect_ratio ${opts.aspect}.
-Report the absolute path. Do not invent paths. Do not draw with code.`;
+Call the Imagine tool image_gen (or official-aux__image_gen) with aspect_ratio ${opts.aspect}.
+Do not load a skill first. Do not draw with code. Do not invent paths.
+After the tool completes, report the absolute filesystem path.`;
 }
 
 export async function generateStudioMedia(

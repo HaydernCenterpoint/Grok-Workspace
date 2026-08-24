@@ -1,6 +1,6 @@
 /**
- * Shared image UI: click → lightbox; right-click menu aligned with AttachmentCard
- * (view, reveal, copy image, copy path when a local path is known).
+ * Shared image UI: click opens the same menu as right-click (view / reveal /
+ * copy, plus Send to Grok Build / Office when a local path is known).
  *
  * Chat cards use a **fixed height** (150px) with width from natural ratio.
  * Aspect ratios are cached in memory + localStorage (`imageAspectCache`) so
@@ -53,6 +53,7 @@ import { isFusedQueryKeyPath } from "@/lib/pathNormalize";
 import { useImageViewerOptional } from "@/components/ImageViewer";
 import { IconCopy, IconExternalLink, IconFolder } from "@/components/icons";
 import { ContextMenu, type ContextMenuItem } from "@/components/ContextMenu";
+import { useMediaHandoffMenuItems } from "@/providers/MediaHandoffContext";
 import { createT, type Locale } from "@/i18n";
 import { revealInOsLabel } from "@/lib/appPlatform";
 
@@ -241,6 +242,7 @@ export function ImageUi({
     : isLocalFsPath(src)
       ? src
       : undefined;
+  const handoffItems = useMediaHandoffMenuItems(localPath, alt);
 
   const applyNaturalSize = useCallback(
     (nw: number, nh: number) => {
@@ -558,6 +560,7 @@ export function ImageUi({
       },
     });
   }
+  menuItems.push(...handoffItems);
 
   const state: "pending" | "ready" | "broken" = loadFailed || (!resolvedSrc && failKind)
     ? "broken"
@@ -620,6 +623,11 @@ export function ImageUi({
             : undefined
         }
         onContextMenu={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setMenu({ x: e.clientX, y: e.clientY });
+        }}
+        onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
           setMenu({ x: e.clientX, y: e.clientY });
@@ -688,7 +696,7 @@ export function ImageUi({
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              openViewer();
+              setMenu({ x: e.clientX, y: e.clientY });
             }}
           />
         ) : (

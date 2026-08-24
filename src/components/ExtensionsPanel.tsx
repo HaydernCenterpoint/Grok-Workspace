@@ -8,6 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as api from "@/lib/api";
 import { createT, intlLocale, type Locale, type MessageKey } from "@/i18n";
 import { GlassModal } from "@/components/GlassModal";
+import { ExternalImportModal } from "@/components/ExternalImportModal";
 import {
   IconDoctor,
   IconEdit,
@@ -236,6 +237,10 @@ export function ExtensionsPanel({
   const [skillRoots, setSkillRoots] = useState<string[]>([]);
   const [skillsDiscover, setSkillsDiscover] =
     useState<api.SkillsCompatSnapshot | null>(null);
+  const [externalImportOpen, setExternalImportOpen] = useState(false);
+  const [externalImportFocus, setExternalImportFocus] = useState<
+    "all" | "skills" | "mcp"
+  >("all");
   const [servers, setServers] = useState<api.McpDto[]>([]);
   const [plugins, setPlugins] = useState<api.PluginDto[]>([]);
   const [skillsError, setSkillsError] = useState<string | null>(null);
@@ -2269,6 +2274,19 @@ export function ExtensionsPanel({
             <IconPlus size={14} />
             <span>{tr("ext.skills.new")}</span>
           </button>
+          <button
+            type="button"
+            className="btn btn--ghost btn--sm"
+            disabled={!!actionBusy || !!busyKey || !api.isTauri()}
+            id="settings-anchor-ext-import"
+            title={tr("ext.import.btnHint")}
+            onClick={() => {
+              setExternalImportFocus("skills");
+              setExternalImportOpen(true);
+            }}
+          >
+            <span>{tr("ext.import.skillsFind")}</span>
+          </button>
           {!loading && skills.length > 0 && skillsOffCount > 0 ? (
             <button
               type="button"
@@ -2316,6 +2334,38 @@ export function ExtensionsPanel({
                 label={tr("ext.skills.discoverExternal")}
                 onChange={(next) => void toggleDiscoverExternal(next)}
               />
+            </div>
+          </div>
+        </div>
+      </div>
+      <div
+        className="settings-card ext-card"
+        id="settings-anchor-ext-skills-find"
+      >
+        <div className="ext-ref-row ext-ref-row--dense">
+          <div className="ext-ref-row__main">
+            <div className="ext-ref-row__body">
+              <div className="ext-ref-row__title">
+                <span className="ext-ref-row__title-text">
+                  {tr("ext.import.skillsFind")}
+                </span>
+              </div>
+              <div className="ext-ref-row__desc">
+                {tr("ext.import.skillsFindHint")}
+              </div>
+            </div>
+            <div className="ext-ref-row__end">
+              <button
+                type="button"
+                className="btn btn--ghost btn--sm"
+                disabled={!api.isTauri()}
+                onClick={() => {
+                  setExternalImportFocus("skills");
+                  setExternalImportOpen(true);
+                }}
+              >
+                {tr("ext.import.btn")}
+              </button>
             </div>
           </div>
         </div>
@@ -2442,6 +2492,18 @@ export function ExtensionsPanel({
           >
             <IconPlus size={14} />
             <span>{tr("ext.mcp.add")}</span>
+          </button>
+          <button
+            type="button"
+            className="btn btn--ghost btn--sm"
+            disabled={!!actionBusy || !!busyKey || !api.isTauri()}
+            title={tr("ext.import.btnHint")}
+            onClick={() => {
+              setExternalImportFocus("mcp");
+              setExternalImportOpen(true);
+            }}
+          >
+            <span>{tr("ext.import.btn")}</span>
           </button>
           {!loading && servers.length > 0 && mcpOffCount > 0 ? (
             <button
@@ -4078,6 +4140,15 @@ export function ExtensionsPanel({
       >
         <p className="app-dialog__msg">{tr("ext.skills.editConflictBody")}</p>
       </GlassModal>
+
+      <ExternalImportModal
+        open={externalImportOpen}
+        onClose={() => setExternalImportOpen(false)}
+        locale={locale}
+        projectPath={projectPath}
+        focus={externalImportFocus}
+        onImported={() => void refresh({ forcePlugins: true })}
+      />
     </div>
   );
 }

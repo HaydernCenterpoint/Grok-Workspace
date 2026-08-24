@@ -90,6 +90,7 @@ describe("SidebarSessionRow", () => {
     );
     expect(html).toContain("tree-l3--orphan");
     expect(html).toContain("tree-l3--working");
+    expect(html).toContain("act-dots");
   });
 
   it("shows plan-pending badge without changing working/unread chrome", () => {

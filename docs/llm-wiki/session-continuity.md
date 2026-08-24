@@ -16,6 +16,8 @@ When the user pastes a **session id** (UUID) into chat or issues for debugging:
 
 App data root (macOS typical): `~/Library/Application Support/com.grokapp.grok-app/`.
 
+**Session home surface (sidebar):** each App session id is stamped `code` | `office` | `studio` in `localStorage` key `grok.sessionWorkMode`. Creating a chat writes that surface once (`stampSessionHome` — first write wins). Recents / trees honor the stamp. Switching Build ↔ Office ↔ Studio, opening the same project folder on another surface, Recents regroup, or drag onto another workspace must **not** overwrite it. Untagged ids still default to Build. Same-surface folder moves are allowed because they do not change work mode.
+
 External apps on this machine that need to **list chats and continue one by id** use the local session API — see [session-api.md](./session-api.md). That surface takes a **Grok Workspace session id**, not an agent session id.
 
 ## Problem
@@ -181,7 +183,7 @@ Because cwd changes:
 4. Untrusted or missing target folders are refused.
 5. Fork / resume-restore still use silent `session_set_project` so they can keep a pending `--fork-session` source id.
 6. Remote IM bindings that already point at this App session retarget cwd and drop their agent id.
-7. Drag a sidebar chat onto a project header (or Other sessions) uses the same confirm + Host path as the menu.
+7. Drag a sidebar chat onto a project header (or Recents) uses the same confirm + Host path as the menu.
 
 ### 3c. Agent-side fork (partial)
 
