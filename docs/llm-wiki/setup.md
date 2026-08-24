@@ -15,7 +15,7 @@ Product rules for the **full-screen initialization wizard** before the workbench
 boot → probe CLI (≤3s per --version; Host spawn_blocking)
   ├─ timeout (FE 12s) → loading chrome + Retry / open Setup (not infinite spin)
   ├─ no CLI → SetupWizard step Runtime (install required)
-  ├─ CLI ok + !setupWizardCompleted → Account step (skippable)
+  ├─ CLI ok + !setupWizardCompleted → Account (skippable) → Appearance → home
   └─ CLI ok + setupWizardCompleted → home
 ```
 
@@ -44,9 +44,11 @@ Each mirror is tried multiple times before failing over.
 
 OAuth, official key, relay, import CLI / grok-go. No `window.prompt`.
 
-### Step 3 — Ready → Enter
+### Step 3 — Appearance
 
-Persists `setupWizardCompleted: true`. If account skipped: `authSetupDeferred: true`.
+Shown after a successful login **or** Skip. ChatGPT-style first-run look: Light / Dark / System tiles, accent skin, UI font (empty = bundled Inter), chat text size, code-block text size. Changes apply live through the existing Appearance prefs (`themePreference`, skins, `uiFontFamily`, `chatFontScale`, `codeFontScale`). Continue writes `setupWizardCompleted: true` and enters home. If account was skipped: `authSetupDeferred: true`. The old Ready checklist is no longer shown.
+
+Do **not** invent a hex theme-token editor on this step. Custom colors, contrast sliders, and `.grokskin` import stay in Settings → Appearance. Packs never auto-apply.
 
 ## Settings fields
 
@@ -58,8 +60,8 @@ Persists `setupWizardCompleted: true`. If account skipped: `authSetupDeferred: t
 
 ## UI
 
-- Boot / CLI probe (`appGate === "loading"` + static `index.html` splash): **Grok mark animation only**. No welcome title, no “Checking Grok Build…” line, no rounded logo tile. Timeout still shows retry / open Setup.
-- Component: `src/components/SetupWizard.tsx` (first-run steps after probe)
+- Boot / CLI probe (`appGate === "loading"` + static `index.html` splash): **Grok mark animation only**. No welcome title, no “Checking Grok Build…” line, no rounded logo tile. Timeout still shows retry / open Setup. Sheen/breathe park when the document is hidden, the window is unfocused, or the overlay is idle (timeout Retry / Welcome sitting). Wallpaper video under the gate does not decode.
+- Component: `src/components/SetupWizard.tsx` (first-run steps after probe); appearance step is `src/components/SetupAppearance.tsx`
 - Styles: `src/styles/setup-wizard.css` (overflow hidden, no scrollbars)
 - i18n: `setup.*` keys in `src/i18n/messages.ts`
 

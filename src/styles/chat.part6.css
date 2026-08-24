@@ -437,6 +437,38 @@
   font-weight: 500;
 }
 
+/* ChatGPT-style app update bar — solid chrome, not a toast / OS dialog */
+.update-ready-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+  padding: 8px 14px;
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.35;
+  z-index: 3;
+}
+
+.update-ready-banner--quiet {
+  color: var(--text-secondary);
+}
+
+.update-ready-banner__text {
+  min-width: 0;
+  flex: 1;
+}
+
+.update-ready-banner__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 /* ===== Custom Select (no native chrome) ===== */
 .c-select {
   position: relative;
@@ -834,6 +866,16 @@
     padding: 0;
     justify-content: center;
     gap: 0;
+  }
+  /* Model trigger has no glyph — keep the short effort label. */
+  .cmm--model .cmm__trigger-text--short {
+    display: inline;
+  }
+  .cmm--model .cmm__trigger {
+    width: auto;
+    max-width: 132px;
+    padding: 0 8px;
+    gap: 4px;
   }
 }
 

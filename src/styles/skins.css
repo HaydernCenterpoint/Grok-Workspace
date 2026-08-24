@@ -128,6 +128,7 @@ html[data-wallpaper="1"] .platform-mac .settings-page__nav {
 
 /*
  * Live turn: AppWorkbench sets html[data-stream-perf="1"].
+ * Hidden window: ThemeProvider sets html[data-window-hidden="1"].
  * Frosted wallpaper panes on a playing video are a WebView2 GPU sink.
  * Video pause is JS (WallpaperMediaLayer).
  */
@@ -135,7 +136,17 @@ html[data-stream-perf="1"][data-wallpaper="1"] .sidebar,
 html[data-stream-perf="1"][data-wallpaper="1"] .settings-page__nav,
 html[data-stream-perf="1"][data-wallpaper="1"] .platform-win .settings-page__nav,
 html[data-stream-perf="1"][data-wallpaper="1"] .platform-other .settings-page__nav,
-html[data-stream-perf="1"][data-wallpaper="1"] .platform-mac .settings-page__nav {
+html[data-stream-perf="1"][data-wallpaper="1"] .platform-mac .settings-page__nav,
+html[data-window-hidden="1"][data-wallpaper="1"] .sidebar,
+html[data-window-hidden="1"][data-wallpaper="1"] .settings-page__nav,
+html[data-window-hidden="1"][data-wallpaper="1"] .platform-win .settings-page__nav,
+html[data-window-hidden="1"][data-wallpaper="1"] .platform-other .settings-page__nav,
+html[data-window-hidden="1"][data-wallpaper="1"] .platform-mac .settings-page__nav,
+html[data-wallpaper-video="1"][data-wallpaper="1"] .sidebar,
+html[data-wallpaper-video="1"][data-wallpaper="1"] .settings-page__nav,
+html[data-wallpaper-video="1"][data-wallpaper="1"] .platform-win .settings-page__nav,
+html[data-wallpaper-video="1"][data-wallpaper="1"] .platform-other .settings-page__nav,
+html[data-wallpaper-video="1"][data-wallpaper="1"] .platform-mac .settings-page__nav {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }

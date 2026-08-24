@@ -2,7 +2,10 @@
  * App UI (sans) font family (Appearance).
  * localStorage-only — no Rust AppSettings (avoids prefs schema conflicts).
  * Applied by setting --font-sans on documentElement.
+ * Empty restores the bundled Inter stack from tokens.css.
  */
+
+import { resolveUiSansFamily, UI_SANS_STACK } from "@/lib/uiFontStack";
 
 export const UI_FONT_FAMILY_STORAGE_KEY = "grok.uiFontFamily";
 
@@ -74,15 +77,12 @@ export function applyUiFontFamily(
     typeof document !== "undefined" ? document.documentElement : null,
 ): void {
   if (!root) return;
-  const c = parseUiFontFamily(family);
+  const c = resolveUiSansFamily(parseUiFontFamily(family));
   if (!c) {
     root.style.removeProperty("--font-sans");
     return;
   }
   const quoted =
     /[,\s]/.test(c) && !c.startsWith('"') ? `"${c.replace(/"/g, "")}"` : c;
-  root.style.setProperty(
-    "--font-sans",
-    `${quoted}, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif`,
-  );
+  root.style.setProperty("--font-sans", `${quoted}, ${UI_SANS_STACK}`);
 }

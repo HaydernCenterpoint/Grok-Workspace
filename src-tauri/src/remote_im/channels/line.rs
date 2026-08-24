@@ -110,24 +110,9 @@ pub async fn run(
                     if let Ok(v) = serde_json::from_str::<Value>(body) {
                         if let Some(events) = v.get("events").and_then(|e| e.as_array()) {
                             for ev in events {
-                                if ev.get("type").and_then(|t| t.as_str()) != Some("message") {
-                                    continue;
+                                if let Some(incoming) = parse_event(&inst, ev) {
+                                    let _ = tx.send(incoming).await;
                                 }
-                                let text = ev.pointer("/message/text").and_then(|x| x.as_str()).unwrap_or("");
-                                if text.is_empty() { continue; }
-                                let user = ev.pointer("/source/userId").and_then(|x| x.as_str()).unwrap_or("");
-                                let reply_token = ev.get("replyToken").and_then(|x| x.as_str()).unwrap_or("");
-                                // store reply token as message_id for outbound
-                                let _ = tx.send(IncomingMessage {
-                                    channel: inst.channel.clone(),
-                                    instance_id: inst.id.clone(),
-                                    message_id: reply_token.into(),
-                                    chat_id: user.into(),
-                                    chat_type: "p2p".into(),
-                                    sender_id: user.into(),
-                                    content: text.into(),
-                                    mentioned_bot: true,
-                                    thread_id: None,                                }).await;
                             }
                         }
                     }
@@ -138,16 +123,63 @@ pub async fn run(
     }
 }
 
+fn parse_event(inst: &ChannelInstance, ev: &Value) -> Option<IncomingMessage> {
+    let ty = ev.get("type").and_then(|t| t.as_str()).unwrap_or("");
+    let user = ev
+        .pointer("/source/userId")
+        .and_then(|x| x.as_str())
+        .unwrap_or("");
+    let reply_token = ev.get("replyToken").and_then(|x| x.as_str()).unwrap_or("");
+    let content = match ty {
+        "message" => {
+            let text = ev
+                .pointer("/message/text")
+                .and_then(|x| x.as_str())
+                .unwrap_or("");
+            if text.is_empty() {
+                return None;
+            }
+            text.to_string()
+        }
+        "postback" => {
+            let data = ev
+                .pointer("/postback/data")
+                .and_then(|x| x.as_str())
+                .map(str::trim)
+                .filter(|s| !s.is_empty())?;
+            format!("__card_action__:{data}")
+        }
+        _ => return None,
+    };
+    Some(IncomingMessage {
+        channel: inst.channel.clone(),
+        instance_id: inst.id.clone(),
+        message_id: reply_token.into(),
+        chat_id: user.into(),
+        chat_type: "p2p".into(),
+        sender_id: user.into(),
+        content,
+        mentioned_bot: true,
+        thread_id: None,
+    })
+}
+
+fn line_access_token(secrets: &std::collections::HashMap<String, String>) -> Result<&str, String> {
+    secrets
+        .get("channel_access_token")
+        .or_else(|| secrets.get("access_token"))
+        .map(|s| s.as_str())
+        .filter(|s| !s.is_empty())
+        .ok_or_else(|| "missing channel_access_token".into())
+}
+
 pub async fn send_text(
     secrets: &std::collections::HashMap<String, String>,
     chat_id: &str,
     text: &str,
 ) -> Result<(), String> {
-    let token = secrets
-        .get("channel_access_token")
-        .ok_or("missing channel_access_token")?;
+    let token = line_access_token(secrets)?;
     let client = http_client()?;
-    // Prefer push; replyToken may be in chat_id if we stored wrongly — use push by userId
     let res = client
         .post("https://api.line.me/v2/bot/message/push")
         .bearer_auth(token)
@@ -161,6 +193,42 @@ pub async fn send_text(
     if !res.status().is_success() {
         let body = res.text().await.unwrap_or_default();
         return Err(format!("line push failed: {body}"));
+    }
+    Ok(())
+}
+
+pub async fn send_card(
+    secrets: &std::collections::HashMap<String, String>,
+    chat_id: &str,
+    card: &Value,
+) -> Result<(), String> {
+    let token = line_access_token(secrets)?;
+    let client = http_client()?;
+    let alt = card
+        .get("altText")
+        .and_then(|x| x.as_str())
+        .unwrap_or("Select");
+    let contents = card
+        .get("contents")
+        .cloned()
+        .unwrap_or(json!({ "type": "bubble", "body": { "type": "box", "layout": "vertical", "contents": [] } }));
+    let res = client
+        .post("https://api.line.me/v2/bot/message/push")
+        .bearer_auth(token)
+        .json(&json!({
+            "to": chat_id,
+            "messages": [{
+                "type": "flex",
+                "altText": alt,
+                "contents": contents,
+            }]
+        }))
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    if !res.status().is_success() {
+        let body = res.text().await.unwrap_or_default();
+        return Err(format!("line flex failed: {body}"));
     }
     Ok(())
 }
@@ -220,5 +288,28 @@ mod tests {
     #[test]
     fn default_port_matches_ui_callout() {
         assert_eq!(DEFAULT_WEBHOOK_PORT, 8081);
+    }
+
+    #[test]
+    fn postback_maps_to_card_action() {
+        let inst = ChannelInstance {
+            id: "ln-1".into(),
+            channel: "line".into(),
+            name: "Bot".into(),
+            enabled: true,
+            secrets: std::collections::HashMap::new(),
+            options: json!({}),
+            acl: json!({}),
+            project_scope: json!({}),
+        };
+        let ev = json!({
+            "type": "postback",
+            "replyToken": "rt",
+            "source": { "userId": "U1", "type": "user" },
+            "postback": { "data": "project:p1" }
+        });
+        let incoming = parse_event(&inst, &ev).expect("postback");
+        assert_eq!(incoming.content, "__card_action__:project:p1");
+        assert_eq!(incoming.chat_id, "U1");
     }
 }

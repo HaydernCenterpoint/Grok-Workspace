@@ -139,7 +139,7 @@ export const ComposerSendCluster = memo(function ComposerSendCluster({
     <Tip label={tr("composer.send")}>
       <button
         type="button"
-        className="icon-btn icon-btn--primary"
+        className="icon-btn icon-btn--primary composer__send composer__send--gimbal"
         disabled={
           (!effectiveCanSend && !shouldEnqueue) ||
           !hasBody ||
@@ -148,6 +148,15 @@ export const ComposerSendCluster = memo(function ComposerSendCluster({
         onClick={onSend}
         aria-label={tr("composer.send")}
       >
+        {/* Counter-rotating concentric gimbal rings. */}
+        <span
+          className="composer__send-gimbal__ring composer__send-gimbal__ring--outer"
+          aria-hidden
+        />
+        <span
+          className="composer__send-gimbal__ring composer__send-gimbal__ring--inner"
+          aria-hidden
+        />
         <IconArrowUp size={16} />
       </button>
     </Tip>

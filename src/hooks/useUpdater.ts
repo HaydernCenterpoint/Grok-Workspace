@@ -17,7 +17,9 @@ import { isDesktopHost, type AppUpdateCheck } from "@/lib/api";
 import {
   planUserCheckUpdate,
   shouldInstallWhenReady,
+  shouldSilentAutoDownload,
 } from "@/lib/appUpdateHonesty";
+import { loadAutoDownloadUpdatesPref } from "@/lib/autoDownloadUpdatesPref";
 import { DEVELOPER_MODE_CHANGE_EVENT } from "@/lib/developerModePref";
 import {
   UPDATE_SIM_CHANGE_EVENT,
@@ -413,7 +415,14 @@ export function useUpdater() {
 
           // silent
           setStatus({ state: "available", version: UPDATE_SIM_VERSION });
-          void downloadUpdate(UPDATE_SIM_VERSION);
+          if (
+            shouldSilentAutoDownload({
+              autoUpdateSupported: true,
+              autoDownloadEnabled: loadAutoDownloadUpdatesPref(),
+            })
+          ) {
+            void downloadUpdate(UPDATE_SIM_VERSION);
+          }
         } finally {
           checkInFlightRef.current = false;
         }
@@ -518,7 +527,14 @@ export function useUpdater() {
           if (autoUpdateOk) {
             await adoptUpdate(update);
             setStatus({ state: "available", version: update.version });
-            void downloadUpdate(update.version);
+            if (
+              shouldSilentAutoDownload({
+                autoUpdateSupported: true,
+                autoDownloadEnabled: loadAutoDownloadUpdatesPref(),
+              })
+            ) {
+              void downloadUpdate(update.version);
+            }
           } else {
             installWhenReadyRef.current = false;
             try {

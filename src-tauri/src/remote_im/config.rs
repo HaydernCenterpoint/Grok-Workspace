@@ -211,7 +211,7 @@ pub fn load_bridge_config() -> BridgePersistedConfig {
         // Auto-enable when user already has bound channels (first migration).
         let has_ready = list_instances()
             .iter()
-            .any(|i| i.enabled && i.has_credentials);
+            .any(|i| i.enabled && i.has_credentials && super::channels::is_gui_channel(&i.channel));
         return BridgePersistedConfig {
             enabled: has_ready,
             ..Default::default()
@@ -231,9 +231,9 @@ pub fn save_bridge_config(cfg: &BridgePersistedConfig) -> Result<(), String> {
     Ok(())
 }
 
-/// True when at least one channel can be connected.
+/// True when at least one picker channel can be connected.
 pub fn has_ready_instances() -> bool {
     list_instances()
         .iter()
-        .any(|i| i.enabled && i.has_credentials)
+        .any(|i| i.enabled && i.has_credentials && super::channels::is_gui_channel(&i.channel))
 }

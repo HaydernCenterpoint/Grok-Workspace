@@ -30,6 +30,7 @@ export const deAccount = {
   "account.weeklyTitle": "Wöchentliches SuperGrok-Kontingent",
   "account.quota": "Kontingent genutzt",
   "account.quotaRemaining": "übrig",
+  "account.usage": "Nutzung",
   "account.quotaUsed": "genutzt",
   "account.quotaUnknown": "Kontingent noch nicht geladen",
   "account.period": "Abrechnungszeitraum",

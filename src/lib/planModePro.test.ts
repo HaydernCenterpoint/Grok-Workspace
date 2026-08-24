@@ -324,6 +324,7 @@ describe("shouldOpenPlanSideTab", () => {
     const r = shouldOpenPlanSideTab({
       autoOpenEnabled: true,
       planVisible: true,
+      lastPlanVisible: false,
       focusKey: 0,
       lastFocusKey: 0,
     });
@@ -331,10 +332,22 @@ describe("shouldOpenPlanSideTab", () => {
     expect(r.nextLastFocusKey).toBe(0);
   });
 
+  it("does not reopen while a plan stays visible", () => {
+    const r = shouldOpenPlanSideTab({
+      autoOpenEnabled: true,
+      planVisible: true,
+      lastPlanVisible: true,
+      focusKey: 0,
+      lastFocusKey: 0,
+    });
+    expect(r.open).toBe(false);
+  });
+
   it("opens on focus key bump even without a visible plan", () => {
     const r = shouldOpenPlanSideTab({
       autoOpenEnabled: true,
       planVisible: false,
+      lastPlanVisible: false,
       focusKey: 2,
       lastFocusKey: 1,
     });
@@ -346,6 +359,7 @@ describe("shouldOpenPlanSideTab", () => {
     const r = shouldOpenPlanSideTab({
       autoOpenEnabled: true,
       planVisible: false,
+      lastPlanVisible: false,
       focusKey: 1,
       lastFocusKey: 1,
     });
@@ -356,6 +370,7 @@ describe("shouldOpenPlanSideTab", () => {
     const r = shouldOpenPlanSideTab({
       autoOpenEnabled: false,
       planVisible: true,
+      lastPlanVisible: false,
       focusKey: 3,
       lastFocusKey: 0,
     });

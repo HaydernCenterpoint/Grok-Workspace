@@ -35,6 +35,7 @@ describe("uiFontPref", () => {
       },
     });
     expect(props.get("--font-sans")).toContain("PingFang SC");
+    expect(props.get("--font-sans")).toContain("Inter Variable");
     applyUiFontFamily("", {
       style: {
         setProperty: (n, v) => {
@@ -46,5 +47,20 @@ describe("uiFontPref", () => {
       },
     });
     expect(props.has("--font-sans")).toBe(false);
+  });
+
+  it("maps Inter onto the bundled variable face", () => {
+    const props = new Map<string, string>();
+    applyUiFontFamily("Inter", {
+      style: {
+        setProperty: (n, v) => {
+          props.set(n, v);
+        },
+        removeProperty: (n) => {
+          props.delete(n);
+        },
+      },
+    });
+    expect(props.get("--font-sans")?.startsWith('"Inter Variable"')).toBe(true);
   });
 });

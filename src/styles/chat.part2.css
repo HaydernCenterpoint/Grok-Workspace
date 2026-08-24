@@ -88,6 +88,20 @@ button.composer__context-item {
   opacity: 0.78;
 }
 
+.composer__context-bar .composer__context-item--project {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.composer__context-bar .composer__context-item--project.is-muted {
+  opacity: 1;
+}
+
+.composer__context-bar .composer__context-item--project .composer__context-label {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
 .composer__context-item.is-path-missing {
   color: var(--warning);
 }
@@ -406,9 +420,11 @@ button.composer__context-item {
 .composer {
   position: relative;
   width: 100%;
-  max-width: 42rem;
+  max-width: min(100%, var(--composer-width-max, 52rem));
   border: 1px solid var(--border-subtle);
   background: var(--bg-elevated);
+  /* Recessed model pill — darker than this surface in both themes. */
+  --composer-model-pill-bg: color-mix(in srgb, var(--bg-elevated) 70%, #000);
   border-radius: 18px;
   padding: 10px 12px 10px;
   display: flex;

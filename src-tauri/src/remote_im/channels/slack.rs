@@ -122,13 +122,18 @@ async fn run_socket_once(
                         if ty == "disconnect" {
                             return Ok(());
                         }
-                        if ty == "events_api" {
-                            // ACK envelope
+                        if ty == "events_api" || ty == "interactive" || ty == "slash_commands" {
                             if let Some(envelope_id) = v.get("envelope_id").and_then(|x| x.as_str()) {
                                 let ack = json!({ "envelope_id": envelope_id });
                                 let _ = write.send(Message::Text(ack.to_string().into())).await;
                             }
-                            if let Some(incoming) = parse_event(inst, v.get("payload").unwrap_or(&json!({}))) {
+                            let payload = unwrap_socket_payload(v.get("payload"));
+                            let incoming = if ty == "interactive" {
+                                parse_interactive(inst, &payload)
+                            } else {
+                                parse_event(inst, &payload)
+                            };
+                            if let Some(incoming) = incoming {
                                 let _ = tx.send(incoming).await;
                             }
                         }
@@ -141,6 +146,53 @@ async fn run_socket_once(
             }
         }
     }
+}
+
+fn unwrap_socket_payload(raw: Option<&Value>) -> Value {
+    match raw {
+        Some(Value::String(s)) => serde_json::from_str(s).unwrap_or(json!({})),
+        Some(v) => v.clone(),
+        None => json!({}),
+    }
+}
+
+fn parse_interactive(inst: &ChannelInstance, payload: &Value) -> Option<IncomingMessage> {
+    let action = payload
+        .get("actions")
+        .and_then(|a| a.as_array())
+        .and_then(|a| a.first())?;
+    let data = action
+        .get("value")
+        .or_else(|| action.get("action_id"))
+        .and_then(|x| x.as_str())
+        .map(str::trim)
+        .filter(|s| !s.is_empty())?;
+    let chat_id = payload
+        .pointer("/channel/id")
+        .and_then(|x| x.as_str())
+        .unwrap_or("")
+        .to_string();
+    let sender_id = payload
+        .pointer("/user/id")
+        .and_then(|x| x.as_str())
+        .unwrap_or("")
+        .to_string();
+    let message_id = payload
+        .pointer("/message/ts")
+        .and_then(|x| x.as_str())
+        .unwrap_or("")
+        .to_string();
+    Some(IncomingMessage {
+        channel: inst.channel.clone(),
+        instance_id: inst.id.clone(),
+        message_id,
+        chat_id,
+        chat_type: "p2p".into(),
+        sender_id,
+        mentioned_bot: true,
+        thread_id: None,
+        content: format!("__card_action__:{data}"),
+    })
 }
 
 fn parse_event(inst: &ChannelInstance, payload: &Value) -> Option<IncomingMessage> {
@@ -218,4 +270,104 @@ pub async fn send_text(
         ));
     }
     Ok(())
+}
+
+pub async fn send_card(
+    secrets: &std::collections::HashMap<String, String>,
+    channel: &str,
+    card: &Value,
+) -> Result<(), String> {
+    slack_post_message(secrets, channel, card, None).await
+}
+
+pub async fn edit_card(
+    secrets: &std::collections::HashMap<String, String>,
+    channel: &str,
+    message_ts: &str,
+    card: &Value,
+) -> Result<(), String> {
+    slack_post_message(secrets, channel, card, Some(message_ts)).await
+}
+
+async fn slack_post_message(
+    secrets: &std::collections::HashMap<String, String>,
+    channel: &str,
+    card: &Value,
+    ts: Option<&str>,
+) -> Result<(), String> {
+    let token = secrets
+        .get("bot_token")
+        .or_else(|| secrets.get("token"))
+        .map(|s| s.as_str())
+        .ok_or_else(|| "missing bot_token".to_string())?;
+    let mut body = json!({
+        "channel": channel,
+        "text": card.get("text").and_then(|x| x.as_str()).unwrap_or("Select:"),
+        "blocks": card.get("blocks").cloned().unwrap_or(json!([])),
+    });
+    let url = if let Some(ts) = ts.filter(|s| !s.is_empty()) {
+        body["ts"] = json!(ts);
+        "https://slack.com/api/chat.update"
+    } else {
+        "https://slack.com/api/chat.postMessage"
+    };
+    let client = http_client()?;
+    let res = client
+        .post(url)
+        .bearer_auth(token)
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    let parsed: Value = res.json().await.map_err(|e| e.to_string())?;
+    if parsed.get("ok").and_then(|x| x.as_bool()) != Some(true) {
+        return Err(format!(
+            "slack card: {}",
+            parsed
+                .get("error")
+                .and_then(|e| e.as_str())
+                .unwrap_or("fail")
+        ));
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn inst() -> ChannelInstance {
+        ChannelInstance {
+            id: "sl-1".into(),
+            channel: "slack".into(),
+            name: "Bot".into(),
+            enabled: true,
+            secrets: std::collections::HashMap::new(),
+            options: json!({}),
+            acl: json!({}),
+            project_scope: json!({}),
+        }
+    }
+
+    #[test]
+    fn interactive_payload_maps_to_card_action() {
+        let payload = json!({
+            "type": "block_actions",
+            "user": { "id": "U1" },
+            "channel": { "id": "C1" },
+            "message": { "ts": "123.456" },
+            "actions": [{ "action_id": "project:p1", "value": "project:p1" }]
+        });
+        let incoming = parse_interactive(&inst(), &payload).expect("interactive");
+        assert_eq!(incoming.content, "__card_action__:project:p1");
+        assert_eq!(incoming.chat_id, "C1");
+        assert_eq!(incoming.message_id, "123.456");
+    }
+
+    #[test]
+    fn unwraps_stringified_socket_payload() {
+        let inner = json!({ "ok": true });
+        let wrapped = json!(inner.to_string());
+        assert_eq!(unwrap_socket_payload(Some(&wrapped)), inner);
+    }
 }

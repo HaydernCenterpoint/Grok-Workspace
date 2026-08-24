@@ -14,6 +14,7 @@
 
 import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { IconBulb, IconChevronDown, IconChevronRight } from "@/components/icons";
+import { ReasoningDots } from "./ActivityLoaders";
 import { cn } from "@/lib/utils";
 import { MarkdownChat } from "./MarkdownChat";
 import { createT, type Locale } from "@/i18n";
@@ -94,6 +95,7 @@ export const Thinking = memo(function Thinking({
         nowMs: Date.now(),
       });
       const tick = () => {
+        if (document.visibilityState === "hidden") return;
         const origin = startRef.current;
         if (origin != null) {
           setLocalDuration(Math.max(0, Date.now() - origin));
@@ -198,7 +200,7 @@ export const Thinking = memo(function Thinking({
         disabled={!hasBody}
       >
         <span className="grok-thought__icon" aria-hidden>
-          <IconBulb size={15} stroke={1.5} />
+          {thinking ? <ReasoningDots /> : <IconBulb size={15} stroke={1.5} />}
         </span>
         <span
           className={cn(

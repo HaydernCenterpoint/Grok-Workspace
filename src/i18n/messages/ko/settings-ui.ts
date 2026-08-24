@@ -423,6 +423,8 @@ export const koSettingsUi = {
   "settings.autoUpdateError.other": "업데이트에 실패했습니다. GitHub 릴리스 페이지를 열어 수동으로 설치할 수 있습니다.",
   "settings.autoUpdateChannelUnsupported": "업데이트 채널: 수동 설치(이 패키지 유형은 자동 업데이트할 수 없음)",
   "settings.autoUpdateChannelHostOnly": "업데이트 채널: 데스크톱 앱만(여기에서는 사용할 수 없음)",
+  "settings.autoDownloadUpdates": "업데이트 자동 다운로드",
+  "settings.autoDownloadUpdatesDesc": "서명된 릴리스 빌드는 백그라운드에서 받은 뒤 설치 후 다시 시작 확인을 기다립니다. 서명되지 않은 빌드와 로컬 빌드는 GitHub를 열 뿐이며 조용히 설치하지 않습니다. 끄면 직접 다운로드를 시작합니다.",
   "settings.askDemo.title": "Ask-user 데모 경로",
   "settings.askDemo.desc": "설정을 찾지 않고 Ask vs YOLO를 비교하는 제안 경로입니다. 앱은 정책과 샘플 프롬프트만 준비합니다 — 라이브 설문은 모델과 CLI에 달려 있습니다.",
   "settings.askDemo.honesty": "정직성: 실제 `ask_user_question`은 모델과 Grok Build CLI에 달려 있습니다. 앱은 프롬프트를 자동으로 보내지 않으며 에이전트가 물을 것이라고 주장하지 않습니다.",

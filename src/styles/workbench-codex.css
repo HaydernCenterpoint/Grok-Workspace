@@ -33,21 +33,22 @@
 }
 
 /*
- * Transcript and composer share one measure (see the --chat-width-max ladder,
- * declared on the html root so both inherit it). Edges line up exactly while
- * the window is the binding constraint; once the cap binds the composer box
- * runs 14px wider per side than the text, because the transcript carries its
- * gutter inside the capped box and the composer carries it outside.
+ * Docked transcript column = composer card. ConversationThread renders
+ * `.lobe-chat__inner` (not `[data-slot="conversation-content"]`).
  */
 [data-chrome="codex"]
   .main__stage:has(.composer-wrap--dock:not(.composer-wrap--side-dock))
-  [data-slot="conversation-content"] {
-  max-width: var(--chat-width-max, 1120px);
+  .lobe-chat__inner,
+[data-chrome="codex"]
+  .main__stage:has(.composer-wrap--dock:not(.composer-wrap--side-dock))
+  .messages__col {
+  max-width: min(100%, var(--composer-width-max, 52rem));
+  margin-inline: auto;
 }
 
 [data-chrome="codex"] .composer-wrap--dock:not(.composer-wrap--side-dock) .composer-stack {
   width: 100%;
-  max-width: var(--chat-width-max, 1120px);
+  max-width: min(100%, var(--composer-width-max));
   pointer-events: auto;
 }
 
@@ -57,7 +58,7 @@
   gap: 0;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
-  background: var(--bg-elevated);
+  background: color-mix(in srgb, var(--bg-elevated) 84%, var(--text-primary) 16%);
   box-shadow: var(--elev-1);
   transition:
     border-color var(--motion-normal) var(--ease-out),
@@ -93,7 +94,7 @@
   border-radius: var(--radius-lg);
   box-shadow: var(--elev-1);
   border: 1px solid var(--border-subtle);
-  background: var(--bg-elevated);
+  background: color-mix(in srgb, var(--bg-elevated) 84%, var(--text-primary) 16%);
   padding: 6px 8px 8px;
 }
 
@@ -141,16 +142,16 @@
   border-radius: var(--radius-sm);
 }
 
-[data-chrome="codex"] .composer-wrap--dock:not(.composer-wrap--side-dock) .cmm--danger .cmm__trigger {
+[data-chrome="codex"] .composer-wrap--dock:not(.composer-wrap--side-dock) .cmm--danger:not(.cmm--access) .cmm__trigger {
   color: var(--text-secondary);
 }
 
-[data-chrome="codex"] .composer-wrap--dock:not(.composer-wrap--side-dock) .cmm--danger .cmm__icon {
+[data-chrome="codex"] .composer-wrap--dock:not(.composer-wrap--side-dock) .cmm--danger:not(.cmm--access) .cmm__icon {
   color: var(--danger, #e07040);
 }
 
-[data-chrome="codex"] .composer-wrap--dock:not(.composer-wrap--side-dock) .cmm--danger .cmm__trigger:hover,
-[data-chrome="codex"] .composer-wrap--dock:not(.composer-wrap--side-dock) .cmm--danger.is-open .cmm__trigger {
+[data-chrome="codex"] .composer-wrap--dock:not(.composer-wrap--side-dock) .cmm--danger:not(.cmm--access) .cmm__trigger:hover,
+[data-chrome="codex"] .composer-wrap--dock:not(.composer-wrap--side-dock) .cmm--danger:not(.cmm--access).is-open .cmm__trigger {
   color: var(--text-primary);
   background: var(--bg-hover);
 }

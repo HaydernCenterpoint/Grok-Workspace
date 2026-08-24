@@ -83,56 +83,120 @@
 }
 
 /*
- * Access menu (mode | permission) — dual-column sheet.
- * Portaled panel class `.cmm__pop--access` (not trigger `.cmm--access`).
- * Double class beats `.cmm__pop { max-width: var(--menu-max-width) }`.
+ * Access pill + ChatGPT-style approval sheet.
+ * Animate the inner sheet only — `.cmm__pop` already has an inline translate.
  */
-.cmm__pop.cmm__pop--access {
-  width: min(560px, calc(100vw - 16px));
-  min-width: min(480px, calc(100vw - 16px));
-  max-width: min(600px, calc(100vw - 16px));
-  padding: 6px 8px 10px;
+.cmm--access .cmm-run__pill {
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-hover) 85%, transparent);
+  max-width: min(200px, 36vw);
 }
 
-.cmm__pop--access .cmm__header {
-  padding: 6px 10px 8px;
+.cmm--access .cmm-run__pill:hover,
+.cmm--access.is-open .cmm-run__pill {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.cmm--access.cmm--danger .cmm-run__pill,
+.cmm--access.cmm--danger .cmm-run__pill .cmm__icon {
+  color: var(--warning);
+}
+
+.cmm--access.cmm--danger .cmm-run__pill:hover,
+.cmm--access.cmm--danger.is-open .cmm-run__pill {
+  background: color-mix(in srgb, var(--warning) 14%, transparent);
+  color: var(--warning);
+}
+
+.cmm__pop.cmm__pop--access {
+  width: min(360px, calc(100vw - 16px));
+  min-width: min(300px, calc(100vw - 16px));
+  max-width: min(380px, calc(100vw - 16px));
+  padding: 10px 8px 8px;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.cmm__access-sheet {
+  transform-origin: bottom center;
+}
+
+.cmm__access-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 2px 10px 10px;
 }
 
 .cmm__pop--access .cmm__header-title {
   font-size: 12px;
-  line-height: 1.35;
-}
-
-.cmm__access-cols {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
-  gap: 0;
-  align-items: start;
-}
-
-.cmm__access-col {
-  min-width: 0;
-  padding: 0 4px;
-}
-
-.cmm__access-col + .cmm__access-col {
-  border-left: 1px solid var(--border-subtle);
-  padding-left: 8px;
-}
-
-.cmm__pop--access .cmm__section {
-  padding: 4px 8px 6px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  line-height: 1.4;
   color: var(--text-tertiary);
 }
 
-/* Compact option rows for dual columns */
-.cmm__opt--access {
-  gap: 8px;
-  padding: 8px 8px;
+.cmm__access-learn {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 1.4;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.cmm__access-learn:hover {
+  color: var(--text-secondary);
+}
+
+.cmm--model .cmm__trigger {
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(
+    --composer-model-pill-bg,
+    color-mix(in srgb, var(--bg-elevated) 70%, #000)
+  );
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.cmm--model .cmm__trigger:hover,
+.cmm--model.is-open .cmm__trigger {
+  background: color-mix(
+    in srgb,
+    var(--composer-model-pill-bg, color-mix(in srgb, var(--bg-elevated) 70%, #000))
+      82%,
+    var(--bg-hover)
+  );
+  color: var(--text-primary);
+}
+
+.cmm__pop--model .cmm__row {
+  min-height: 40px;
+  padding: 8px 12px;
   border-radius: 10px;
+  color: var(--text-tertiary);
+  font-weight: 600;
+}
+
+.cmm__pop--model .cmm__row-val,
+.cmm__pop--model .cmm__row-val-text {
+  color: var(--text-primary);
+  font-weight: 400;
+}
+
+.cmm__opt--access {
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
 }
 
 .cmm__opt--access .cmm__opt-icon {
@@ -140,38 +204,72 @@
 }
 
 .cmm__opt--access .cmm__opt-title {
-  font-size: 13px;
-  font-weight: 550;
-  line-height: 1.25;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
 }
 
 .cmm__opt--access .cmm__opt-desc {
-  font-size: 11px;
-  line-height: 1.35;
+  font-size: 12px;
+  line-height: 1.4;
   color: var(--text-tertiary);
 }
 
-.cmm__opt--access .cmm__opt-check {
-  margin-top: 2px;
+.cmm__opt--access.is-active:not(.is-yolo) {
+  background: transparent;
 }
 
-/* Narrow viewports: stack mode above permission */
-@media (max-width: 520px) {
-  .cmm__pop.cmm__pop--access {
-    width: min(360px, calc(100vw - 16px));
-    min-width: min(280px, calc(100vw - 16px));
+.cmm__opt--access.is-yolo.is-active,
+.cmm__opt--access.is-yolo.is-active .cmm__opt-title,
+.cmm__opt--access.is-yolo.is-active .cmm__opt-desc,
+.cmm__opt--access.is-yolo.is-active .cmm__opt-icon,
+.cmm__opt--access.is-yolo.is-active .cmm__opt-check {
+  color: var(--warning);
+}
+
+.cmm__opt--access.is-yolo.is-active {
+  background: transparent;
+}
+
+@keyframes access-sheet-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes access-row-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .cmm__access-sheet {
+    animation: access-sheet-up 220ms var(--ease-out);
   }
 
-  .cmm__access-cols {
-    grid-template-columns: 1fr;
+  .cmm__opt--access {
+    animation: access-row-in 180ms var(--ease-out) both;
   }
 
-  .cmm__access-col + .cmm__access-col {
-    border-left: none;
-    border-top: 1px solid var(--border-subtle);
-    margin-top: 4px;
-    padding-top: 6px;
-    padding-left: 4px;
+  .cmm__access-sheet > [role="group"] > .cmm__opt--access:nth-child(1) {
+    animation-delay: 20ms;
+  }
+  .cmm__access-sheet > [role="group"] > .cmm__opt--access:nth-child(2) {
+    animation-delay: 50ms;
+  }
+  .cmm__access-sheet > [role="group"] > .cmm__opt--access:nth-child(3) {
+    animation-delay: 80ms;
   }
 }
 

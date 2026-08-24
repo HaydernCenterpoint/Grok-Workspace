@@ -7,6 +7,11 @@ import { productTitleKey, type WorkMode } from "@/lib/grokOffice";
 import { tierLabel } from "@/lib/accountUi";
 import type { BillingSnapshot } from "@/lib/api";
 import type { MessageKey } from "@/i18n";
+import {
+  effortDisplayLabel,
+  spawnIdToEffortUiSlot,
+  type EffortOption,
+} from "@/lib/grokCatalog";
 
 export const DISCORD_PRESENCE_STORAGE_KEY = "grok.discordPresence";
 export const DISCORD_PRESENCE_CHANGE_EVENT = "grok-discord-presence-change";
@@ -28,6 +33,10 @@ export type DiscordPresencePayload = {
   details: string;
   state: string;
   startSec: number;
+  /** Hover on the large asset (session). Shown when Discord has app art. */
+  largeText: string;
+  /** Hover on the small asset (model · effort). */
+  smallText: string;
 };
 
 export type DiscordPresenceStorage = {
@@ -134,28 +143,145 @@ export function packagePresenceLabel(opts: {
   return label;
 }
 
+/** Honest remaining-% chip, same rounding as the sidebar footer. Never invents. */
+export function presenceQuotaLabel(
+  remaining: number | null | undefined,
+): string | null {
+  if (remaining == null || !Number.isFinite(remaining)) return null;
+  return `${Math.max(0, Math.min(100, Math.round(remaining)))}%`;
+}
+
+/**
+ * Quota line for presence: official remaining % (sidebar 99%), or the
+ * custom-route balance chip when that is what the footer shows.
+ */
+export function presenceQuotaLine(opts: {
+  signedIn: boolean;
+  remainingPercent: number | null;
+  customRoute: boolean;
+  customBalanceLine?: string | null;
+}): string | null {
+  if (opts.customRoute) {
+    const line = opts.customBalanceLine?.trim();
+    return line || null;
+  }
+  if (!opts.signedIn) return null;
+  return presenceQuotaLabel(opts.remainingPercent);
+}
+
+export function presenceModelLabel(opts: {
+  modelId: string;
+  officialLabel?: string | null;
+  customModelName?: string | null;
+}): string {
+  const custom = opts.customModelName?.trim();
+  if (custom) return custom;
+  const official = opts.officialLabel?.trim();
+  if (official) return official;
+  return opts.modelId.trim() || "Grok";
+}
+
+export function presenceEffortLabel(
+  effortId: string,
+  catalogEfforts: EffortOption[] | null | undefined,
+  i18n: {
+    high?: string;
+    medium?: string;
+    low?: string;
+    xhigh?: string;
+    max?: string;
+  },
+): string {
+  const slot = spawnIdToEffortUiSlot(effortId, catalogEfforts);
+  return effortDisplayLabel(slot ?? effortId, i18n);
+}
+
+export function presenceSessionLabel(opts: {
+  title?: string | null;
+  sessionId?: string | null;
+  isPlaceholder: boolean;
+  untitledLabel: string;
+}): string {
+  const title = (opts.title ?? "").trim();
+  if (title && !opts.isPlaceholder) return title;
+  const id = (opts.sessionId ?? "").trim();
+  if (id) {
+    const compact = id.replace(/-/g, "");
+    return (compact || id).slice(0, 8);
+  }
+  return opts.untitledLabel.trim() || "session";
+}
+
+/**
+ * Elapsed clock: session open time while idle; current turn while working.
+ * Resets when the session id changes or a new turn starts.
+ */
+export function resolvePresenceStartSec(opts: {
+  nowSec: number;
+  sessionId: string;
+  prevSessionId: string | null;
+  prevProgress: DiscordPresenceProgress | null;
+  progress: DiscordPresenceProgress;
+  sessionStartSec: number;
+  turnStartSec: number | null;
+}): {
+  startSec: number;
+  sessionStartSec: number;
+  turnStartSec: number | null;
+} {
+  const now =
+    Number.isFinite(opts.nowSec) && opts.nowSec > 0
+      ? Math.floor(opts.nowSec)
+      : Math.floor(Date.now() / 1000);
+  let sessionStartSec = opts.sessionStartSec;
+  let turnStartSec = opts.turnStartSec;
+
+  if (opts.prevSessionId == null || opts.sessionId !== opts.prevSessionId) {
+    sessionStartSec = now;
+    turnStartSec = opts.progress === "working" ? now : null;
+  } else if (opts.progress === "working" && opts.prevProgress !== "working") {
+    turnStartSec = now;
+  } else if (opts.progress !== "working") {
+    turnStartSec = null;
+  }
+
+  const startSec =
+    opts.progress === "working" && turnStartSec != null
+      ? turnStartSec
+      : sessionStartSec;
+  return { startSec, sessionStartSec, turnStartSec };
+}
+
 export function buildDiscordPresence(opts: {
-  projectName: string;
-  workspaceLabel: string;
   packageLabel: string;
-  progressLabel: string;
-  percent: number | null;
+  quotaLabel: string | null;
+  modelLabel: string;
+  effortLabel: string;
+  sessionLabel: string;
   startSec: number;
 }): DiscordPresencePayload {
-  const project = opts.projectName.trim() || opts.workspaceLabel;
-  const details = truncatePresenceLine(`${project} · ${opts.workspaceLabel}`);
-  const bits = [opts.packageLabel.trim(), opts.progressLabel.trim()].filter(
-    Boolean,
+  const details = truncatePresenceLine(
+    [opts.packageLabel.trim(), opts.quotaLabel?.trim()]
+      .filter(Boolean)
+      .join(" · "),
   );
-  if (opts.percent != null && Number.isFinite(opts.percent)) {
-    bits.push(`${Math.max(0, Math.min(100, Math.round(opts.percent)))}%`);
-  }
-  const state = truncatePresenceLine(bits.join(" · "));
+  const model = opts.modelLabel.trim();
+  const effort = opts.effortLabel.trim();
+  const session = opts.sessionLabel.trim();
+  const state = truncatePresenceLine(
+    [model, effort, session].filter(Boolean).join(" · "),
+  );
   const startSec =
     Number.isFinite(opts.startSec) && opts.startSec > 0
       ? Math.floor(opts.startSec)
       : Math.floor(Date.now() / 1000);
-  return { details, state, startSec };
+  return {
+    details,
+    state,
+    startSec,
+    largeText: truncatePresenceLine(session),
+    smallText: truncatePresenceLine([model, effort].filter(Boolean).join(" · ")),
+  };
 }
 
 export function workspacePresenceKey(mode: WorkMode): MessageKey {

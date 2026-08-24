@@ -11,6 +11,22 @@ export const ABOUT_ENTRIES: readonly SettingsEntry[] = [
     keywords: ["about", "version", "update"],
   },
   {
+    id: "about.autoDownloadUpdates",
+    section: "about",
+    anchorId: "settings-anchor-autoDownloadUpdates",
+    labelKey: "settings.autoDownloadUpdates",
+    descKeys: ["settings.autoDownloadUpdatesDesc"],
+    keywords: [
+      "auto download",
+      "automatic update",
+      "background download",
+      "later",
+      "restart now",
+      "自动下载",
+      "自動下載",
+    ],
+  },
+  {
     id: "about.cli",
     section: "about",
     anchorId: "settings-anchor-aboutCli",

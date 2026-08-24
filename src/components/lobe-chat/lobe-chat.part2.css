@@ -169,7 +169,7 @@
   opacity: 1;
 }
 .grok-act__step.is-running .grok-act__icon {
-  animation: chat-live-pulse 1.2s ease-in-out infinite;
+  animation: none;
 }
 
 /* Vertical connector — continuous, 1px, light gray */
@@ -318,7 +318,6 @@
   color: var(--grok-act-fg);
   opacity: 0.85;
   flex-shrink: 0;
-  animation: chat-live-pulse 1.2s ease-in-out infinite;
 }
 .grok-act__working-label {
   min-width: 0;
@@ -329,6 +328,82 @@
 @keyframes chat-live-pulse {
   0%, 100% { opacity: 0.45; }
   50% { opacity: 1; }
+}
+
+/* 3-dot harmonic scaling loader with staggered delay sequences.
+   Live reasoning + work chrome. */
+.act-dots {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2.5px;
+  width: 16px;
+  height: 16px;
+}
+.act-dots > span {
+  width: 3.5px;
+  height: 3.5px;
+  border-radius: 50%;
+  background: currentColor;
+  transform: scale(0.45);
+  opacity: 0.4;
+}
+.act-dots > span:nth-child(1) { animation-delay: 0s; }
+.act-dots > span:nth-child(2) { animation-delay: 0.16s; }
+.act-dots > span:nth-child(3) { animation-delay: 0.32s; }
+
+@keyframes act-dot-harmonic {
+  0%,
+  80%,
+  100% {
+    transform: scale(0.45);
+    opacity: 0.35;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Pure CSS 4-square grid loader with keyframe blue pulse.
+   Live tool rows. */
+.act-tool-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  width: 14px;
+  height: 14px;
+}
+.act-tool-grid > span {
+  border-radius: 1.5px;
+  background: var(--info, #6cb6ff);
+  opacity: 0.28;
+  transform: scale(0.78);
+}
+.act-tool-grid > span:nth-child(1) { animation-delay: 0s; }
+.act-tool-grid > span:nth-child(2) { animation-delay: 0.12s; }
+.act-tool-grid > span:nth-child(3) { animation-delay: 0.24s; }
+.act-tool-grid > span:nth-child(4) { animation-delay: 0.36s; }
+
+@keyframes act-tool-pulse {
+  0%,
+  100% {
+    opacity: 0.22;
+    transform: scale(0.72);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .act-dots > span {
+    animation: act-dot-harmonic 1.05s ease-in-out infinite;
+  }
+  .act-tool-grid > span {
+    animation: act-tool-pulse 1.15s ease-in-out infinite;
+  }
 }
 
 /* Expanding a fold crossfades its body in — opacity only, so the row height
@@ -351,7 +426,9 @@
   .grok-act__step.is-running .grok-act__icon,
   .grok-act__working-icon,
   .grok-thought.is-live .grok-thought__icon,
-  .grok-thought__label--live {
+  .grok-thought__label--live,
+  .act-dots > span,
+  .act-tool-grid > span {
     animation: none;
   }
 }
@@ -566,7 +643,9 @@
   flex-shrink: 0;
   opacity: 0.85;
 }
-.grok-thought.is-live .grok-thought__icon,
+.grok-thought.is-live .grok-thought__icon {
+  animation: none;
+}
 .grok-thought__label--live {
   animation: chat-live-pulse 1.2s ease-in-out infinite;
 }
@@ -1214,6 +1293,143 @@
   font-size: var(--chat-fs-sm);
   color: var(--chat-text-3);
   line-height: var(--chat-lh-sm);
+}
+
+.lobe-chat__scroll:has(.lobe-chat-empty--welcome) {
+  display: flex;
+  /* Empty draft has no overflow — don't reserve a gutter that shifts the hero left of the composer. */
+  scrollbar-gutter: auto;
+}
+
+.lobe-chat__scroll:has(.lobe-chat-empty--welcome) .lobe-chat__inner {
+  flex: 1;
+  min-height: 100%;
+  justify-content: center;
+  align-items: center;
+  padding-block: 0;
+}
+
+.lobe-chat-empty--welcome {
+  width: 100%;
+  max-width: 100%;
+  min-height: 0;
+  padding: 24px 0;
+  gap: 22px;
+  container-type: inline-size;
+}
+
+.lobe-chat-empty--welcome .grok-logo,
+.lobe-chat-empty--welcome .g-icon--grok-mark {
+  color: var(--chat-text);
+}
+
+.lobe-chat-empty__slogan {
+  margin: 0;
+  max-width: 22rem;
+  font-size: clamp(1.35rem, 2.4vw, 1.75rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.25;
+  color: var(--chat-text);
+}
+
+.build-welcome {
+  display: flex;
+  flex-direction: column;
+  width: min(22rem, 100%);
+  margin: 8px auto 0;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+}
+
+.build-welcome__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin: 0;
+  padding: 13px 2px 12px;
+  border: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--text-primary) 12%, transparent);
+  border-radius: 0;
+  background: transparent;
+  color: var(--chat-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.build-welcome__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: color-mix(in srgb, var(--text-secondary) 70%, var(--text-primary));
+}
+
+.build-welcome__row[data-kind="explore"] .build-welcome__icon {
+  color: color-mix(in srgb, var(--info) 62%, var(--text-secondary));
+}
+
+.build-welcome__row[data-kind="feature"] .build-welcome__icon {
+  color: color-mix(in srgb, var(--text-primary) 78%, var(--warning));
+}
+
+.build-welcome__row[data-kind="review"] .build-welcome__icon {
+  color: color-mix(in srgb, var(--warning) 58%, var(--text-secondary));
+}
+
+.build-welcome__row[data-kind="fix"] .build-welcome__icon {
+  color: color-mix(in srgb, var(--danger) 56%, var(--text-secondary));
+}
+
+.build-welcome__label {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  line-height: 1.35;
+  color: var(--chat-text);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .build-welcome__row {
+    transition:
+      color var(--motion-fast, 120ms) ease,
+      border-color var(--motion-fast, 120ms) ease;
+  }
+
+  .build-welcome {
+    animation: build-welcome-in 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+}
+
+.build-welcome__row:hover {
+  border-bottom-color: color-mix(in srgb, var(--text-primary) 28%, transparent);
+}
+
+.build-welcome__row:hover .build-welcome__label {
+  color: var(--text-primary);
+}
+
+.build-welcome__row:focus-visible {
+  outline: 2px solid var(--border-focus, #6b8cff);
+  outline-offset: 3px;
+}
+
+.build-welcome__row:active {
+  opacity: 0.78;
+}
+
+@keyframes build-welcome-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 @media (prefers-reduced-motion: no-preference) {
   .lobe-chat-empty[data-kind="loading"] .lobe-chat-empty__title {

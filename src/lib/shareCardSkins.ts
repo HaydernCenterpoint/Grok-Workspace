@@ -6,6 +6,8 @@
  * one designed system. User picks a skin in the export dialog.
  */
 
+import { UI_SANS_STACK } from "@/lib/uiFontStack";
+
 export type ShareCardSkinId =
   | "noir"
   | "paper"
@@ -54,8 +56,7 @@ export type ShareCardSkin = {
   isLight: boolean;
 };
 
-const SANS =
-  'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+const SANS = UI_SANS_STACK;
 const MONO =
   'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace';
 

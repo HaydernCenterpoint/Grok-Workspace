@@ -16,6 +16,7 @@ export * from "./api/fs";
 export * from "./api/office";
 export * from "./api/settings";
 export * from "./api/extensions";
+export * from "./api/externalImport";
 export * from "./api/account";
 export * from "./api/providers";
 export * from "./api/mirror";

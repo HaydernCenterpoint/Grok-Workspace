@@ -327,9 +327,9 @@ pub fn format_session_menu(sessions: &[AppSessionEntry], lang: &str) -> String {
         };
     }
     let mut lines = vec![if lang == "en" {
-        "**Sessions** — reply with number:".into()
+        "**Grok Build sessions** — reply with number:".into()
     } else {
-        "**会话** — 回复序号：".into()
+        "**Grok Build 会话** — 回复序号：".into()
     }];
     for (i, s) in sessions.iter().enumerate() {
         let aid = effective_agent_session_id(s);
@@ -374,7 +374,10 @@ pub fn channel_uses_cards_with_options(channel: &str, options: Option<&serde_jso
             return b;
         }
     }
-    matches!(channel, "feishu" | "lark" | "dingtalk" | "telegram")
+    matches!(
+        channel,
+        "feishu" | "lark" | "dingtalk" | "telegram" | "slack" | "discord" | "line"
+    )
 }
 
 /// Card action payload values (encoded in button value).
@@ -760,9 +763,9 @@ pub fn build_telegram_session_card(
     page: usize,
 ) -> serde_json::Value {
     let text = if lang == "en" {
-        "**Sessions**\nChoose a session to resume, or send `/r <number>`."
+        "**Grok Build sessions**\nChoose a session to resume, or send `/r <number>`."
     } else {
-        "**会话**\n点击下方按钮恢复，也可发送 `/r <序号>`。"
+        "**Grok Build 会话**\n点击下方按钮恢复，也可发送 `/r <序号>`。"
     };
     let choices = sessions
         .iter()
@@ -797,6 +800,504 @@ pub fn build_telegram_account_card(
         })
         .collect();
     build_telegram_selection_card(text.to_string(), choices, lang, "account", page)
+}
+
+const OVERSEAS_SELECTION_LIMIT: usize = 20;
+const LINE_SELECTION_LIMIT: usize = 10;
+
+fn project_choices(projects: &[TrustedProject]) -> Vec<(String, CardAction)> {
+    projects
+        .iter()
+        .enumerate()
+        .map(|(i, project)| {
+            (
+                format!("{}. {}", i + 1, project.name),
+                CardAction::Project {
+                    id: project.id.clone(),
+                },
+            )
+        })
+        .collect()
+}
+
+fn session_choices(sessions: &[AppSessionEntry]) -> Vec<(String, CardAction)> {
+    sessions
+        .iter()
+        .enumerate()
+        .map(|(i, session)| {
+            (
+                format!("{}. {}", i + 1, session.title),
+                CardAction::Session {
+                    id: session.id.clone(),
+                },
+            )
+        })
+        .collect()
+}
+
+fn account_choices(accounts: &[(String, String)]) -> Vec<(String, CardAction)> {
+    accounts
+        .iter()
+        .enumerate()
+        .map(|(i, (id, label))| {
+            (
+                format!("{}. {}", i + 1, label),
+                CardAction::Account { id: id.clone() },
+            )
+        })
+        .collect()
+}
+
+fn page_label(lang: &str, page: usize, page_count: usize) -> String {
+    if lang == "en" {
+        format!("Page {} / {}", page + 1, page_count)
+    } else {
+        format!("第 {} / {} 页", page + 1, page_count)
+    }
+}
+
+/// Slack Block Kit / Discord components / LINE Flex for /p /r /account.
+pub fn build_slack_project_card(
+    projects: &[TrustedProject],
+    lang: &str,
+    page: usize,
+) -> serde_json::Value {
+    let text = if lang == "en" {
+        "*Trusted projects*\nChoose below, or send `/p <name>`."
+    } else {
+        "*已信任项目*\n点击下方按钮选择，也可发送 `/p <名称>`。"
+    };
+    build_slack_selection_card(
+        text.into(),
+        project_choices(projects),
+        lang,
+        "project",
+        page,
+    )
+}
+
+pub fn build_slack_session_card(
+    sessions: &[AppSessionEntry],
+    lang: &str,
+    page: usize,
+) -> serde_json::Value {
+    let text = if lang == "en" {
+        "*Grok Build sessions*\nChoose a session to resume, or send `/r <number>`."
+    } else {
+        "*Grok Build 会话*\n点击下方按钮恢复，也可发送 `/r <序号>`。"
+    };
+    build_slack_selection_card(
+        text.into(),
+        session_choices(sessions),
+        lang,
+        "session",
+        page,
+    )
+}
+
+pub fn build_slack_account_card(
+    text: &str,
+    accounts: &[(String, String)],
+    lang: &str,
+    page: usize,
+) -> serde_json::Value {
+    build_slack_selection_card(
+        text.to_string(),
+        account_choices(accounts),
+        lang,
+        "account",
+        page,
+    )
+}
+
+fn build_slack_selection_card(
+    text: String,
+    choices: Vec<(String, CardAction)>,
+    lang: &str,
+    menu: &str,
+    requested_page: usize,
+) -> serde_json::Value {
+    let page_count = choices.len().max(1).div_ceil(OVERSEAS_SELECTION_LIMIT);
+    let page = requested_page.min(page_count.saturating_sub(1));
+    let mut elements: Vec<serde_json::Value> = choices
+        .into_iter()
+        .skip(page * OVERSEAS_SELECTION_LIMIT)
+        .take(OVERSEAS_SELECTION_LIMIT)
+        .filter_map(|(label, action)| {
+            let value = encode_compact_card_action(&action);
+            if value.len() > 255 {
+                return None;
+            }
+            Some(serde_json::json!({
+                "type": "button",
+                "text": { "type": "plain_text", "text": truncate_chars(&label, 75), "emoji": true },
+                "action_id": value,
+                "value": value,
+            }))
+        })
+        .collect();
+    if page_count > 1 {
+        if page > 0 {
+            let value = encode_compact_card_action(&CardAction::Page {
+                menu: menu.to_string(),
+                page: page - 1,
+            });
+            elements.push(serde_json::json!({
+                "type": "button",
+                "text": { "type": "plain_text", "text": if lang == "en" { "← Previous" } else { "← 上一页" }, "emoji": true },
+                "action_id": value,
+                "value": value,
+            }));
+        }
+        if page + 1 < page_count {
+            let value = encode_compact_card_action(&CardAction::Page {
+                menu: menu.to_string(),
+                page: page + 1,
+            });
+            elements.push(serde_json::json!({
+                "type": "button",
+                "text": { "type": "plain_text", "text": if lang == "en" { "Next →" } else { "下一页 →" }, "emoji": true },
+                "action_id": value,
+                "value": value,
+            }));
+        }
+    }
+    let cancel = encode_compact_card_action(&CardAction::Cancel);
+    elements.push(serde_json::json!({
+        "type": "button",
+        "text": { "type": "plain_text", "text": if lang == "en" { "Cancel" } else { "取消" }, "emoji": true },
+        "action_id": cancel,
+        "value": cancel,
+    }));
+    let mut action_blocks = Vec::new();
+    for chunk in elements.chunks(5) {
+        action_blocks.push(serde_json::json!({
+            "type": "actions",
+            "elements": chunk,
+        }));
+    }
+    let body = format!("{text}\n_{}_", page_label(lang, page, page_count));
+    let mut blocks = vec![serde_json::json!({
+        "type": "section",
+        "text": { "type": "mrkdwn", "text": truncate_chars(&body, 2900) },
+    })];
+    blocks.extend(action_blocks);
+    serde_json::json!({
+        "text": truncate_chars(&text, 3500),
+        "blocks": blocks,
+    })
+}
+
+pub fn build_discord_project_card(
+    projects: &[TrustedProject],
+    lang: &str,
+    page: usize,
+) -> serde_json::Value {
+    let text = if lang == "en" {
+        "**Trusted projects**\nChoose below, or send `/p <name>`."
+    } else {
+        "**已信任项目**\n点击下方按钮选择，也可发送 `/p <名称>`。"
+    };
+    build_discord_selection_card(
+        text.into(),
+        project_choices(projects),
+        lang,
+        "project",
+        page,
+    )
+}
+
+pub fn build_discord_session_card(
+    sessions: &[AppSessionEntry],
+    lang: &str,
+    page: usize,
+) -> serde_json::Value {
+    let text = if lang == "en" {
+        "**Grok Build sessions**\nChoose a session to resume, or send `/r <number>`."
+    } else {
+        "**Grok Build 会话**\n点击下方按钮恢复，也可发送 `/r <序号>`。"
+    };
+    build_discord_selection_card(
+        text.into(),
+        session_choices(sessions),
+        lang,
+        "session",
+        page,
+    )
+}
+
+pub fn build_discord_account_card(
+    text: &str,
+    accounts: &[(String, String)],
+    lang: &str,
+    page: usize,
+) -> serde_json::Value {
+    build_discord_selection_card(
+        text.to_string(),
+        account_choices(accounts),
+        lang,
+        "account",
+        page,
+    )
+}
+
+fn build_discord_selection_card(
+    text: String,
+    choices: Vec<(String, CardAction)>,
+    lang: &str,
+    menu: &str,
+    requested_page: usize,
+) -> serde_json::Value {
+    let page_count = choices.len().max(1).div_ceil(OVERSEAS_SELECTION_LIMIT);
+    let page = requested_page.min(page_count.saturating_sub(1));
+    let mut buttons: Vec<serde_json::Value> = choices
+        .into_iter()
+        .skip(page * OVERSEAS_SELECTION_LIMIT)
+        .take(OVERSEAS_SELECTION_LIMIT)
+        .filter_map(|(label, action)| {
+            let custom_id = encode_compact_card_action(&action);
+            if custom_id.len() > 100 {
+                return None;
+            }
+            Some(serde_json::json!({
+                "type": 2,
+                "style": 1,
+                "label": truncate_chars(&label, 80),
+                "custom_id": custom_id,
+            }))
+        })
+        .collect();
+    if page_count > 1 {
+        if page > 0 {
+            buttons.push(serde_json::json!({
+                "type": 2,
+                "style": 2,
+                "label": if lang == "en" { "← Previous" } else { "← 上一页" },
+                "custom_id": encode_compact_card_action(&CardAction::Page {
+                    menu: menu.to_string(),
+                    page: page - 1,
+                }),
+            }));
+        }
+        if page + 1 < page_count {
+            buttons.push(serde_json::json!({
+                "type": 2,
+                "style": 2,
+                "label": if lang == "en" { "Next →" } else { "下一页 →" },
+                "custom_id": encode_compact_card_action(&CardAction::Page {
+                    menu: menu.to_string(),
+                    page: page + 1,
+                }),
+            }));
+        }
+    }
+    buttons.push(serde_json::json!({
+        "type": 2,
+        "style": 2,
+        "label": if lang == "en" { "Cancel" } else { "取消" },
+        "custom_id": encode_compact_card_action(&CardAction::Cancel),
+    }));
+    let mut components = Vec::new();
+    for chunk in buttons.chunks(5) {
+        components.push(serde_json::json!({
+            "type": 1,
+            "components": chunk,
+        }));
+    }
+    let body = format!("{text}\n_{}_", page_label(lang, page, page_count));
+    serde_json::json!({
+        "content": truncate_chars(&body, 1900),
+        "components": components,
+    })
+}
+
+pub fn build_line_project_card(
+    projects: &[TrustedProject],
+    lang: &str,
+    page: usize,
+) -> serde_json::Value {
+    let text = if lang == "en" {
+        "Trusted projects — tap a button or send /p <name>."
+    } else {
+        "已信任项目 — 点按钮选择，或发送 /p <名称>。"
+    };
+    build_line_selection_card(
+        text.into(),
+        project_choices(projects),
+        lang,
+        "project",
+        page,
+    )
+}
+
+pub fn build_line_session_card(
+    sessions: &[AppSessionEntry],
+    lang: &str,
+    page: usize,
+) -> serde_json::Value {
+    let text = if lang == "en" {
+        "Grok Build sessions — tap to resume or send /r <number>."
+    } else {
+        "Grok Build 会话 — 点按钮恢复，或发送 /r <序号>。"
+    };
+    build_line_selection_card(
+        text.into(),
+        session_choices(sessions),
+        lang,
+        "session",
+        page,
+    )
+}
+
+pub fn build_line_account_card(
+    text: &str,
+    accounts: &[(String, String)],
+    lang: &str,
+    page: usize,
+) -> serde_json::Value {
+    build_line_selection_card(
+        text.to_string(),
+        account_choices(accounts),
+        lang,
+        "account",
+        page,
+    )
+}
+
+fn build_line_selection_card(
+    text: String,
+    choices: Vec<(String, CardAction)>,
+    lang: &str,
+    menu: &str,
+    requested_page: usize,
+) -> serde_json::Value {
+    let page_count = choices.len().max(1).div_ceil(LINE_SELECTION_LIMIT);
+    let page = requested_page.min(page_count.saturating_sub(1));
+    let mut contents = vec![serde_json::json!({
+        "type": "text",
+        "text": truncate_chars(&format!("{text}\n{}", page_label(lang, page, page_count)), 400),
+        "wrap": true,
+        "size": "sm",
+    })];
+    for (label, action) in choices
+        .into_iter()
+        .skip(page * LINE_SELECTION_LIMIT)
+        .take(LINE_SELECTION_LIMIT)
+    {
+        let data = encode_compact_card_action(&action);
+        contents.push(serde_json::json!({
+            "type": "button",
+            "style": "primary",
+            "height": "sm",
+            "margin": "sm",
+            "action": {
+                "type": "postback",
+                "label": truncate_chars(&label, 20),
+                "data": data,
+            }
+        }));
+    }
+    if page_count > 1 {
+        if page > 0 {
+            contents.push(serde_json::json!({
+                "type": "button",
+                "height": "sm",
+                "margin": "sm",
+                "action": {
+                    "type": "postback",
+                    "label": if lang == "en" { "← Prev" } else { "← 上页" },
+                    "data": encode_compact_card_action(&CardAction::Page {
+                        menu: menu.to_string(),
+                        page: page - 1,
+                    }),
+                }
+            }));
+        }
+        if page + 1 < page_count {
+            contents.push(serde_json::json!({
+                "type": "button",
+                "height": "sm",
+                "margin": "sm",
+                "action": {
+                    "type": "postback",
+                    "label": if lang == "en" { "Next →" } else { "下页 →" },
+                    "data": encode_compact_card_action(&CardAction::Page {
+                        menu: menu.to_string(),
+                        page: page + 1,
+                    }),
+                }
+            }));
+        }
+    }
+    contents.push(serde_json::json!({
+        "type": "button",
+        "height": "sm",
+        "margin": "sm",
+        "action": {
+            "type": "postback",
+            "label": if lang == "en" { "Cancel" } else { "取消" },
+            "data": encode_compact_card_action(&CardAction::Cancel),
+        }
+    }));
+    serde_json::json!({
+        "altText": truncate_chars(&text, 400),
+        "contents": {
+            "type": "bubble",
+            "body": {
+                "type": "box",
+                "layout": "vertical",
+                "contents": contents,
+            }
+        }
+    })
+}
+
+/// Pick the native /p /r card for a GUI channel (Matrix stays on text menus).
+pub fn build_channel_project_card(
+    channel: &str,
+    projects: &[TrustedProject],
+    lang: &str,
+    page: usize,
+) -> serde_json::Value {
+    match channel {
+        "dingtalk" => build_dingtalk_project_card(projects, lang),
+        "slack" => build_slack_project_card(projects, lang, page),
+        "discord" => build_discord_project_card(projects, lang, page),
+        "line" => build_line_project_card(projects, lang, page),
+        "telegram" => build_telegram_project_card(projects, lang, page),
+        _ => build_feishu_project_card(projects, lang),
+    }
+}
+
+pub fn build_channel_session_card(
+    channel: &str,
+    sessions: &[AppSessionEntry],
+    lang: &str,
+    page: usize,
+) -> serde_json::Value {
+    match channel {
+        "dingtalk" => build_dingtalk_session_card(sessions, lang),
+        "slack" => build_slack_session_card(sessions, lang, page),
+        "discord" => build_discord_session_card(sessions, lang, page),
+        "line" => build_line_session_card(sessions, lang, page),
+        "telegram" => build_telegram_session_card(sessions, lang, page),
+        _ => build_feishu_session_card(sessions, lang),
+    }
+}
+
+pub fn build_channel_account_card(
+    channel: &str,
+    text: &str,
+    accounts: &[(String, String)],
+    lang: &str,
+    page: usize,
+) -> serde_json::Value {
+    match channel {
+        "slack" => build_slack_account_card(text, accounts, lang, page),
+        "discord" => build_discord_account_card(text, accounts, lang, page),
+        "line" => build_line_account_card(text, accounts, lang, page),
+        _ => build_telegram_account_card(text, accounts, lang, page),
+    }
 }
 
 /// DingTalk interactive card content (markdown + action buttons payload for Stream).
@@ -1119,6 +1620,10 @@ mod tests {
         assert!(channel_uses_cards("lark"));
         assert!(channel_uses_cards("dingtalk"));
         assert!(channel_uses_cards("telegram"));
+        assert!(channel_uses_cards("slack"));
+        assert!(channel_uses_cards("discord"));
+        assert!(channel_uses_cards("line"));
+        assert!(!channel_uses_cards("matrix"));
         assert!(!channel_uses_cards("weixin"));
         assert!(channel_uses_cards_with_options(
             "weixin",
@@ -1202,6 +1707,33 @@ mod tests {
                 .unwrap_or(false)
         }));
         assert!(card["text"].as_str().unwrap().contains("Page 2 / 2"));
+    }
+
+    #[test]
+    fn slack_discord_line_cards_emit_compact_actions() {
+        let projects = vec![proj("p1", "Alpha", "/a")];
+        let slack = build_slack_project_card(&projects, "en", 0);
+        let slack_btn = &slack["blocks"][1]["elements"][0]["value"];
+        assert_eq!(
+            parse_card_action(slack_btn.as_str().unwrap()),
+            Some(CardAction::Project { id: "p1".into() })
+        );
+
+        let discord = build_discord_project_card(&projects, "en", 0);
+        assert_eq!(
+            discord["components"][0]["components"][0]["custom_id"].as_str(),
+            Some("project:p1")
+        );
+
+        let line = build_line_project_card(&projects, "en", 0);
+        assert_eq!(
+            line["contents"]["body"]["contents"][1]["action"]["data"].as_str(),
+            Some("project:p1")
+        );
+        assert_eq!(
+            build_channel_project_card("matrix", &projects, "en", 0)["header"]["title"]["content"],
+            build_feishu_project_card(&projects, "en")["header"]["title"]["content"]
+        );
     }
 
     #[test]

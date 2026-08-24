@@ -11,7 +11,7 @@ use parking_lot::Mutex;
 use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::sync::OnceLock;
 use std::time::Duration;
-use tokio::sync::Mutex as AsyncMutex;
+use tokio::sync::{Mutex as AsyncMutex, Notify};
 
 #[derive(Default)]
 struct RuntimeSlot {
@@ -28,6 +28,31 @@ fn runtime_slot() -> &'static AsyncMutex<RuntimeSlot> {
 static RESTART_ATTEMPTS: AtomicU32 = AtomicU32::new(0);
 /// Unix seconds when next auto-restart is allowed (0 = try immediately).
 static NEXT_RETRY_UNIX: AtomicU64 = AtomicU64::new(0);
+
+/// Enabled-bridge crash recovery cadence.
+pub const HEALTH_TICK_SECS: u64 = 15;
+/// First recovery window after boot autostart.
+pub const HEALTH_BOOT_GRACE_SECS: u64 = 20;
+
+fn health_wake() -> &'static Notify {
+    static WAKE: OnceLock<Notify> = OnceLock::new();
+    WAKE.get_or_init(Notify::new)
+}
+
+/// Wake a parked health loop (enable / disable). Lost if nobody is waiting —
+/// the loop subscribes *before* each tick so start during a tick is not missed.
+pub fn notify_health_watchdog() {
+    health_wake().notify_waiters();
+}
+
+/// `None` = park until [`notify_health_watchdog`] (bridge disabled).
+pub fn health_watchdog_sleep_secs(enabled: bool) -> Option<u64> {
+    if enabled {
+        Some(HEALTH_TICK_SECS)
+    } else {
+        None
+    }
+}
 
 #[derive(Debug)]
 pub struct BridgeRuntime {
@@ -180,6 +205,7 @@ impl BridgeRuntime {
 
     pub async fn start_async(&mut self) -> Result<(), String> {
         self.enabled = true;
+        notify_health_watchdog();
         self.last_error = None;
         *self.phase.lock() = "starting".into();
         self.persist_config();
@@ -240,6 +266,7 @@ impl BridgeRuntime {
             RESTART_ATTEMPTS.store(0, Ordering::SeqCst);
             NEXT_RETRY_UNIX.store(0, Ordering::SeqCst);
             self.persist_config();
+            notify_health_watchdog();
         }
         Ok(())
     }
@@ -376,16 +403,30 @@ impl BridgeRuntime {
 }
 
 /// Spawn bridge health / crash-recovery loop (call once from app setup after try_autostart).
+///
+/// Disabled bridge: park (no 15s timer). Enabled: 15s ticks. Subscribe to the
+/// wake notify *before* each tick so enable during a tick is not lost.
 pub fn start_health_watchdog(state: std::sync::Arc<super::RemoteImState>) {
     tauri::async_runtime::spawn(async move {
         // First recovery window after boot autostart.
-        tokio::time::sleep(Duration::from_secs(20)).await;
+        tokio::time::sleep(Duration::from_secs(HEALTH_BOOT_GRACE_SECS)).await;
         loop {
-            {
+            let notified = health_wake().notified();
+            tokio::pin!(notified);
+            let enabled = {
                 let mut rt = state.inner.lock().await;
                 rt.health_tick_async().await;
+                rt.enabled
+            };
+            match health_watchdog_sleep_secs(enabled) {
+                Some(secs) => {
+                    tokio::select! {
+                        _ = tokio::time::sleep(Duration::from_secs(secs)) => {}
+                        _ = notified => {}
+                    }
+                }
+                None => notified.await,
             }
-            tokio::time::sleep(Duration::from_secs(15)).await;
         }
     });
 }
@@ -431,4 +472,17 @@ pub fn doctor_report() -> serde_json::Value {
             "rateWindowSecs": super::resilience::RATE_WINDOW_SECS,
         },
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn health_watchdog_parks_when_disabled() {
+        assert_eq!(health_watchdog_sleep_secs(false), None);
+        assert_eq!(health_watchdog_sleep_secs(true), Some(HEALTH_TICK_SECS));
+        assert_eq!(HEALTH_TICK_SECS, 15);
+        assert!(HEALTH_BOOT_GRACE_SECS >= HEALTH_TICK_SECS);
+    }
 }

@@ -1,13 +1,23 @@
 /**
- * Full-screen first-run gate: install Grok Build (required) → account (skippable) → enter home.
+ * Full-screen first-run gate: install Grok Build (required) → account
+ * (skippable) → appearance → enter home.
  * No page scrollbars; content is centered and compact.
  *
  * Honesty (SETUP-GATE-PRO): CLI is hard-required; account is soft/skippable.
  * Errors are classified via pure `setupGatePro` helpers — never invent success.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { GrokLogo } from "@/components/GrokLogo";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import { GrokLogoLoader } from "@/components/GrokLogoLoader";
+import { SetupAppearance } from "@/components/SetupAppearance";
 import { Select } from "@/components/Select";
 import { Spinner } from "@/components/ui/spinner";
 import {
@@ -49,6 +59,21 @@ export type SetupCliInfo = {
 
 type Step = SetupWizardStep;
 type AccountPanel = "menu" | "key" | "relay";
+type IntroPhase = "boot" | "copy" | "actions";
+
+function SetupShutter({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={["setup-shutter", className].filter(Boolean).join(" ")}>
+      {children}
+    </div>
+  );
+}
 
 type Props = {
   tr: Tr;
@@ -93,6 +118,9 @@ export function SetupWizard({
   const [relayKey, setRelayKey] = useState("");
   /** Default: OpenAI Responses — preferred for modern gateways. */
   const [relayBackend, setRelayBackend] = useState("responses");
+  const [intro, setIntro] = useState<IntroPhase>("boot");
+  const gateRef = useRef<HTMLDivElement>(null);
+  const logoRef = useRef<HTMLDivElement>(null);
 
   const reportError = useCallback((err: unknown) => {
     const view = resolveSetupGateError(err);
@@ -302,16 +330,27 @@ export function SetupWizard({
     [cli, onComplete],
   );
 
-  const goAccountContinue = useCallback(() => {
-    if (!canAdvancePastRuntime(cli.found)) return;
-    setStep("ready");
-  }, [cli.found]);
+  const goToAppearance = useCallback(
+    (opts: { authDeferred: boolean; authOk: boolean }) => {
+      if (opts.authDeferred) setAuthDeferred(true);
+      if (opts.authOk) setAuthOk(true);
+      setStatusMsg(null);
+      setStep("appearance");
+    },
+    [],
+  );
+
+  const finishAppearance = useCallback(() => {
+    void finishWizard({
+      authDeferred: authDeferred || !authOk,
+      authOk,
+    });
+  }, [authDeferred, authOk, finishWizard]);
 
   const skipAccount = useCallback(() => {
-    // Soft gate: account is optional — never blocks home after CLI is ready.
-    setAuthDeferred(true);
-    setStep("ready");
-  }, []);
+    // Soft gate: account is optional — next is appearance, then home.
+    goToAppearance({ authDeferred: !authOk, authOk });
+  }, [authOk, goToAppearance]);
 
   const saveOfficialKey = useCallback(async () => {
     const key = officialKey.trim();
@@ -320,16 +359,14 @@ export function SetupWizard({
     clearError();
     try {
       await api.secretsSet({ officialApiKey: key });
-      setAuthOk(true);
       setStatusMsg(tr("setup.account.ok"));
-      setAccountPanel("menu");
-      setStep("ready");
+      goToAppearance({ authDeferred: false, authOk: true });
     } catch (e) {
       reportError(e);
     } finally {
       setAccountBusy(false);
     }
-  }, [clearError, officialKey, reportError, tr]);
+  }, [clearError, goToAppearance, officialKey, reportError, tr]);
 
   const saveRelay = useCallback(async () => {
     const base = relayBase.trim();
@@ -368,15 +405,13 @@ export function SetupWizard({
         // Soft-fail ping — still enter workbench; user can fix URL in Settings.
         setStatusMsg(tr("setup.account.ok"));
       }
-      setAuthOk(true);
-      setAccountPanel("menu");
-      setStep("ready");
+      goToAppearance({ authDeferred: false, authOk: true });
     } catch (e) {
       reportError(e);
     } finally {
       setAccountBusy(false);
     }
-  }, [clearError, relayBase, relayKey, relayBackend, reportError, tr]);
+  }, [clearError, goToAppearance, relayBase, relayKey, relayBackend, reportError, tr]);
 
   const runOauth = useCallback(async () => {
     setAccountBusy(true);
@@ -384,55 +419,20 @@ export function SetupWizard({
     try {
       const ok = await onAccountLoginOauth();
       if (ok) {
-        setAuthOk(true);
         setStatusMsg(tr("setup.account.ok"));
-        setStep("ready");
+        goToAppearance({ authDeferred: false, authOk: true });
+        return;
       }
       const next = await recheck(cli.path);
       if (next?.cliAuthPresent) {
-        setAuthOk(true);
-        setStep("ready");
+        goToAppearance({ authDeferred: false, authOk: true });
       }
     } catch (e) {
       reportError(e);
     } finally {
       setAccountBusy(false);
     }
-  }, [clearError, cli.path, onAccountLoginOauth, recheck, reportError, tr]);
-
-  const importCli = useCallback(async () => {
-    setAccountBusy(true);
-    clearError();
-    try {
-      const r = await api.importGrokCli();
-      if ((r as { ok?: boolean }).ok) {
-        setAuthOk(true);
-        setStatusMsg(tr("setup.account.ok"));
-        setStep("ready");
-      } else {
-        setStatusMsg(JSON.stringify((r as { messages?: string[] }).messages || r));
-      }
-    } catch (e) {
-      reportError(e);
-    } finally {
-      setAccountBusy(false);
-    }
-  }, [clearError, reportError, tr]);
-
-  const importGo = useCallback(async () => {
-    setAccountBusy(true);
-    clearError();
-    try {
-      await api.importGrokGo();
-      setAuthOk(true);
-      setStatusMsg(tr("setup.account.ok"));
-      setStep("ready");
-    } catch (e) {
-      reportError(e);
-    } finally {
-      setAccountBusy(false);
-    }
-  }, [clearError, reportError, tr]);
+  }, [clearError, cli.path, goToAppearance, onAccountLoginOauth, recheck, reportError, tr]);
 
   /** Abort the running login (OAuth/device) and unlock the UI immediately.
    *  The backend kills the `grok login` child; the pending handler's `finally`
@@ -462,13 +462,56 @@ export function SetupWizard({
     [cli.found, cli.version, authOk, authDeferred],
   );
 
-  const stepIndex = step === "runtime" ? 0 : step === "account" ? 1 : 2;
+  useLayoutEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setIntro("actions");
+      return;
+    }
+    const logo = logoRef.current;
+    const gate = gateRef.current;
+    if (!logo || !gate) {
+      setIntro("actions");
+      return;
+    }
+    const gateBox = gate.getBoundingClientRect();
+    const logoBox = logo.getBoundingClientRect();
+    const dx =
+      gateBox.left + gateBox.width / 2 - (logoBox.left + logoBox.width / 2);
+    const dy =
+      gateBox.top + gateBox.height / 2 - (logoBox.top + logoBox.height / 2);
+    logo.style.transform = `translate(${dx}px, ${dy}px)`;
+    let frame2 = 0;
+    const onFlyEnd = (ev: TransitionEvent) => {
+      if (ev.propertyName !== "transform") return;
+      logo.classList.remove("is-flying");
+    };
+    logo.addEventListener("transitionend", onFlyEnd);
+    const frame1 = requestAnimationFrame(() => {
+      frame2 = requestAnimationFrame(() => {
+        logo.classList.add("is-flying");
+        logo.style.transform = "translate(0, 0)";
+      });
+    });
+    const copyTimer = window.setTimeout(() => setIntro("copy"), 520);
+    const actionsTimer = window.setTimeout(() => setIntro("actions"), 920);
+    return () => {
+      cancelAnimationFrame(frame1);
+      cancelAnimationFrame(frame2);
+      logo.removeEventListener("transitionend", onFlyEnd);
+      window.clearTimeout(copyTimer);
+      window.clearTimeout(actionsTimer);
+    };
+  }, []);
 
   return (
     <div
+      ref={gateRef}
       className={
         "setup-gate" +
-        (useCustomWindowChrome ? " setup-gate--custom-chrome" : "")
+        (useCustomWindowChrome ? " setup-gate--custom-chrome" : "") +
+        (step === "appearance" ? " is-look" : "") +
+        ` is-${intro}`
       }
       data-platform={platform}
       data-testid="setup-wizard"
@@ -479,42 +522,100 @@ export function SetupWizard({
         {...titlebarMaximizeHandlers()}
       />
 
-      <div className="setup-gate__center">
+      <div
+        className={
+          "setup-gate__center" +
+          (step === "appearance" ? " setup-gate__center--look" : "")
+        }
+      >
         <div className="setup-hero">
-          <div
-            className={
-              "setup-logo" +
-              (installing || probing ? " setup-logo--spin" : " setup-logo--pulse")
-            }
-          >
-            <GrokLogo size={44} />
+          <div ref={logoRef} className="setup-hero-mark">
+            <GrokLogoLoader
+              size={64}
+              active={installing}
+              label={
+                step === "appearance"
+                  ? tr("setup.appearance.title")
+                  : tr("setup.title")
+              }
+            />
           </div>
-          <h1 className="setup-title">{tr("setup.title")}</h1>
-          <p className="setup-subtitle">{tr("setup.subtitle")}</p>
+          <div className="setup-hero-copy">
+            <h1 className="setup-title">
+              {step === "appearance"
+                ? tr("setup.appearance.title")
+                : tr("setup.title")}
+            </h1>
+            <p className="setup-subtitle">
+              {step === "appearance"
+                ? tr("setup.appearance.subtitle")
+                : tr("setup.subtitle")}
+            </p>
+          </div>
         </div>
 
-        <ol className="setup-steps" aria-label="Setup steps">
-          {(
-            [
-              ["runtime", "setup.step.runtime"],
-              ["account", "setup.step.account"],
-              ["ready", "setup.step.ready"],
-            ] as const
-          ).map(([id, key], i) => (
-            <li
-              key={id}
-              className={
-                "setup-steps__item" +
-                (i === stepIndex ? " is-active" : "") +
-                (i < stepIndex ? " is-done" : "")
-              }
-            >
-              <span className="setup-steps__dot" />
-              <span className="setup-steps__label">{tr(key)}</span>
-            </li>
-          ))}
-        </ol>
-
+        {step === "appearance" ? (
+          <SetupShutter className="setup-look-shutter">
+            <SetupAppearance tr={tr} onContinue={finishAppearance} />
+          </SetupShutter>
+        ) : step === "account" && accountPanel === "menu" ? (
+          <div className="setup-auth">
+            <SetupShutter>
+              <button
+                type="button"
+                className="setup-auth-btn"
+                disabled={accountBusy}
+                onClick={() => void runOauth()}
+              >
+                {tr("setup.account.oauth")}
+              </button>
+            </SetupShutter>
+            <SetupShutter>
+              <button
+                type="button"
+                className="setup-auth-btn"
+                disabled={accountBusy}
+                onClick={() => setAccountPanel("key")}
+              >
+                {tr("setup.account.key")}
+              </button>
+            </SetupShutter>
+            <SetupShutter>
+              <button
+                type="button"
+                className="setup-auth-btn"
+                disabled={accountBusy}
+                onClick={() => setAccountPanel("relay")}
+              >
+                {tr("setup.account.relay")}
+              </button>
+            </SetupShutter>
+            {accountBusy && (
+              <div className="setup-busy">
+                <Spinner className="size-4" />
+                {tr("setup.account.busy")}
+                <button
+                  type="button"
+                  className="btn btn--ghost btn--sm"
+                  onClick={() => void cancelAccountLogin()}
+                >
+                  {tr("setup.account.cancelBusy")}
+                </button>
+              </div>
+            )}
+            <SetupShutter className="setup-auth-foot">
+              <button
+                type="button"
+                className="btn btn--ghost"
+                disabled={accountBusy}
+                onClick={skipAccount}
+              >
+                {tr("setup.account.skip")}
+              </button>
+            </SetupShutter>
+          </div>
+        ) : (
+        <SetupShutter className="setup-card-shutter">
         <div className="setup-card">
           {step === "runtime" && (
             <>
@@ -677,63 +778,6 @@ export function SetupWizard({
 
           {step === "account" && (
             <>
-              <div className="setup-card__head">
-                <h2>{tr("setup.account.title")}</h2>
-                <p>{tr("setup.account.hint")}</p>
-              </div>
-
-              {accountPanel === "menu" && (
-                <div className="setup-entry-grid">
-                  {cli.cliAuthPresent && (
-                    <button
-                      type="button"
-                      className="setup-entry setup-entry--recommended"
-                      disabled={accountBusy}
-                      onClick={() => void importCli()}
-                    >
-                      <strong>{tr("setup.reuseCliAuthTitle")}</strong>
-                      <span>{tr("setup.reuseCliAuthDesc")}</span>
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    className="setup-entry"
-                    disabled={accountBusy}
-                    onClick={() => void runOauth()}
-                  >
-                    <strong>{tr("setup.account.oauth")}</strong>
-                    <span>{tr("setup.account.oauthHint")}</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="setup-entry"
-                    disabled={accountBusy}
-                    onClick={() => setAccountPanel("key")}
-                  >
-                    <strong>{tr("setup.account.key")}</strong>
-                    <span>{tr("setup.account.keyHint")}</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="setup-entry"
-                    disabled={accountBusy}
-                    onClick={() => setAccountPanel("relay")}
-                  >
-                    <strong>{tr("setup.account.relay")}</strong>
-                    <span>{tr("setup.account.relayHint")}</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="setup-entry"
-                    disabled={accountBusy}
-                    onClick={() => void importGo()}
-                  >
-                    <strong>{tr("setup.account.importGo")}</strong>
-                    <span>{tr("onboarding.importGoHint")}</span>
-                  </button>
-                </div>
-              )}
-
               {accountPanel === "key" && (
                 <div className="setup-form">
                   <input
@@ -828,27 +872,6 @@ export function SetupWizard({
                   </button>
                 </div>
               )}
-
-              <div className="setup-actions setup-actions--footer">
-                <button
-                  type="button"
-                  className="btn btn--ghost"
-                  disabled={accountBusy}
-                  onClick={skipAccount}
-                >
-                  {tr("setup.account.skip")}
-                </button>
-                {(authOk || accountPanel === "menu") && (
-                  <button
-                    type="button"
-                    className="btn btn--primary"
-                    disabled={accountBusy}
-                    onClick={goAccountContinue}
-                  >
-                    {tr("setup.continue")}
-                  </button>
-                )}
-              </div>
             </>
           )}
 
@@ -897,30 +920,32 @@ export function SetupWizard({
             </>
           )}
 
-          {errorView && !errorView.silent && (
-            <div
-              className={
-                "setup-error" +
-                (errorView.tone === "warn" ? " setup-error--warn" : "")
-              }
-              role="alert"
-              data-setup-error-kind={errorView.kind}
-            >
-              <strong>{tr(errorView.titleKey as MessageKey)}</strong>
-              {errorView.detail ? <span>{errorView.detail}</span> : null}
-              {errorView.hintKey ? (
-                <span className="setup-error__hint">
-                  {tr(errorView.hintKey as MessageKey)}
-                </span>
-              ) : null}
-            </div>
-          )}
-          {statusMsg && !(errorView && !errorView.silent) && (
-            <div className="setup-status" role="status">
-              {statusMsg}
-            </div>
-          )}
         </div>
+        </SetupShutter>
+        )}
+        {errorView && !errorView.silent && (
+          <div
+            className={
+              "setup-error" +
+              (errorView.tone === "warn" ? " setup-error--warn" : "")
+            }
+            role="alert"
+            data-setup-error-kind={errorView.kind}
+          >
+            <strong>{tr(errorView.titleKey as MessageKey)}</strong>
+            {errorView.detail ? <span>{errorView.detail}</span> : null}
+            {errorView.hintKey ? (
+              <span className="setup-error__hint">
+                {tr(errorView.hintKey as MessageKey)}
+              </span>
+            ) : null}
+          </div>
+        )}
+        {statusMsg && !(errorView && !errorView.silent) && (
+          <div className="setup-status" role="status">
+            {statusMsg}
+          </div>
+        )}
       </div>
     </div>
   );
