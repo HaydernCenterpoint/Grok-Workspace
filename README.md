@@ -51,7 +51,7 @@ Grok Workspace is that workbench. Click the **sidebar Grok logo** to switch surf
 
 Deep links: `#/office`, `#/studio`. Slash commands: `/office`, `/studio`, `/report`.
 
-**Stack:** Tauri 2 + Rust host · React + TypeScript 7 + Vite · Tailwind.
+**Stack:** Tauri 2 + Rust host · React + TypeScript 7 + Vite · Tailwind · Bun.
 
 ---
 
