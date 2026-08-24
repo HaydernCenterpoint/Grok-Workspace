@@ -423,6 +423,8 @@ export const ptBRSettingsUi = {
   "settings.autoUpdateError.other": "A atualização falhou. Você ainda pode abrir a página do release no GitHub e instalar manualmente.",
   "settings.autoUpdateChannelUnsupported": "Canal de atualização: instalação manual (este tipo de pacote não pode atualizar automaticamente)",
   "settings.autoUpdateChannelHostOnly": "Canal de atualização: só no app de desktop (indisponível aqui)",
+  "settings.autoDownloadUpdates": "Baixar atualizações automaticamente",
+  "settings.autoDownloadUpdatesDesc": "Builds de release assinados baixam em segundo plano e esperam você confirmar Instalar e reiniciar. Builds sem assinatura e locais ainda abrem o GitHub — nunca instalam em silêncio. Desligue para iniciar o download você mesmo.",
   "settings.askDemo.title": "Caminho de demo ask-user",
   "settings.askDemo.desc": "Caminho sugerido para comparar Perguntar vs YOLO sem caçar configurações. O App só prepara a política e um prompt de amostra — um questionário ao vivo ainda depende do modelo e da CLI.",
   "settings.askDemo.honesty": "Honestidade: um `ask_user_question` real depende do modelo e da Grok Build CLI. O App nunca envia um prompt automaticamente e nunca afirma que o agente vai perguntar.",

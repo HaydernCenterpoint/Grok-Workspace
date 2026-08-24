@@ -122,8 +122,34 @@
 
 .prov-cc-item__status--missing_key,
 .prov-cc-item__status--proxy_managed,
-.prov-cc-item__status--invalid {
+.prov-cc-item__status--invalid,
+.prov-cc-item__status--broken {
   color: var(--warning, #fbbf24);
+}
+
+.prov-cc-item__status--already_visible,
+.prov-cc-item__status--skip {
+  color: var(--text-muted);
+}
+
+.ext-import-section {
+  margin-top: 12px;
+}
+
+.ext-import-section__title {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ext-import-switch {
+  margin-top: 12px;
+}
+
+.ext-import-switch__row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
 }
 
 .prov-cc-badge {

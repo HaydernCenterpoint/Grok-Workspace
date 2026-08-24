@@ -4,11 +4,36 @@ Product rules for the slash palette, skill chips, mode markers, and Doctor.
 
 ## Workspace chip (desktop)
 
-Desktop chat **always** shows `ComposerProjectMenu` on the context bar above the input (`composer__context-bar`), including the unbound **默认工作区 / Default workspace** state. The menu reuses the existing picker: list projects, add a folder, or clear back to the default workspace (`workspaces/general` cwd). Git worktree chip stays only when a real project folder is bound.
+Desktop chat **always** shows `ComposerProjectMenu` on the context bar above the input (`composer__context-bar`). The unbound chip reads **Choose project**. The menu is a ChatGPT/Codex picker: search, the default workspace (`workspaces/general` cwd), the project list (no leading icons), and **New project**. New project opens `CreateProjectModal` (name + one source folder Grok can read and edit). Git worktree chip stays only when a real project folder is bound.
 
-Phone layout does **not** mount this bar — project pick/add stays on `PhoneComposerToolsSheet`. Sidebar **Projects** `+` remains a second entry.
+Phone layout does **not** mount this bar — project pick/add stays on `PhoneComposerToolsSheet`. Sidebar spaces-row `+` still adds a folder; each surface section `+` starts a session on that workspace.
 
 Gate: `showComposerProjectRow = !phoneLayout` in `AppWorkbench` (do not require `welcomeSession` or `activeProject`).
+
+## Build welcome starters
+
+A new Build draft (`!sessionId`, empty transcript) is `kind: "welcome"`: Grok mark + `main.welcomeSlogan` + four underlined rows (`BuildWelcome`). Clicking a row seeds the composer via `buildWelcomeSeedKey` (named keys when a real project folder is bound). The ACP agent still does the work.
+
+| kind | Job |
+|------|-----|
+| `explore` | Map the project |
+| `feature` | Turn an idea into code |
+| `review` | Review recent changes |
+| `fix` | Unstick a failure |
+
+No card frames — icon + label, one underline per row. Office keeps its own start list (`OfficeStart`); Studio keeps Imagine pills.
+
+## Live activity marks
+
+Shared on **Build / Office / Studio** (`ConversationThread`):
+
+| State | Mark |
+|-------|------|
+| Thinking / “Working for” | `ReasoningDots` (3-dot harmonic scale) |
+| Running tool | `ToolGrid` (4-square blue pulse) |
+| Sidebar session busy | `ReasoningDots` |
+
+Finished rows keep the bulb / grid / tool icons. Animations sit behind `prefers-reduced-motion`.
 
 ## Composer document model
 

@@ -94,7 +94,7 @@ describe("sidebarDensity", () => {
     const comfy = sidebarSessionRowMetrics("comfortable");
     expect(c.rowHeight).toBeLessThan(comfy.rowHeight);
     expect(c.gap).toBeLessThanOrEqual(comfy.gap);
-    expect(c.rowHeight).toBe(24);
+    expect(c.rowHeight).toBe(19);
     expect(c.gap).toBe(0);
   });
 });

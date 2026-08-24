@@ -423,6 +423,8 @@ export const zhTWSettingsUi = {
   "settings.autoUpdateError.other": "更新失敗。你仍可開啟發佈頁並手動安裝。",
   "settings.autoUpdateChannelUnsupported": "更新通道：手動安裝（此安裝包類型不支援自動更新）",
   "settings.autoUpdateChannelHostOnly": "更新通道：僅桌面端（此處不可用）",
+  "settings.autoDownloadUpdates": "自動下載更新",
+  "settings.autoDownloadUpdatesDesc": "已簽署的正式版會在背景下載，然後等你確認「安裝並重新啟動」。未簽署 / 本機建置仍開啟 GitHub，不會靜默安裝。關閉後需自行開始下載。",
   "settings.askDemo.title": "Ask-user 示範路徑",
   "settings.askDemo.desc": "建議步驟：無需四處尋找設定，即可對比 Ask 與 YOLO。應用只準備權限與範例提示詞——真實問卷仍取決於模型與 CLI。",
   "settings.askDemo.honesty": "誠實說明：真正的 `ask_user_question` 取決於模型與 Grok Build CLI。應用不會自動傳送提示詞，也不會聲稱 Agent 一定會提問。",

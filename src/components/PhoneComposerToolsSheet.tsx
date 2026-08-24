@@ -14,14 +14,16 @@ import {
   IconChevronRight,
   IconClose,
   IconFolder,
-  IconHandStop,
   IconPlus,
 } from "@/components/icons";
+import {
+  COMPOSER_PRIMARY_POLICIES,
+  asPermissionPolicyId,
+  composerPolicyIcon,
+} from "@/components/composerAccessVisuals";
 import { installDialogFocus } from "@/lib/a11yFocus";
 import {
   GROK_BUILD_MODELS,
-  PERMISSION_POLICIES,
-  SESSION_MODES,
   effortCatalogForRoute,
   effortDisplayLabel,
   effortUiOptionsForCatalog,
@@ -48,6 +50,7 @@ export type PhoneToolsPanel =
   | "root"
   | "project"
   | "model"
+  | "modelPick"
   | "effort"
   | "access"
   | "context";
@@ -69,15 +72,13 @@ export type PhoneComposerToolsSheetProps = {
     project: string;
     model: string;
     effort: string;
+    /** ChatGPT-style Speed row (maps to reasoning effort). */
+    speed?: string;
     access: string;
     context: string;
     noProject: string;
     addProject: string;
-    mode: string;
     permission: string;
-    modeAgent: string;
-    modePlan: string;
-    modeAsk: string;
     /** Section header for official catalog models. */
     modelGroupOfficial: string;
     /** @deprecated Prefer real custom groups via `providers`. */
@@ -120,9 +121,10 @@ export type PhoneComposerToolsSheetProps = {
   activeProviderId?: string | null;
   /** Channel-configured efforts when custom route is active. */
   channelEfforts?: EffortOption[] | null;
-  mode: string;
   policy: string;
   contextDisplay: ContextUsageDisplay;
+  /** Effective context window (tokens) for the active route. */
+  contextWindow?: number | null;
   /** Resolved UI locale — fallback token counts use K/M (en) vs 万/千 (zh). */
   locale?: string;
   onAttach: () => void;
@@ -132,7 +134,6 @@ export type PhoneComposerToolsSheetProps = {
   onModelPick?: (pick: ComposerModelPick) => void;
   onModel?: (id: string) => void;
   onEffort: (id: EffortOption["id"]) => void;
-  onMode: (id: string) => void;
   onPolicy: (id: PermissionPolicyId) => void;
   onCompact: () => void;
   /** Hide Build-only rows on Studio (and optionally Office). Default all true. */
@@ -155,15 +156,6 @@ function effortLabel(
     xhigh: labels.effortXhigh,
     max: labels.effortMax ?? labels.effortXhigh,
   });
-}
-
-function modeLabel(
-  id: string,
-  labels: PhoneComposerToolsSheetProps["labels"],
-): string {
-  if (id === "plan") return labels.modePlan;
-  if (id === "ask") return labels.modeAsk;
-  return labels.modeAgent;
 }
 
 function policyLabel(
@@ -196,11 +188,11 @@ function SheetRow({
   icon: ReactNode;
   label: string;
   value?: string;
-  onClick: () => void;
+  onClick?: () => void;
   chevron?: boolean;
 }) {
-  return (
-    <button type="button" className="phone-sheet__row" onClick={onClick}>
+  const inner = (
+    <>
       <span className="phone-sheet__row-icon" aria-hidden>
         {icon}
       </span>
@@ -213,6 +205,18 @@ function SheetRow({
           <IconChevronRight size={18} />
         </span>
       ) : null}
+    </>
+  );
+  if (!onClick) {
+    return (
+      <div className="phone-sheet__row" role="group">
+        {inner}
+      </div>
+    );
+  }
+  return (
+    <button type="button" className="phone-sheet__row" onClick={onClick}>
+      {inner}
     </button>
   );
 }
@@ -230,9 +234,9 @@ export function PhoneComposerToolsSheet({
   activeSource = "official",
   activeProviderId = null,
   channelEfforts = null,
-  mode,
   policy,
   contextDisplay,
+  contextWindow = null,
   locale = "en",
   onAttach,
   onSelectProject,
@@ -240,7 +244,6 @@ export function PhoneComposerToolsSheet({
   onModelPick,
   onModel,
   onEffort,
-  onMode,
   onPolicy,
   onCompact,
   showProject = true,
@@ -313,7 +316,7 @@ export function PhoneComposerToolsSheet({
       onEscape: () => {
         const p = toolsPanelRef.current;
         if (p !== "root") {
-          if (p === "effort") setPanel("model");
+          if (p === "effort" || p === "modelPick") setPanel("model");
           else setPanel("root");
           return;
         }
@@ -339,10 +342,10 @@ export function PhoneComposerToolsSheet({
       ? labels.title
       : panel === "project"
         ? labels.project
-        : panel === "model"
+        : panel === "model" || panel === "modelPick"
           ? labels.model
           : panel === "effort"
-            ? labels.effort
+            ? labels.speed ?? labels.effort
             : panel === "access"
               ? labels.access
               : labels.context;
@@ -369,7 +372,11 @@ export function PhoneComposerToolsSheet({
               type="button"
               className="phone-sheet__icon-btn"
               onClick={() =>
-                setPanel(panel === "effort" ? "model" : "root")
+                setPanel(
+                  panel === "effort" || panel === "modelPick"
+                    ? "model"
+                    : "root",
+                )
               }
               aria-label={labels.back}
             >
@@ -422,9 +429,9 @@ export function PhoneComposerToolsSheet({
               ) : null}
               {showAccess ? (
               <SheetRow
-                icon={<IconHandStop size={20} />}
+                icon={composerPolicyIcon(asPermissionPolicyId(policy), 20)}
                 label={labels.access}
-                value={`${modeLabel(mode, labels)} · ${policyLabel(policy, labels)}`}
+                value={policyLabel(policy, labels)}
                 chevron
                 onClick={() => setPanel("access")}
               />
@@ -476,6 +483,34 @@ export function PhoneComposerToolsSheet({
 
           {panel === "model" && (
             <>
+              <SheetRow
+                icon={<IconBolt size={20} />}
+                label={labels.model}
+                value={modelLabel}
+                chevron
+                onClick={() => setPanel("modelPick")}
+              />
+              <SheetRow
+                icon={<IconActivity size={20} />}
+                label={labels.speed ?? labels.effort}
+                value={effortLabel(effort, labels, effortCatalog)}
+                chevron
+                onClick={() => setPanel("effort")}
+              />
+              <SheetRow
+                icon={<IconActivity size={20} />}
+                label={labels.contextWindow ?? labels.context}
+                value={
+                  contextWindow
+                    ? formatTokenCount(contextWindow, locale)
+                    : "—"
+                }
+              />
+            </>
+          )}
+
+          {panel === "modelPick" && (
+            <>
               {modelGroups.map((group) => (
                 <div key={group.key}>
                   <div className="phone-sheet__section">{group.title}</div>
@@ -521,13 +556,6 @@ export function PhoneComposerToolsSheet({
                   })}
                 </div>
               ))}
-              <SheetRow
-                icon={<IconActivity size={20} />}
-                label={labels.effort}
-                value={effortLabel(effort, labels, effortCatalog)}
-                chevron
-                onClick={() => setPanel("effort")}
-              />
             </>
           )}
 
@@ -568,41 +596,24 @@ export function PhoneComposerToolsSheet({
 
           {panel === "access" && (
             <>
-              <div className="phone-sheet__section">{labels.mode}</div>
-              {SESSION_MODES.map((m) => (
-                <button
-                  key={m.id}
-                  type="button"
-                  className={
-                    "phone-sheet__row" + (m.id === mode ? " is-active" : "")
-                  }
-                  onClick={() => onMode(m.id)}
-                >
-                  <span className="phone-sheet__row-label">
-                    {modeLabel(m.id, labels)}
-                  </span>
-                  {m.id === mode ? (
-                    <span className="phone-sheet__row-value" aria-hidden>
-                      <IconCheck size={18} />
-                    </span>
-                  ) : null}
-                </button>
-              ))}
               <div className="phone-sheet__section">{labels.permission}</div>
-              {PERMISSION_POLICIES.map((p) => (
+              {COMPOSER_PRIMARY_POLICIES.map((id) => (
                 <button
-                  key={p.id}
+                  key={id}
                   type="button"
                   className={
                     "phone-sheet__row" +
-                    (p.id === policy ? " is-active" : "")
+                    (id === asPermissionPolicyId(policy) ? " is-active" : "")
                   }
-                  onClick={() => onPolicy(p.id as PermissionPolicyId)}
+                  onClick={() => onPolicy(id)}
                 >
-                  <span className="phone-sheet__row-label">
-                    {policyLabel(p.id, labels)}
+                  <span className="phone-sheet__row-icon" aria-hidden>
+                    {composerPolicyIcon(id, 20)}
                   </span>
-                  {p.id === policy ? (
+                  <span className="phone-sheet__row-label">
+                    {policyLabel(id, labels)}
+                  </span>
+                  {id === asPermissionPolicyId(policy) ? (
                     <span className="phone-sheet__row-value" aria-hidden>
                       <IconCheck size={18} />
                     </span>

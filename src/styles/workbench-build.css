@@ -3,8 +3,8 @@
  * here, so they get the elevation; Office and Studio restyle the same shell for
  * documents and media.
  *
- * Build keeps the baseline reading measure: Settings → Appearance → Chat width
- * owns it. Office narrows to a document column, Studio widens for media.
+ * Build / Office / Studio command columns share `--composer-width-max`.
+ * Settings → Chat width does not override those transcripts.
  */
 
 /* Fenced code reads as a raised well, not an inline quote. */
@@ -13,13 +13,4 @@ html[data-work-mode="code"] .chat-code {
   box-shadow: var(--elev-1);
 }
 
-/*
- * Open activity rail is its own region — a folded phase stays a plain gray
- * line so the transcript is not a stack of boxes.
- */
-html[data-work-mode="code"] .grok-act.is-open,
-html[data-work-mode="code"] .grok-act.is-live {
-  padding: 8px 10px;
-  border-radius: var(--radius-lg);
-  background: color-mix(in srgb, var(--bg-hover) 60%, transparent);
-}
+/* Live activity rail chrome lives on .grok-act (all three surfaces). */

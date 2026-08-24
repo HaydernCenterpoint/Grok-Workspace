@@ -7,6 +7,7 @@ import type { SettingsViewModel } from "./types";
 import { IconHelp, IconInfo } from "@/components/icons";
 import { CliUpdateRow } from "@/components/CliUpdateRow";
 import { AboutUpdateRow } from "./AboutUpdateRow";
+import { AutoDownloadUpdatesRow } from "./AutoDownloadUpdatesRow";
 import { DeveloperModeSection } from "./DeveloperModeSection";
 
 export function AboutSection() {
@@ -35,6 +36,7 @@ export function AboutSection() {
           </div>
         </div>
         <AboutUpdateRow t={t} />
+        <AutoDownloadUpdatesRow t={t} rowHighlight={rowHighlight} />
         <div
           className={
             "settings-row settings-row--stack" +

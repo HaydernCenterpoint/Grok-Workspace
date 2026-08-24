@@ -929,3 +929,37 @@ fn parse_inspect_plugins_map(
     }
     map
 }
+
+/// Read-only scan of Codex / Claude / Cursor / agents skill + config homes.
+#[tauri::command]
+pub async fn external_import_scan(
+    project_path: Option<String>,
+) -> Result<crate::external_import::ExternalImportScanResult, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        Ok(crate::external_import::scan_external_import(
+            project_path.as_deref(),
+        ))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Import selected Codex / Claude items after an explicit review.
+/// Shared mode never writes `~/.grok` config.toml unless the user switches
+/// to independent. Skills may still copy into the active GROK_HOME skills root.
+#[tauri::command]
+pub async fn external_import_apply(
+    app: tauri::AppHandle,
+    mgr: State<'_, Arc<SessionManager>>,
+    body: crate::external_import::ExternalImportRequest,
+) -> Result<crate::external_import::ExternalImportApplyResult, String> {
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        crate::external_import::apply_external_import(body)
+    })
+    .await
+    .map_err(|e| e.to_string())??;
+    if result.imported > 0 || result.switched_to_independent {
+        mgr.recycle_all_agents(&app, "external_import").await;
+    }
+    Ok(result)
+}

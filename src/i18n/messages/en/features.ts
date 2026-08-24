@@ -1,6 +1,6 @@
 /** English messages — domain: features */
 export const enFeatures = {
-  "policy.ask": "Request approval",
+  "policy.ask": "Ask for approval",
   "policy.accept_edits": "Accept edits",
   "policy.allow_for_session": "Approve for me",
   "policy.auto": "Auto",

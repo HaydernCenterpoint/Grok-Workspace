@@ -30,6 +30,7 @@ export const taAccount = {
   "account.weeklyTitle": "வாராந்திர SuperGrok ஒதுக்கீடு",
   "account.quota": "பயன்படுத்தப்பட்ட ஒதுக்கீடு",
   "account.quotaRemaining": "மீதம்",
+  "account.usage": "பயன்பாடு",
   "account.quotaUsed": "பயன்படுத்தியது",
   "account.quotaUnknown": "ஒதுக்கீடு இன்னும் ஏற்றப்படவில்லை",
   "account.period": "பில்லிங் காலம்",

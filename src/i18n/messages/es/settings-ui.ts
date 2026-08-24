@@ -423,6 +423,8 @@ export const esSettingsUi = {
   "settings.autoUpdateError.other": "Falló la actualización. Aún puedes abrir la página de la versión de GitHub e instalar a mano.",
   "settings.autoUpdateChannelUnsupported": "Canal de actualización: instalación manual (este tipo de paquete no puede actualizarse automáticamente)",
   "settings.autoUpdateChannelHostOnly": "Canal de actualización: solo aplicación de escritorio (no disponible aquí)",
+  "settings.autoDownloadUpdates": "Descargar actualizaciones automáticamente",
+  "settings.autoDownloadUpdatesDesc": "Las compilaciones de versión firmadas se descargan en segundo plano y esperan a que confirmes Instalar y reiniciar. Las compilaciones sin firmar y locales siguen abriendo GitHub: nunca se instalan en silencio. Desactiva para iniciar la descarga tú.",
   "settings.askDemo.title": "Vía de demostración de preguntar al usuario",
   "settings.askDemo.desc": "Ruta sugerida para comparar Preguntar frente a YOLO sin buscar ajustes. La App solo prepara la política y un prompt de muestra — un cuestionario en vivo sigue dependiendo del modelo y la CLI.",
   "settings.askDemo.honesty": "Honestidad: el `ask_user_question` real depende del modelo y Grok Build CLI. La App nunca envía un prompt automáticamente ni afirma que el agente preguntará.",

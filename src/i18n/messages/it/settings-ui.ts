@@ -423,6 +423,8 @@ export const itSettingsUi = {
   "settings.autoUpdateError.other": "Aggiornamento non riuscito. Puoi comunque aprire la pagina della release GitHub e installare manualmente.",
   "settings.autoUpdateChannelUnsupported": "Canale aggiornamenti: installazione manuale (questo tipo di pacchetto non può auto-aggiornarsi)",
   "settings.autoUpdateChannelHostOnly": "Canale aggiornamenti: solo app desktop (non disponibile qui)",
+  "settings.autoDownloadUpdates": "Scarica automaticamente gli aggiornamenti",
+  "settings.autoDownloadUpdatesDesc": "Le build di release firmate si scaricano in background, poi attendono la conferma di Installa e riavvia. Le build non firmate e locali aprono ancora GitHub — nessuna installazione silenziosa. Disattiva per avviare tu il download.",
   "settings.askDemo.title": "Percorso demo ask-user",
   "settings.askDemo.desc": "Percorso suggerito per confrontare Ask vs YOLO senza cercare nelle impostazioni. L’app prepara solo policy e un prompt di esempio — un questionario live dipende ancora dal modello e dalla CLI.",
   "settings.askDemo.honesty": "Onestà: il vero `ask_user_question` dipende dal modello e da Grok Build CLI. L’app non invia mai automaticamente un prompt e non dichiara mai che l’agente chiederà.",

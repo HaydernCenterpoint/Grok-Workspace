@@ -30,6 +30,7 @@ export const ruAccount = {
   "account.weeklyTitle": "Недельная квота SuperGrok",
   "account.quota": "Использовано квоты",
   "account.quotaRemaining": "осталось",
+  "account.usage": "Использование",
   "account.quotaUsed": "использовано",
   "account.quotaUnknown": "Квота ещё не загружена",
   "account.period": "Расчётный период",

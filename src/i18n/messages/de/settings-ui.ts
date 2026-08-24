@@ -423,6 +423,8 @@ export const deSettingsUi = {
   "settings.autoUpdateError.other": "Update fehlgeschlagen. Die GitHub-Release-Seite kann trotzdem geöffnet und manuell installiert werden.",
   "settings.autoUpdateChannelUnsupported": "Update-Kanal: manuelle Installation (dieser Pakettyp kann nicht automatisch aktualisieren)",
   "settings.autoUpdateChannelHostOnly": "Update-Kanal: nur Desktop-App (hier nicht verfügbar)",
+  "settings.autoDownloadUpdates": "Updates automatisch laden",
+  "settings.autoDownloadUpdatesDesc": "Signierte Release-Builds laden im Hintergrund und warten auf „Installieren und neu starten“. Unsignierte und lokale Builds öffnen weiterhin GitHub — sie installieren nie still. Aus: du startest den Download selbst.",
   "settings.askDemo.title": "Ask-User-Demo-Pfad",
   "settings.askDemo.desc": "Vorgeschlagener Pfad, um Ask vs. YOLO zu vergleichen, ohne Einstellungen zu suchen. Die App bereitet nur Policy und einen Beispiel-Prompt vor — ein Live-Fragebogen hängt weiter vom Modell und der CLI ab.",
   "settings.askDemo.honesty": "Ehrlichkeit: echtes `ask_user_question` hängt vom Modell und der Grok Build CLI ab. Die App sendet nie automatisch einen Prompt und behauptet nie, der Agent werde fragen.",

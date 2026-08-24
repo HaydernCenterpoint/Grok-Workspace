@@ -30,6 +30,7 @@ export const koAccount = {
   "account.weeklyTitle": "주간 SuperGrok 할당량",
   "account.quota": "사용한 할당량",
   "account.quotaRemaining": "남음",
+  "account.usage": "사용량",
   "account.quotaUsed": "사용됨",
   "account.quotaUnknown": "할당량을 아직 불러오지 않음",
   "account.period": "결제 주기",

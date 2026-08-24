@@ -2,6 +2,8 @@
  * Chat transcript reading width (Appearance).
  * localStorage-only — no Rust AppSettings (avoids prefs schema conflicts).
  * Applied via `data-chat-width` on `document.documentElement`.
+ * Build / Office / Studio transcripts ignore this ladder and use
+ * `--composer-width-max` (see lobe-chat.part3.css).
  *
  * - `narrow`  (~760px)
  * - `medium`  (~1120px, default)

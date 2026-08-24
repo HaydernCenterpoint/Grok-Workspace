@@ -126,6 +126,13 @@ async fn run_once(
                                     if let Some(incoming) = parse_message(inst, v.get("d").unwrap_or(&json!({}))) {
                                         let _ = tx.send(incoming).await;
                                     }
+                                } else if t == "INTERACTION_CREATE" {
+                                    let empty = json!({});
+                                    let d = v.get("d").unwrap_or(&empty);
+                                    ack_interaction(token, d).await;
+                                    if let Some(incoming) = parse_interaction(inst, d) {
+                                        let _ = tx.send(incoming).await;
+                                    }
                                 }
                             }
                             9 => return Err("discord invalid session".into()),
@@ -141,6 +148,64 @@ async fn run_once(
             }
         }
     }
+}
+
+async fn ack_interaction(token: &str, d: &Value) {
+    let id = d.get("id").and_then(|x| x.as_str()).unwrap_or("");
+    let interaction_token = d.get("token").and_then(|x| x.as_str()).unwrap_or("");
+    if id.is_empty() || interaction_token.is_empty() {
+        return;
+    }
+    let Ok(client) = http_client() else {
+        return;
+    };
+    let url = format!("https://discord.com/api/v10/interactions/{id}/{interaction_token}/callback");
+    let _ = client
+        .post(url)
+        .header("Authorization", format!("Bot {token}"))
+        .json(&json!({ "type": 6 }))
+        .send()
+        .await;
+}
+
+fn parse_interaction(inst: &ChannelInstance, d: &Value) -> Option<IncomingMessage> {
+    // 3 = MESSAGE_COMPONENT
+    if d.get("type").and_then(|x| x.as_i64()) != Some(3) {
+        return None;
+    }
+    let data = d
+        .pointer("/data/custom_id")
+        .and_then(|x| x.as_str())
+        .map(str::trim)
+        .filter(|s| !s.is_empty())?;
+    let chat_id = d
+        .get("channel_id")
+        .and_then(|x| x.as_str())
+        .unwrap_or("")
+        .to_string();
+    let message_id = d
+        .pointer("/message/id")
+        .and_then(|x| x.as_str())
+        .unwrap_or("")
+        .to_string();
+    let sender_id = d
+        .pointer("/member/user/id")
+        .or_else(|| d.pointer("/user/id"))
+        .and_then(|x| x.as_str())
+        .unwrap_or("")
+        .to_string();
+    let guild = d.get("guild_id").and_then(|x| x.as_str());
+    Some(IncomingMessage {
+        channel: inst.channel.clone(),
+        instance_id: inst.id.clone(),
+        message_id,
+        chat_id,
+        chat_type: if guild.is_some() { "group" } else { "p2p" }.into(),
+        sender_id,
+        content: format!("__card_action__:{data}"),
+        mentioned_bot: true,
+        thread_id: None,
+    })
 }
 
 fn parse_message(inst: &ChannelInstance, d: &Value) -> Option<IncomingMessage> {
@@ -219,4 +284,88 @@ pub async fn send_text(
         return Err(format!("discord send: {}", res.status()));
     }
     Ok(())
+}
+
+pub async fn send_card(
+    secrets: &std::collections::HashMap<String, String>,
+    channel_id: &str,
+    card: &Value,
+) -> Result<(), String> {
+    discord_message(secrets, channel_id, None, card).await
+}
+
+pub async fn edit_card(
+    secrets: &std::collections::HashMap<String, String>,
+    channel_id: &str,
+    message_id: &str,
+    card: &Value,
+) -> Result<(), String> {
+    discord_message(secrets, channel_id, Some(message_id), card).await
+}
+
+async fn discord_message(
+    secrets: &std::collections::HashMap<String, String>,
+    channel_id: &str,
+    message_id: Option<&str>,
+    card: &Value,
+) -> Result<(), String> {
+    let token = secrets
+        .get("bot_token")
+        .or_else(|| secrets.get("token"))
+        .map(|s| s.as_str())
+        .ok_or_else(|| "missing bot_token".to_string())?;
+    let client = http_client()?;
+    let body = json!({
+        "content": card.get("content").and_then(|x| x.as_str()).unwrap_or("Select:"),
+        "components": card.get("components").cloned().unwrap_or(json!([])),
+    });
+    let req = if let Some(mid) = message_id.filter(|s| !s.is_empty()) {
+        let url = format!("https://discord.com/api/v10/channels/{channel_id}/messages/{mid}");
+        client.patch(url)
+    } else {
+        let url = format!("https://discord.com/api/v10/channels/{channel_id}/messages");
+        client.post(url)
+    };
+    let res = req
+        .header("Authorization", format!("Bot {token}"))
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    if !res.status().is_success() {
+        return Err(format!("discord card: {}", res.status()));
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn interaction_maps_to_card_action() {
+        let inst = ChannelInstance {
+            id: "dc-1".into(),
+            channel: "discord".into(),
+            name: "Bot".into(),
+            enabled: true,
+            secrets: std::collections::HashMap::new(),
+            options: json!({}),
+            acl: json!({}),
+            project_scope: json!({}),
+        };
+        let d = json!({
+            "type": 3,
+            "channel_id": "ch1",
+            "guild_id": "g1",
+            "user": { "id": "u1" },
+            "message": { "id": "m1" },
+            "data": { "custom_id": "session:s1", "component_type": 2 }
+        });
+        let incoming = parse_interaction(&inst, &d).expect("interaction");
+        assert_eq!(incoming.content, "__card_action__:session:s1");
+        assert_eq!(incoming.chat_id, "ch1");
+        assert_eq!(incoming.message_id, "m1");
+        assert_eq!(incoming.chat_type, "group");
+    }
 }

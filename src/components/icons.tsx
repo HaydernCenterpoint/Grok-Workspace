@@ -70,6 +70,7 @@ import {
   IconLayoutSidebar as TbLayoutSidebar,
   IconLayoutSidebarRight as TbLayoutSidebarRight,
   IconLink as TbLink,
+  IconLogout as TbLogout,
   IconList as TbList,
   IconListCheck as TbListCheck,
   IconListNumbers as TbListNumbers,
@@ -249,6 +250,8 @@ export const IconSeparator = wrap(TbSeparator);
 export const IconCrop = wrap(TbCrop);
 export const IconNotes = wrap(TbNotes);
 export const IconImagine = wrap(TbWand);
+export const IconPhoto = wrap(TbPhoto);
+export const IconSquare = wrap(TbSquare);
 export const IconVideo = wrap(TbMovie);
 export const IconAutomations = wrap(TbBolt);
 /** Scheduled / “已安排” nav — calendar clock. */
@@ -304,6 +307,7 @@ export const IconList = wrap(TbList);
 export const IconListCheck = wrap(TbListCheck);
 export const IconInstructions = wrap(TbFileText);
 export const IconSettings = wrap(TbSettings);
+export const IconLogout = wrap(TbLogout);
 export const IconHexagon = wrap(TbHexagon);
 
 /** Settings / slash pet — hex body with two short vertical eyes. */

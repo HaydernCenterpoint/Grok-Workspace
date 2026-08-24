@@ -6,13 +6,7 @@
 import { useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { SidebarBrand } from "@/components/SidebarBrand";
-import {
-  IconCheck,
-  IconChevronDown,
-  IconCode,
-  IconFileText,
-  IconImagine,
-} from "@/components/icons";
+import { IconCheck, IconChevronDown } from "@/components/icons";
 import { useFloatingMenu } from "@/lib/floatingMenu";
 import type { WorkMode } from "@/lib/grokOffice";
 import type { ProviderBrandId } from "@/lib/providerPresets";
@@ -56,8 +50,8 @@ export function SidebarProductSwitch({
     onClose: () => setOpen(false),
     placement: "auto",
     fitContent: true,
-    minWidth: 240,
-    estHeight: 198,
+    minWidth: 268,
+    estHeight: 188,
     gap: 6,
   });
 
@@ -113,9 +107,6 @@ export function SidebarProductSwitch({
                 setOpen(false);
               }}
             >
-              <span className="cmm__opt-icon" aria-hidden>
-                <IconCode size={16} />
-              </span>
               <span className="cmm__opt-main">
                 <span className="cmm__opt-title">{labels.build}</span>
                 <span className="cmm__opt-desc">{labels.buildTip}</span>
@@ -135,9 +126,6 @@ export function SidebarProductSwitch({
                 setOpen(false);
               }}
             >
-              <span className="cmm__opt-icon" aria-hidden>
-                <IconFileText size={16} />
-              </span>
               <span className="cmm__opt-main">
                 <span className="cmm__opt-title">{labels.office}</span>
                 <span className="cmm__opt-desc">{labels.officeTip}</span>
@@ -157,9 +145,6 @@ export function SidebarProductSwitch({
                 setOpen(false);
               }}
             >
-              <span className="cmm__opt-icon" aria-hidden>
-                <IconImagine size={16} />
-              </span>
               <span className="cmm__opt-main">
                 <span className="cmm__opt-title">{labels.studio}</span>
                 <span className="cmm__opt-desc">{labels.studioTip}</span>

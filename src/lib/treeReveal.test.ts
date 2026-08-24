@@ -152,15 +152,22 @@ describe("tree-reveal CSS", () => {
     "utf8",
   );
 
-  it("drives the L1 projects chevron, not only per-project chats", () => {
-    const src = readFileSync(
+  it("drives the L1 surface and Recents chevrons, not only per-project chats", () => {
+    const workbench = readFileSync(
       resolve(__dirname, "../app/AppWorkbench.tsx"),
       "utf8",
     );
-    expect(src).toMatch(
-      /<SidebarTreeReveal open=\{projectsOpen\} className="tree-reveal--projects">/,
+    const trees = readFileSync(
+      resolve(__dirname, "../components/SidebarSurfaceTrees.tsx"),
+      "utf8",
     );
-    expect(src).toMatch(/syncTreeReveal/);
+    expect(trees).toMatch(
+      /<SidebarTreeReveal[\s\S]*open=\{open\}[\s\S]*className="tree-reveal--projects"/,
+    );
+    expect(trees).toMatch(
+      /<SidebarTreeReveal[\s\S]*open=\{recentsOpen\}[\s\S]*className="tree-reveal--projects"/,
+    );
+    expect(workbench).toMatch(/syncTreeReveal/);
   });
 
   it("hides the sidebar overlay thumb while the project list is moving", () => {
@@ -205,26 +212,28 @@ describe("project / orphan flex shrink", () => {
   });
 });
 
-describe("Other sessions tree wrap", () => {
+describe("Recents tree wrap", () => {
   const src = readFileSync(
-    resolve(__dirname, "../app/AppWorkbench.tsx"),
+    resolve(__dirname, "../components/SidebarSurfaceTrees.tsx"),
     "utf8",
   );
 
-  it("wraps the Other-sessions reveal in a block .tree-orphan like .tree-project", () => {
+  it("wraps Recents sessions in a block .tree-orphan like .tree-project", () => {
     expect(src).toContain('className="tree-orphan"');
     expect(src).toMatch(
-      /className="tree-orphan"[\s\S]*SidebarTreeReveal open=\{historyOpen\}/,
+      /SidebarTreeReveal[\s\S]*open=\{recentsOpen\}[\s\S]*className="tree-orphan"/,
     );
   });
 
-  it("keeps Other-session rows on the same left inset as project L3", () => {
+  it("keeps Recents rows on the same left inset as project L3", () => {
     const part2 = readFileSync(
       resolve(__dirname, "../styles/sidebar.part2.css"),
       "utf8",
     );
     expect(part2).not.toMatch(/\.tree-orphan\s+\.tree-l3-list-wrap/);
-    expect(part2).not.toMatch(/\.tree-l3--orphan\s*\{/);
+    expect(part2).toMatch(
+      /\.tree-l3,\s*\.tree-l3--orphan\s*\{[^}]*var\(--tree-text-inset\)/,
+    );
     expect(part2).not.toMatch(/\.tree-date-group--orphan/);
   });
 });
@@ -247,7 +256,7 @@ describe("sidebar tree text columns", () => {
     "utf8",
   );
   const src = readFileSync(
-    resolve(__dirname, "../app/AppWorkbench.tsx"),
+    resolve(__dirname, "../components/SidebarSurfaceTrees.tsx"),
     "utf8",
   );
 
@@ -264,14 +273,17 @@ describe("sidebar tree text columns", () => {
       /\.tree-l1__head--toggle,\s*\.tree-l1__chevron\s*\{[^}]*var\(--tree-l1-gutter\)/,
     );
     expect(part1).toMatch(/\.tree-l2\s*\{[^}]*var\(--tree-l2-pad\)/);
-    expect(part2).toMatch(/\.tree-l3\s*\{[^}]*var\(--tree-text-inset\)/);
+    expect(part2).toMatch(
+      /\.tree-l3,\s*\.tree-l3--orphan\s*\{[^}]*var\(--tree-text-inset\)/,
+    );
     expect(part4).toMatch(/\.nav-item__icon\s*\{[^}]*var\(--tree-l1-gutter\)/);
     expect(`${part1}\n${part2}\n${part4}`).not.toMatch(
       /var\(--tree-[a-z0-9-]+,\s*[^)]+\)/,
     );
   });
 
-  it("wraps the Other chevron in the shared L1 gutter", () => {
+  it("wraps the Recents chevron in the shared L1 gutter", () => {
     expect(src).toMatch(/className="tree-l1__chevron"/);
+    expect(src).toContain("recentsOpen");
   });
 });

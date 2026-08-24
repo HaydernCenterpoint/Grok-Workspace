@@ -815,20 +815,31 @@ export function isDisplayableAttachmentPath(path: string): boolean {
 }
 
 /**
+ * True when markdown/code will already paint this token as ImageUi / VideoUi.
+ * Bare prose paths (`Saved to C:\\…\\a.png`) are not citations — those still
+ * need the leftover attachment card.
+ */
+export function isMarkdownCitedMediaToken(
+  content: string,
+  token: string | null | undefined,
+): boolean {
+  const t = (token || "").trim();
+  if (!t || !content) return false;
+  if (content.includes(`\`${t}\``)) return true;
+  if (content.includes(`](${t})`)) return true;
+  if (content.includes(`](<${t}>)`)) return true;
+  return false;
+}
+
+/**
  * Attachments still shown below the message: non-media, or media that is
- * not already referenced (and thus inlined) in the message body.
+ * not already cited in a form MarkdownChat inlines (ticks / md links / images).
  */
 export function filterAttachmentsNotInlined(
   content: string,
   attachments?: Attachment[] | null,
 ): Attachment[] | undefined {
   if (!attachments?.length) return undefined;
-  const rels = new Set(
-    extractSessionRelativeMediaRefs(content).map((r) => r.replace(/\\/g, "/")),
-  );
-  const absInText = new Set(
-    extractMediaPathsFromContent(content).map((a) => a.path),
-  );
   const out = attachments.filter((a) => {
     // Hide unopenable false extracts (paperclip that cannot preview).
     if (!isDisplayableAttachmentPath(a.path)) return false;
@@ -836,24 +847,10 @@ export function filterAttachmentsNotInlined(
     const name = pathBasename(a.path);
     const norm = a.path.replace(/\\/g, "/");
     const rel = mediaTailFromPath(norm);
-    if (rel && rels.has(rel)) return false;
-    if (absInText.has(a.path)) return false;
-    if (rel && content.includes(rel)) return false;
-    if (rels.has(name)) return false;
-    if ([...rels].some((r) => r === name || r.endsWith(`/${name}`))) {
-      return false;
-    }
-    if (
-      content.includes(`\`${name}\``) ||
-      content.includes(`\`${a.path}\``) ||
-      (rel && content.includes(`\`${rel}\``))
-    ) {
-      return false;
-    }
-    // Markdown link / image form (`![alt](rel)` or `](basename)`)
-    if (rel && content.includes(`](${rel})`)) return false;
-    if (content.includes(`](${name})`)) return false;
-    return true;
+    const cited = [a.path, norm, name, rel].some((token) =>
+      isMarkdownCitedMediaToken(content, token),
+    );
+    return !cited;
   });
   return out.length ? out : undefined;
 }

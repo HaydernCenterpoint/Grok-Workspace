@@ -921,18 +921,10 @@ export const CHANNEL_SCHEMAS: ChannelSchema[] = [
 ];
 
 /**
- * Required channel ids for default sidebar completeness checks.
- * Soft-retired WPS channels are intentionally excluded.
+ * Required picker ids (Settings → Remote control sidebar).
+ * Domestic / other schemas stay in CHANNEL_SCHEMAS for legacy resolve only.
  */
 export const REQUIRED_CHANNEL_IDS: RemoteChannelId[] = [
-  "feishu",
-  "lark",
-  "dingtalk",
-  "wecom",
-  "weixin",
-  "weibo",
-  "qq",
-  "qqbot",
   "telegram",
   "slack",
   "discord",
@@ -975,6 +967,22 @@ export type FilterActiveChannelsOpts = {
 };
 
 /**
+ * Settings → Remote control picker. Domestic / other groups stay in
+ * CHANNEL_SCHEMAS for legacy resolve but are not listed in the GUI.
+ */
+export const PICKER_VISIBLE_GROUPS = ["overseas"] as const;
+
+export function isPickerVisibleChannel(
+  channel: string | ChannelSchema | null | undefined,
+): boolean {
+  if (channel == null) return false;
+  const schema =
+    typeof channel === "string" ? getChannelSchema(channel) : channel;
+  if (!schema) return false;
+  return (PICKER_VISIBLE_GROUPS as readonly string[]).includes(schema.group);
+}
+
+/**
  * Default sidebar / new-bind picker: active (non-retired) channels only.
  * Optionally re-includes retired channels that still have saved instances.
  */
@@ -989,6 +997,14 @@ export function filterActiveChannels(
     if (!includeLegacy) return false;
     return instances.some((i) => i.channel === schema.id);
   });
+}
+
+/** Sidebar / overview: overseas channels only, no Domestic / Other rows. */
+export function filterPickerChannels(
+  channels: readonly ChannelSchema[] = CHANNEL_SCHEMAS,
+  opts?: FilterActiveChannelsOpts,
+): ChannelSchema[] {
+  return filterActiveChannels(channels, opts).filter(isPickerVisibleChannel);
 }
 
 export function channelsByGroup(

@@ -8,7 +8,13 @@ import {
   loadDiscordPresencePref,
   packagePresenceLabel,
   parseDiscordPresencePref,
+  presenceEffortLabel,
+  presenceModelLabel,
   presenceProgressKey,
+  presenceQuotaLabel,
+  presenceQuotaLine,
+  presenceSessionLabel,
+  resolvePresenceStartSec,
   saveDiscordPresencePref,
   truncatePresenceLine,
   workspacePresenceKey,
@@ -61,18 +67,103 @@ describe("discordPresence", () => {
     expect(workspacePresenceKey("studio")).toBe("sidebar.studio");
   });
 
-  it("builds details / state with package, progress, and percent", () => {
+  it("builds details / state / assets with plan, quota, model, effort, session", () => {
     const payload = buildDiscordPresence({
-      projectName: "acme-api",
-      workspaceLabel: "Grok Studio",
       packageLabel: "SuperGrok Heavy",
-      progressLabel: "Working",
-      percent: 42.4,
+      quotaLabel: "99%",
+      modelLabel: "Grok 4.6",
+      effortLabel: "Extra high",
+      sessionLabel: "Fix login",
       startSec: 1_700_000_000,
     });
-    expect(payload.details).toBe("acme-api · Grok Studio");
-    expect(payload.state).toBe("SuperGrok Heavy · Working · 42%");
+    expect(payload.details).toBe("SuperGrok Heavy · 99%");
+    expect(payload.state).toBe("Grok 4.6 · Extra high · Fix login");
+    expect(payload.largeText).toBe("Fix login");
+    expect(payload.smallText).toBe("Grok 4.6 · Extra high");
     expect(payload.startSec).toBe(1_700_000_000);
+  });
+
+  it("omits unknown quota and maps session / effort / model helpers", () => {
+    expect(presenceQuotaLabel(null)).toBeNull();
+    expect(presenceQuotaLabel(99.4)).toBe("99%");
+    expect(
+      presenceQuotaLine({
+        signedIn: true,
+        remainingPercent: 42,
+        customRoute: false,
+      }),
+    ).toBe("42%");
+    expect(
+      presenceQuotaLine({
+        signedIn: true,
+        remainingPercent: 42,
+        customRoute: true,
+        customBalanceLine: "110.00 CNY",
+      }),
+    ).toBe("110.00 CNY");
+    expect(
+      presenceSessionLabel({
+        title: "New chat",
+        sessionId: "a1b2c3d4-e5f6-7890-abcd-ef0123456789",
+        isPlaceholder: true,
+        untitledLabel: "Untitled",
+      }),
+    ).toBe("a1b2c3d4");
+    expect(
+      presenceSessionLabel({
+        title: "Fix login",
+        sessionId: "a1b2c3d4-e5f6-7890-abcd-ef0123456789",
+        isPlaceholder: false,
+        untitledLabel: "Untitled",
+      }),
+    ).toBe("Fix login");
+    expect(
+      presenceModelLabel({
+        modelId: "grok-4.6",
+        officialLabel: "Grok 4.6",
+      }),
+    ).toBe("Grok 4.6");
+    expect(
+      presenceEffortLabel("xhigh", null, {
+        high: "High",
+        medium: "Medium",
+        low: "Low",
+        xhigh: "Extra high",
+      }),
+    ).toBe("Extra high");
+  });
+
+  it("resets elapsed on session change and turn start", () => {
+    const session = resolvePresenceStartSec({
+      nowSec: 100,
+      sessionId: "a",
+      prevSessionId: null,
+      prevProgress: null,
+      progress: "idle",
+      sessionStartSec: 1,
+      turnStartSec: null,
+    });
+    expect(session.startSec).toBe(100);
+    const turn = resolvePresenceStartSec({
+      nowSec: 140,
+      sessionId: "a",
+      prevSessionId: "a",
+      prevProgress: "idle",
+      progress: "working",
+      sessionStartSec: session.sessionStartSec,
+      turnStartSec: session.turnStartSec,
+    });
+    expect(turn.startSec).toBe(140);
+    const idle = resolvePresenceStartSec({
+      nowSec: 200,
+      sessionId: "a",
+      prevSessionId: "a",
+      prevProgress: "working",
+      progress: "idle",
+      sessionStartSec: turn.sessionStartSec,
+      turnStartSec: turn.turnStartSec,
+    });
+    expect(idle.startSec).toBe(100);
   });
 
   it("uses Free when signed out and truncates long lines", () => {

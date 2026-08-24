@@ -28,6 +28,8 @@
   --space-8: 48px;
 
   --sidebar-width: 260px;
+  /* Shared composer card (Grok Build / Office / Studio). */
+  --composer-width-max: 52rem;
   /*
    * Sidebar tree columns (nav icons, L1 chevron, L2 name, L3 title).
    * Change values here only — consumers use var() with no px fallback.
@@ -48,7 +50,12 @@
   --input-min-height: 52px;
   --control-height: 32px;
 
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* Bundled Inter (OFL). universalSans only if the OS has that face. */
+  --font-sans: "Inter Variable", Inter, universalSans, "Universal Sans", Roboto,
+    "Open Sans", Arial, "Segoe UI", "PingFang SC", "Hiragino Sans",
+    "Microsoft YaHei UI", "Yu Gothic UI", "Malgun Gothic", ui-sans-serif,
+    system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+    "Segoe UI Symbol", "Noto Color Emoji";
   --font-mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
 
   --text-xs: 12px;
@@ -81,11 +88,25 @@
    * Alpha ~0.4 reads clearly more open than 0.8 while text stays readable.
    * Win uses --bg-sidebar-solid (no system vibrancy).
    */
-  --bg-sidebar: rgba(16, 16, 16, 0.4);
-  --bg-sidebar-solid: #101010;
-  --bg-main: #151515;
-  --bg-aside: #101010;
-  --bg-elevated: #1a1a1a;
+  --bg-sidebar: rgba(23, 23, 23, 0.42);
+  /* ChatGPT rail: soft charcoal, not void black. Win/Linux paint this solid. */
+  --bg-sidebar-solid: #171717;
+  /* ChatGPT canvas sits a step above the rail so the column feels quiet, not cut. */
+  --bg-main: #212121;
+  --sidebar-wash:
+    radial-gradient(
+      ellipse 120% 56% at 50% -12%,
+      rgba(255, 255, 255, 0.07),
+      transparent 70%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.055) 0%,
+      rgba(255, 255, 255, 0.018) 32%,
+      transparent 62%
+    );
+  --bg-aside: #1a1a1a;
+  --bg-elevated: #2a2a2a;
   --bg-overlay: rgba(0, 0, 0, 0.55);
   --bg-hover: rgba(255, 255, 255, 0.05);
   --bg-active: rgba(255, 255, 255, 0.08);
@@ -114,8 +135,8 @@
    */
   --sidebar-blur: 120px;
   --sidebar-saturate: 2;
-  --sidebar-edge-line: rgba(255, 255, 255, 0.06);
-  --sidebar-edge-inset: none;
+  --sidebar-edge-line: transparent;
+  --sidebar-edge-inset: inset -28px 0 36px -24px rgba(0, 0, 0, 0.22);
 
   --border-subtle: rgba(255, 255, 255, 0.06);
   --border-strong: rgba(255, 255, 255, 0.12);
@@ -230,8 +251,20 @@
    * - Edge: soft inward shade at sidebar→main (see --sidebar-edge-inset)
    */
   /* More open glass — translucent white over light vibrancy */
-  --bg-sidebar: rgba(255, 255, 255, 0.38);
-  --bg-sidebar-solid: #ececef;
+  --bg-sidebar: rgba(255, 255, 255, 0.42);
+  --bg-sidebar-solid: #f4f4f4;
+  --sidebar-wash:
+    radial-gradient(
+      ellipse 120% 50% at 50% -10%,
+      rgba(255, 255, 255, 0.9),
+      transparent 68%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.72) 0%,
+      rgba(255, 255, 255, 0.2) 36%,
+      transparent 58%
+    );
   --bg-main: #ffffff;
   --bg-aside: #ffffff;
   --bg-elevated: #ffffff;
@@ -244,10 +277,8 @@
   --bg-user-bubble: #e8e8ed;
 
   /* Subtle edge only — tight inset, low opacity (hierarchy without drama) */
-  --sidebar-edge-line: rgba(0, 0, 0, 0.04);
-  --sidebar-edge-inset:
-    inset -1px 0 0 var(--sidebar-edge-line),
-    inset -8px 0 12px -8px rgba(0, 0, 0, 0.035);
+  --sidebar-edge-line: transparent;
+  --sidebar-edge-inset: inset -22px 0 28px -20px rgba(0, 0, 0, 0.045);
 
   --glass-surface: rgba(255, 255, 255, 0.72);
   --glass-surface-solid: rgba(255, 255, 255, 0.96);
@@ -346,6 +377,14 @@
   --radius-sm: 8px;
   --titlebar-height: 36px;
   --bg-sidebar: var(--bg-sidebar-solid);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  :root,
+  [data-theme="dark"],
+  [data-theme="light"] {
+    --sidebar-wash: linear-gradient(transparent, transparent);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

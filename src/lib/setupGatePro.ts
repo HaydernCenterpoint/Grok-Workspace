@@ -13,7 +13,7 @@
  */
 
 /** Wizard steps inside SetupWizard. */
-export type SetupWizardStep = "runtime" | "account" | "ready";
+export type SetupWizardStep = "runtime" | "account" | "appearance" | "ready";
 
 /**
  * App-level gate after boot probe.

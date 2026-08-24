@@ -34,6 +34,7 @@ import {
 } from "@/components/icons";
 import { ToolBucketIcon } from "./TimelinePhaseBlock";
 import { ToolExpandBody } from "./ToolExpandBody";
+import { ToolGrid } from "./ActivityLoaders";
 
 export function toolSegmentIsRunning(seg: MessageToolSegment): boolean {
   if (seg.streaming) return true;
@@ -167,7 +168,7 @@ export const TimelineToolRow = memo(function TimelineToolRow({
     >
       <div className="grok-act__icon-col" aria-hidden>
         <span className="grok-act__icon">
-          <ToolKindIcon tool={tool} />
+          {running ? <ToolGrid /> : <ToolKindIcon tool={tool} />}
         </span>
       </div>
       {hasBody ? (
@@ -328,7 +329,9 @@ export function TimelineToolGroup({
       >
         <div className="grok-act__icon-col" aria-hidden>
           <span className="grok-act__icon">
-            {allSearch ? (
+            {running ? (
+              <ToolGrid />
+            ) : allSearch ? (
               <IconSearch size={16} stroke={1.5} />
             ) : (
               <ToolBucketIcon bucket={dominantBucket} toolKind={groupKind} />
