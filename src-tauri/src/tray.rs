@@ -728,7 +728,7 @@ mod badge_tests {
 
     #[test]
     fn tray_theme_watch_shares_personalize_waiter() {
-        assert!(TRAY_THEME_NOTIFY_RETRY_SECS >= 15);
+        const { assert!(TRAY_THEME_NOTIFY_RETRY_SECS >= 15) };
         assert_ne!(TRAY_THEME_NOTIFY_RETRY_SECS, 1);
         assert_eq!(
             TRAY_THEME_NOTIFY_RETRY_SECS,

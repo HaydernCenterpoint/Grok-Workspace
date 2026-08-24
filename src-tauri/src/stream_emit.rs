@@ -135,8 +135,8 @@ mod tests {
 
     #[test]
     fn background_interval_is_slower() {
-        assert!(BACKGROUND_STREAM_EMIT_MS > DEFAULT_STREAM_EMIT_MS);
-        assert!(BACKGROUND_STREAM_EMIT_MS <= MAX_STREAM_EMIT_MS);
+        const { assert!(BACKGROUND_STREAM_EMIT_MS > DEFAULT_STREAM_EMIT_MS) };
+        const { assert!(BACKGROUND_STREAM_EMIT_MS <= MAX_STREAM_EMIT_MS) };
         set_main_window_focused(true);
         assert_eq!(stream_emit_interval_ms(), DEFAULT_STREAM_EMIT_MS);
         set_main_window_focused(false);
@@ -144,8 +144,9 @@ mod tests {
         set_main_window_focused(true);
     }
 
+    #[test]
     fn background_char_budget_is_looser() {
-        assert!(BACKGROUND_STREAM_EMIT_MAX_CHARS > DEFAULT_STREAM_EMIT_MAX_CHARS);
+        const { assert!(BACKGROUND_STREAM_EMIT_MAX_CHARS > DEFAULT_STREAM_EMIT_MAX_CHARS) };
         set_main_window_focused(true);
         assert_eq!(stream_emit_max_chars(), DEFAULT_STREAM_EMIT_MAX_CHARS);
         set_main_window_focused(false);

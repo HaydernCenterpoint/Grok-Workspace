@@ -139,7 +139,7 @@ mod tests {
 
     #[test]
     fn background_interval_is_slower() {
-        assert!(BACKGROUND_JOURNAL_FLUSH_MS > DEFAULT_JOURNAL_FLUSH_MS);
+        const { assert!(BACKGROUND_JOURNAL_FLUSH_MS > DEFAULT_JOURNAL_FLUSH_MS) };
         crate::stream_emit::set_main_window_focused(true);
         assert_eq!(
             live_journal_flush_interval(),

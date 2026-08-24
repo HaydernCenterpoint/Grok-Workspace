@@ -1425,7 +1425,7 @@ mod tests {
             pet_cursor_watch_sleep_ms(false, false, true),
             PET_CURSOR_WATCH_ACTIVE_MS
         );
-        assert!(PET_CURSOR_WATCH_PARKED_MS > PET_CURSOR_WATCH_IDLE_MS);
+        const { assert!(PET_CURSOR_WATCH_PARKED_MS > PET_CURSOR_WATCH_IDLE_MS) };
     }
 
     #[test]
