@@ -27,4 +27,9 @@ describe("boot splash", () => {
     expect(html).toMatch(/<html\b[^>]*\blang="en"/);
     expect(html).not.toMatch(/lang="zh-CN"/);
   });
+
+  it("parks the boot sheen when the document is hidden", () => {
+    expect(html).toContain("data-splash-park");
+    expect(html).toContain("visibilitychange");
+  });
 });

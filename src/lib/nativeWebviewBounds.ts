@@ -25,6 +25,19 @@ export function boundsNearlyEqual(
   );
 }
 
+/**
+ * Skip applying native webview bounds while click-toggle pane motion is
+ * interpolating — unless the user is live-dragging a split (motion tokens
+ * can be leftover; `.is-resizing` must still retarget the child webview).
+ */
+export function shouldDeferNativeWebviewBoundsSync(opts: {
+  paneSplitMotionActive: boolean;
+  workbenchSplitResizing: boolean;
+}): boolean {
+  if (opts.workbenchSplitResizing) return false;
+  return opts.paneSplitMotionActive;
+}
+
 /** Round to device-ish integers so WKWebView/WebView2 don't thrash on .3px. */
 export function snapBounds(b: BoundsPx): BoundsPx {
   return {

@@ -8,6 +8,8 @@ import {
   clampSidebarDragWidth,
   clampSidebarWidth,
   resolveSidebarDragEnd,
+  shouldCollapseSidebarFromDesired,
+  classifySidebarDragPointerSample,
   asideChromeSafeMin,
   asideSurfaceFromPreviewKind,
   suggestAsideWidth,
@@ -16,6 +18,7 @@ import {
   ASIDE_WIDTH_MIN,
   MAIN_CHAT_MIN_WIDTH,
   SIDEBAR_COLLAPSE_THRESHOLD,
+  SIDEBAR_DRAG_JUMP_PX,
   SIDEBAR_DEFAULT_WIDTH,
   SIDEBAR_WIDTH_MAX,
   SIDEBAR_WIDTH_MIN,
@@ -78,8 +81,9 @@ describe("layout prefs", () => {
   });
 
   it("clamps sidebar width to min / max and viewport room", () => {
-    // Collapse before deformation: threshold == open min.
-    expect(SIDEBAR_COLLAPSE_THRESHOLD).toBe(SIDEBAR_WIDTH_MIN);
+    // Snap is well below the painted open min so a short drag cannot collapse.
+    expect(SIDEBAR_COLLAPSE_THRESHOLD).toBeLessThan(SIDEBAR_WIDTH_MIN);
+    expect(SIDEBAR_COLLAPSE_THRESHOLD).toBe(96);
     expect(clampSidebarWidth(100)).toBe(SIDEBAR_WIDTH_MIN);
     expect(clampSidebarWidth(9999)).toBe(SIDEBAR_WIDTH_MAX);
     expect(clampSidebarWidth(280)).toBe(280);
@@ -109,16 +113,38 @@ describe("layout prefs", () => {
     expect(clampSidebarDragWidth(9999)).toBe(SIDEBAR_WIDTH_MAX);
   });
 
-  it("resolveSidebarDragEnd collapses below min, else keeps/clamps", () => {
-    expect(resolveSidebarDragEnd(100)).toEqual({
+  it("resolveSidebarDragEnd collapses only below snap, else stays open at min", () => {
+    expect(shouldCollapseSidebarFromDesired(80)).toBe(true);
+    expect(shouldCollapseSidebarFromDesired(SIDEBAR_COLLAPSE_THRESHOLD)).toBe(
+      false,
+    );
+    expect(shouldCollapseSidebarFromDesired(SIDEBAR_WIDTH_MIN - 1)).toBe(false);
+
+    expect(resolveSidebarDragEnd(80)).toEqual({
       action: "collapse",
       sidebarWidth: SIDEBAR_WIDTH_MIN,
     });
+    expect(
+      resolveSidebarDragEnd(80, { lastOpenWidth: 280 }),
+    ).toEqual({
+      action: "collapse",
+      sidebarWidth: 280,
+    });
+    expect(
+      resolveSidebarDragEnd(50, { lastOpenWidth: 80 }),
+    ).toEqual({
+      action: "collapse",
+      sidebarWidth: SIDEBAR_WIDTH_MIN,
+    });
+    // Between snap and open min → stay open at painted min
     expect(resolveSidebarDragEnd(SIDEBAR_WIDTH_MIN - 1)).toEqual({
-      action: "collapse",
+      action: "open",
       sidebarWidth: SIDEBAR_WIDTH_MIN,
     });
-    // At open min → stay open
+    expect(resolveSidebarDragEnd(SIDEBAR_COLLAPSE_THRESHOLD)).toEqual({
+      action: "open",
+      sidebarWidth: SIDEBAR_WIDTH_MIN,
+    });
     expect(resolveSidebarDragEnd(SIDEBAR_WIDTH_MIN)).toEqual({
       action: "open",
       sidebarWidth: SIDEBAR_WIDTH_MIN,
@@ -127,6 +153,44 @@ describe("layout prefs", () => {
       action: "open",
       sidebarWidth: 280,
     });
+  });
+
+  it("classifySidebarDragPointerSample ignores stray 0 / off-window, rebases jumps", () => {
+    expect(
+      classifySidebarDragPointerSample({
+        clientX: 0,
+        previousClientX: 240,
+        viewportWidth: 1200,
+      }),
+    ).toBe("ignore");
+    expect(
+      classifySidebarDragPointerSample({
+        clientX: -200,
+        previousClientX: 240,
+        viewportWidth: 1200,
+      }),
+    ).toBe("ignore");
+    expect(
+      classifySidebarDragPointerSample({
+        clientX: 240 + SIDEBAR_DRAG_JUMP_PX + 20,
+        previousClientX: 240,
+        viewportWidth: 1200,
+      }),
+    ).toBe("rebase");
+    expect(
+      classifySidebarDragPointerSample({
+        clientX: 220,
+        previousClientX: 240,
+        viewportWidth: 1200,
+      }),
+    ).toBe("apply");
+    expect(
+      classifySidebarDragPointerSample({
+        clientX: Number.NaN,
+        previousClientX: 240,
+        viewportWidth: 1200,
+      }),
+    ).toBe("ignore");
   });
 
   it("parseLayout clamps stored sidebarWidth", () => {

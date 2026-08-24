@@ -3,12 +3,25 @@
 use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
+use std::sync::Mutex;
 
 use serde::{Deserialize, Serialize};
 
 use crate::turn_lease::list_active_lease_session_ids;
 
 pub const SCHEMA: u32 = 1;
+
+static CACHED_RUNTIME: Mutex<Option<HostRuntime>> = Mutex::new(None);
+
+fn cache_runtime(rt: &HostRuntime) {
+    if let Ok(mut g) = CACHED_RUNTIME.lock() {
+        *g = Some(rt.clone());
+    }
+}
+
+fn take_cached_runtime() -> Option<HostRuntime> {
+    CACHED_RUNTIME.lock().ok().and_then(|mut g| g.take())
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -68,6 +81,7 @@ pub fn write_runtime(rt: &HostRuntime) -> std::io::Result<()> {
         f.flush()?;
     }
     fs::rename(tmp, path)?;
+    cache_runtime(rt);
     Ok(())
 }
 
@@ -132,7 +146,7 @@ pub fn on_process_start() {
 }
 
 pub fn touch_heartbeat() {
-    let Some(mut rt) = read_runtime() else {
+    let Some(mut rt) = take_cached_runtime().or_else(read_runtime) else {
         return;
     };
     rt.heartbeat_at = chrono::Utc::now().to_rfc3339();
@@ -228,6 +242,19 @@ mod tests {
             on_process_start();
             on_process_shutdown();
             assert!(read_runtime().unwrap().shutdown);
+        });
+    }
+
+    #[test]
+    fn touch_heartbeat_rewrites_without_rereading_cache() {
+        with_home(|| {
+            on_process_start();
+            let first = read_runtime().unwrap().heartbeat_at;
+            std::thread::sleep(std::time::Duration::from_millis(20));
+            touch_heartbeat();
+            let second = read_runtime().unwrap().heartbeat_at;
+            assert_ne!(first, second);
+            assert!(!read_runtime().unwrap().shutdown);
         });
     }
 }

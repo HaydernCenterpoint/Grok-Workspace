@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment jsdom
+ */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   __testAdvanceRelativeTimeTick,
@@ -48,5 +51,22 @@ describe("relativeTimeTickStore", () => {
     vi.advanceTimersByTime(60_000);
     expect(getRelativeTimeTick()).toBe(2);
     unsub();
+  });
+
+  it("parks the 60s timer while the document is hidden", () => {
+    vi.useFakeTimers();
+    const prev = Object.getOwnPropertyDescriptor(document, "visibilityState");
+    const spy = vi.fn();
+    const unsub = subscribeRelativeTimeTick(spy);
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      get: () => "hidden",
+    });
+    document.dispatchEvent(new Event("visibilitychange"));
+    vi.advanceTimersByTime(180_000);
+    expect(getRelativeTimeTick()).toBe(0);
+    expect(spy).not.toHaveBeenCalled();
+    unsub();
+    if (prev) Object.defineProperty(document, "visibilityState", prev);
   });
 });

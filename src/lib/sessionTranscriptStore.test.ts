@@ -1,5 +1,9 @@
 import { describe, expect, it, beforeEach, vi } from "vitest";
-import { sessionTranscriptStore } from "./sessionTranscriptStore";
+import {
+  __testSetTranscriptVisibility,
+  __testSetTranscriptWindowFocused,
+  sessionTranscriptStore,
+} from "./sessionTranscriptStore";
 import type { ChatMessage } from "./session";
 import { resolveTranscriptContentNotifyMs } from "./streamRenderPolicy";
 
@@ -215,5 +219,66 @@ describe("sessionTranscriptStore", () => {
     sessionTranscriptStore.abortJournalLoad("s3");
     expect(sessionTranscriptStore.isJournalHydrated("s3")).toBe(false);
     unsub();
+  });
+
+  it("defers content notify while hidden and flushes on show", () => {
+    __testSetTranscriptVisibility("hidden");
+    sessionTranscriptStore.setViewingSessionId("s1");
+    sessionTranscriptStore.setMessages([
+      msg({ id: "a1", role: "assistant", content: "he", streaming: true }),
+    ]);
+    let contentTicks = 0;
+    const unsub = sessionTranscriptStore.subscribeContent(() => {
+      contentTicks += 1;
+    });
+    sessionTranscriptStore.setMessages((prev) =>
+      prev.map((m) =>
+        m.id === "a1" ? { ...m, content: m.content + "llo" } : m,
+      ),
+    );
+    expect(sessionTranscriptStore.getMessages()[0]!.content).toBe("hello");
+    expect(contentTicks).toBe(0);
+    __testSetTranscriptVisibility("visible");
+    sessionTranscriptStore.flushHiddenContent();
+    expect(contentTicks).toBe(1);
+    unsub();
+  });
+
+  it("defers content notify while OS-unfocused and flushes on refocus", () => {
+    __testSetTranscriptVisibility("visible");
+    __testSetTranscriptWindowFocused(false);
+    sessionTranscriptStore.setViewingSessionId("s1");
+    sessionTranscriptStore.setMessages([
+      msg({ id: "a1", role: "assistant", content: "he", streaming: true }),
+    ]);
+    let contentTicks = 0;
+    let metaTicks = 0;
+    const unsubC = sessionTranscriptStore.subscribeContent(() => {
+      contentTicks += 1;
+    });
+    const unsubM = sessionTranscriptStore.subscribeMeta(() => {
+      metaTicks += 1;
+    });
+    sessionTranscriptStore.setMessages((prev) =>
+      prev.map((m) =>
+        m.id === "a1" ? { ...m, content: m.content + "llo" } : m,
+      ),
+    );
+    expect(sessionTranscriptStore.getMessages()[0]!.content).toBe("hello");
+    expect(contentTicks).toBe(0);
+    expect(metaTicks).toBe(0);
+
+    sessionTranscriptStore.setMessages((prev) => [
+      ...prev,
+      msg({ id: "a2", role: "assistant", content: "next", streaming: true }),
+    ]);
+    expect(metaTicks).toBe(1);
+    expect(contentTicks).toBe(0);
+
+    __testSetTranscriptWindowFocused(true);
+    sessionTranscriptStore.flushHiddenContent();
+    expect(contentTicks).toBe(1);
+    unsubC();
+    unsubM();
   });
 });

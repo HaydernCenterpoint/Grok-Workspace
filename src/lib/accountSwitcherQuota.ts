@@ -15,7 +15,14 @@ export type SwitcherQuota = {
   usedPercent: number | null;
   resetsAt: string | null;
   available: boolean;
+  /** Official display tier when the probe returned one — never invent SuperGrok. */
+  subscriptionTier: string | null;
 };
+
+function cleanTier(raw: string | null | undefined): string | null {
+  const t = (raw || "").trim();
+  return t || null;
+}
 
 export function switcherDisplayName(a: {
   displayName?: string | null;
@@ -44,6 +51,7 @@ export function quotaFromHostItem(item: {
   remainingPercent?: number | null;
   usedPercent?: number | null;
   resetsAt?: string | null;
+  subscriptionTier?: string | null;
   available: boolean;
 }): SwitcherQuota {
   if (!item.available) {
@@ -52,6 +60,7 @@ export function quotaFromHostItem(item: {
       usedPercent: null,
       resetsAt: null,
       available: false,
+      subscriptionTier: null,
     };
   }
   const percents = resolveQuotaPercents({
@@ -66,12 +75,14 @@ export function quotaFromHostItem(item: {
     usedPercent: percents.usedPercent,
     resetsAt: item.resetsAt ?? null,
     available: known,
+    subscriptionTier: cleanTier(item.subscriptionTier),
   };
 }
 
 export function liveQuotaFromBilling(
   billing: QuotaBillingLike | null | undefined,
   resetsAt?: string | null,
+  subscriptionTier?: string | null,
 ): SwitcherQuota {
   const percents = resolveQuotaPercents(billing);
   const known =
@@ -81,6 +92,7 @@ export function liveQuotaFromBilling(
     usedPercent: percents.usedPercent,
     resetsAt: resetsAt ?? null,
     available: known,
+    subscriptionTier: cleanTier(subscriptionTier),
   };
 }
 
@@ -100,14 +112,23 @@ export function mergeAccountQuota(
     remaining: number | null;
     used: number | null;
     resetsAt?: string | null;
+    subscriptionTier?: string | null;
   },
 ): SwitcherQuota | null {
   const hit = fetched[id];
-  if (isSwitcherQuotaKnown(hit)) return hit;
-
   const isCurrent =
     (!!current.id && current.id === id) ||
     (!!email && !!current.email && email === current.email);
+  if (isSwitcherQuotaKnown(hit)) {
+    if (isCurrent && !hit.subscriptionTier) {
+      return {
+        ...hit,
+        subscriptionTier: cleanTier(current.subscriptionTier),
+      };
+    }
+    return hit;
+  }
+
   const live: SwitcherQuota | null = isCurrent
     ? {
         remainingPercent: current.remaining,
@@ -116,6 +137,7 @@ export function mergeAccountQuota(
         available:
           (current.remaining != null && Number.isFinite(current.remaining)) ||
           (current.used != null && Number.isFinite(current.used)),
+        subscriptionTier: cleanTier(current.subscriptionTier),
       }
     : null;
 
@@ -126,6 +148,7 @@ export function mergeAccountQuota(
       usedPercent: null,
       resetsAt: null,
       available: false,
+      subscriptionTier: cleanTier(hit.subscriptionTier),
     };
   }
   return live;

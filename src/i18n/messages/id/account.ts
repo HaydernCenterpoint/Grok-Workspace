@@ -30,6 +30,7 @@ export const idAccount = {
   "account.weeklyTitle": "Kuota SuperGrok mingguan",
   "account.quota": "Kuota terpakai",
   "account.quotaRemaining": "tersisa",
+  "account.usage": "Penggunaan",
   "account.quotaUsed": "terpakai",
   "account.quotaUnknown": "Kuota belum dimuat",
   "account.period": "Periode penagihan",

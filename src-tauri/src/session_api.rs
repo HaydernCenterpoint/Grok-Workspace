@@ -6,6 +6,7 @@
 
 use std::fs;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use axum::extract::{Path, Query, State};
@@ -44,6 +45,17 @@ pub const CLI_HTTP_TIMEOUT_SECS: u64 = DISPATCH_TURN_TIMEOUT_SECS + 5;
 const HOST_BUSY_RETRY_MESSAGE: &str = "host busy: connect in progress, retry later";
 
 static QUEUE_FILE_LOCK: parking_lot::Mutex<()> = parking_lot::Mutex::new(());
+/// True until a drain/load proves the on-disk queue is empty. Starts true so
+/// a leftover file from a previous process is still picked up once.
+static QUEUE_MAYBE_NONEMPTY: AtomicBool = AtomicBool::new(true);
+
+fn mark_persisted_queue_len(len: usize) {
+    QUEUE_MAYBE_NONEMPTY.store(len > 0, Ordering::Relaxed);
+}
+
+pub fn persisted_queue_maybe_nonempty() -> bool {
+    QUEUE_MAYBE_NONEMPTY.load(Ordering::Relaxed)
+}
 
 fn drain_lock() -> &'static tokio::sync::Mutex<()> {
     static LOCK: std::sync::OnceLock<tokio::sync::Mutex<()>> = std::sync::OnceLock::new();
@@ -224,7 +236,9 @@ fn save_persisted_queue_unlocked(store: &PersistedQueue) {
 
 fn load_persisted_queue() -> PersistedQueue {
     let _g = QUEUE_FILE_LOCK.lock();
-    load_persisted_queue_unlocked()
+    let store = load_persisted_queue_unlocked();
+    mark_persisted_queue_len(store.items.len());
+    store
 }
 
 fn persist_queue_item(item: PersistedQueueItem) {
@@ -237,6 +251,7 @@ fn persist_queue_item(item: PersistedQueueItem) {
         store.items.drain(0..drop_n);
     }
     save_persisted_queue_unlocked(&store);
+    mark_persisted_queue_len(store.items.len());
 }
 
 fn take_persisted_head(session_id: &str) -> Option<PersistedQueueItem> {
@@ -248,6 +263,7 @@ fn take_persisted_head(session_id: &str) -> Option<PersistedQueueItem> {
         .position(|e| e.session_id == session_id)?;
     let item = store.items.remove(idx);
     save_persisted_queue_unlocked(&store);
+    mark_persisted_queue_len(store.items.len());
     Some(item)
 }
 
@@ -257,6 +273,7 @@ fn requeue_persisted_front(item: PersistedQueueItem) {
     store.items.retain(|e| e.item_id != item.item_id);
     store.items.insert(0, item);
     save_persisted_queue_unlocked(&store);
+    mark_persisted_queue_len(store.items.len());
 }
 
 pub fn emit_external_queue_take(app: &AppHandle, session_id: &str, item_id: &str) {
@@ -272,6 +289,9 @@ pub fn emit_external_queue_take(app: &AppHandle, session_id: &str, item_id: &str
 
 /// Host-side drain of persisted external prompts (webview is display-only).
 pub async fn drain_ready_external_queues(app: &AppHandle, mgr: &Arc<SessionManager>) {
+    if !persisted_queue_maybe_nonempty() {
+        return;
+    }
     let Ok(_drain) = drain_lock().try_lock() else {
         return;
     };
@@ -320,6 +340,9 @@ pub async fn drain_ready_external_queues(app: &AppHandle, mgr: &Arc<SessionManag
 
 /// Fire-and-forget so the stream-stall watchdog is not blocked on dispatch.
 pub fn schedule_drain_ready_external_queues(app: AppHandle, mgr: Arc<SessionManager>) {
+    if !persisted_queue_maybe_nonempty() {
+        return;
+    }
     tauri::async_runtime::spawn(async move {
         drain_ready_external_queues(&app, &mgr).await;
     });
@@ -1551,6 +1574,9 @@ mod tests {
         let rest = load_persisted_queue();
         assert_eq!(rest.items.len(), 1);
         assert_eq!(rest.items[0].item_id, "q-2");
+        assert!(persisted_queue_maybe_nonempty());
+        let _ = take_persisted_head("s1");
+        assert!(!persisted_queue_maybe_nonempty());
         std::env::remove_var("GROK_APP_HOME");
         let _ = std::fs::remove_dir_all(&tmp);
     }

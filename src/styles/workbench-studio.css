@@ -2,47 +2,55 @@
    Media-first: the generated image / clip is the answer, so it gets the room
    that code and prose get on the other two surfaces. */
 
-/* Two attributes so this always beats the html[data-chat-width] ladder. */
-html[data-work-mode="studio"][data-chat-width] {
-  --chat-width-max: 64rem;
-}
+/* Transcript + composer share `--composer-width-max`. Media cards stay a reading size. */
 
 html[data-work-mode="studio"] .lobe-chat-empty[data-studio="true"] {
-  align-items: center;
-  justify-content: flex-end;
-  min-height: 42vh;
-  padding: 2rem 0 0.5rem;
-  text-align: center;
+  min-height: 0;
+  padding: 24px 0;
 }
 
 .studio-start {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
   width: 100%;
   max-width: 40rem;
   margin: 0 auto;
-  padding: 12px 8px 8px;
+  padding: 0 16px;
+  text-align: center;
 }
 
-.studio-start__title {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 500;
-  letter-spacing: -0.02em;
+.studio-start .grok-logo,
+.studio-start .g-icon--grok-mark {
   color: var(--text-primary);
-  text-align: center;
+}
+
+.studio-start__slogan {
+  margin: 0;
+  max-width: 22rem;
+  font-size: clamp(1.35rem, 2.4vw, 1.75rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.25;
+  color: var(--text-primary);
 }
 
 .studio-tools {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  flex: 0 1 auto;
   min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
 }
 
-.studio__pills {
-  display: flex;
-  align-items: center;
-  gap: 2px;
+.studio-tools::-webkit-scrollbar {
+  display: none;
+  height: 0;
 }
 
 .studio__pill {
@@ -53,10 +61,12 @@ html[data-work-mode="studio"] .lobe-chat-empty[data-studio="true"] {
   padding: 0 10px;
   border: 0;
   border-radius: 999px;
-  background: transparent;
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
   color: var(--text-secondary);
   font: inherit;
   font-size: 12px;
+  white-space: nowrap;
+  flex-shrink: 0;
   cursor: pointer;
   transition:
     background var(--motion-fast) var(--ease-out),
@@ -66,11 +76,10 @@ html[data-work-mode="studio"] .lobe-chat-empty[data-studio="true"] {
 
 .studio__pill.is-on,
 .studio__pill:hover {
-  background: var(--bg-hover);
+  background: color-mix(in srgb, var(--text-primary) 14%, var(--bg-elevated, var(--bg-app)));
   color: var(--text-primary);
 }
 
-/* Keyboard parity with hover — the pills carry the whole Imagine bar. */
 .studio__pill:focus-visible {
   outline: 2px solid var(--border-focus);
   outline-offset: 2px;
@@ -82,30 +91,244 @@ html[data-work-mode="studio"] .lobe-chat-empty[data-studio="true"] {
 
 .studio__pill.is-locked {
   cursor: default;
-  background: var(--bg-hover);
+  background: color-mix(in srgb, var(--text-primary) 14%, var(--bg-elevated, var(--bg-app)));
   color: var(--text-primary);
 }
 
+/* Segmented Image / Video — sliding thumb (layoutId-style, CSS spring). */
+.studio-seg {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 2px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+}
+
+.studio-seg__thumb {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-primary) 16%, var(--bg-elevated, var(--bg-app)));
+  pointer-events: none;
+  opacity: 0;
+}
+
+.studio-seg__thumb.is-ready {
+  opacity: 1;
+  transition:
+    transform 380ms var(--motion-pane-ease),
+    width 380ms var(--motion-pane-ease);
+}
+
+.studio-seg__btn {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-tertiary);
+  font: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.studio-seg__btn.is-on {
+  color: var(--text-primary);
+}
+
+.studio-seg__btn:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 1px;
+}
+
+.studio-chip {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.studio-menu {
+  min-width: 140px;
+  padding: 6px;
+  z-index: 14000;
+}
+
+.studio-menu__opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 32px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.studio-menu__opt:hover,
+.studio-menu__opt.is-on {
+  background: var(--bg-hover);
+}
+
+.studio-menu__opt.is-on {
+  font-weight: 600;
+}
+
+.studio-menu__ratio {
+  min-width: 2.6em;
+  font-variant-numeric: tabular-nums;
+}
+
+.studio-menu__name {
+  flex: 1;
+  color: var(--text-secondary);
+}
+
+.studio-menu__opt.is-on .studio-menu__name {
+  color: var(--text-primary);
+}
+
+.studio-menu__check {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.studio-aspect {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.studio-aspect__preview {
+  position: relative;
+  width: 132px;
+  min-height: 132px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+}
+
+.studio-aspect__pane {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+  min-height: 132px;
+  padding: 10px 8px 8px;
+}
+
+.studio-aspect__pane.is-selected {
+  display: flex;
+}
+
+.studio-aspect:has(.studio-menu__opt:is(:hover, :focus-visible))
+  .studio-aspect__pane.is-selected {
+  display: none;
+}
+
+.studio-aspect:has(.studio-menu__opt[data-ratio="2:3"]:is(:hover, :focus-visible))
+  .studio-aspect__pane[data-preview="2:3"],
+.studio-aspect:has(.studio-menu__opt[data-ratio="3:2"]:is(:hover, :focus-visible))
+  .studio-aspect__pane[data-preview="3:2"],
+.studio-aspect:has(.studio-menu__opt[data-ratio="4:3"]:is(:hover, :focus-visible))
+  .studio-aspect__pane[data-preview="4:3"],
+.studio-aspect:has(.studio-menu__opt[data-ratio="1:1"]:is(:hover, :focus-visible))
+  .studio-aspect__pane[data-preview="1:1"],
+.studio-aspect:has(.studio-menu__opt[data-ratio="9:16"]:is(:hover, :focus-visible))
+  .studio-aspect__pane[data-preview="9:16"],
+.studio-aspect:has(.studio-menu__opt[data-ratio="16:9"]:is(:hover, :focus-visible))
+  .studio-aspect__pane[data-preview="16:9"],
+.studio-aspect:has(.studio-menu__opt[data-ratio="21:9"]:is(:hover, :focus-visible))
+  .studio-aspect__pane[data-preview="21:9"],
+.studio-aspect:has(.studio-menu__opt[data-ratio="5:2"]:is(:hover, :focus-visible))
+  .studio-aspect__pane[data-preview="5:2"],
+.studio-aspect:has(.studio-menu__opt[data-ratio="3:4"]:is(:hover, :focus-visible))
+  .studio-aspect__pane[data-preview="3:4"] {
+  display: flex;
+}
+
+.studio-aspect__stage {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 96px;
+}
+
+.studio-aspect__frame {
+  display: block;
+  border: 1.5px solid var(--text-primary);
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-primary) 12%, transparent);
+}
+
+.studio-aspect__caption {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.studio-aspect__list {
+  min-width: 168px;
+  max-height: min(360px, 50vh);
+  overflow-y: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .studio-seg__thumb,
+  .studio-seg__thumb.is-ready {
+    transition: none;
+  }
+}
+
 /*
- * Generated media at a usable size. ImageUi writes an inline 240×150 card box
- * plus `--img-ar`; inside a Studio answer we drop the box and let the ratio
- * drive height, so the frame still reserves its space (no CLS) but fills the
- * reading column. Scoped to `.chat-md` so composer / attachment strips
- * (`.lobe-chat-atts`) keep their chip sizing.
+ * Generated media at a reading size — larger than the 240×150 chip, not a
+ * full-column poster. Width stays definite (`min(...)`, never `auto`) so
+ * aspect-ratio cannot collapse to 0×0 before decode. Portraits are height-
+ * capped so 2:3 / 3:4 do not become a tower.
+ * Bottom leftover cards (`.lobe-chat-atts--images`) use the same measure.
  */
-html[data-work-mode="studio"] .chat-md .md-body__img-frame--card {
-  width: auto !important;
+html[data-work-mode="studio"] {
+  --studio-media-max-w: 26rem;
+  --studio-media-max-h: min(40vh, 20rem);
+}
+
+html[data-work-mode="studio"] .chat-md .md-body__img-frame--card,
+html[data-work-mode="studio"] .lobe-chat-atts--images .md-body__img-frame--card {
+  width: min(
+    100%,
+    var(--studio-media-max-w),
+    calc(var(--img-ar, 1.333) * var(--studio-media-max-h))
+  ) !important;
   height: auto !important;
   min-height: 0 !important;
-  max-height: none !important;
-  max-width: min(100%, 34rem) !important;
+  max-width: min(100%, var(--studio-media-max-w)) !important;
+  max-height: var(--studio-media-max-h) !important;
   aspect-ratio: var(--img-ar, 4 / 3) !important;
   border-radius: var(--radius-lg);
   box-shadow: var(--elev-1);
 }
 
 html[data-work-mode="studio"] .chat-md .md-body__video-card {
-  max-width: min(100%, 40rem);
+  width: min(100%, var(--studio-media-max-w));
+  max-width: min(100%, var(--studio-media-max-w));
   border-radius: var(--radius-lg);
   box-shadow: var(--elev-1);
 }

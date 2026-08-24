@@ -211,12 +211,15 @@ export function shouldExitComposerPlanModeAfterDecision(input: {
 
 /**
  * Side Workbench / Resources: open or focus the Plan tab.
- * Live plan visibility auto-opens; planFocusKey bumps open even when the
- * plan is not yet visible (bare plan-mode chip → open-in-resources empty).
+ * Auto-open only when a plan *becomes* visible, or when planFocusKey bumps
+ * (open-in-resources / review gate). A still-visible plan must not steal
+ * the tab back after the user closed it.
  */
 export function shouldOpenPlanSideTab(input: {
   autoOpenEnabled: boolean;
   planVisible: boolean;
+  /** Previous tick — used so a still-visible plan does not steal the tab back. */
+  lastPlanVisible: boolean;
   focusKey: number | null | undefined;
   lastFocusKey: number | null;
 }): { open: boolean; nextLastFocusKey: number | null } {
@@ -229,8 +232,9 @@ export function shouldOpenPlanSideTab(input: {
     focusBump = true;
     nextLast = input.focusKey;
   }
+  const becameVisible = !!input.planVisible && !input.lastPlanVisible;
   return {
-    open: !!input.planVisible || focusBump,
+    open: becameVisible || focusBump,
     nextLastFocusKey: nextLast,
   };
 }

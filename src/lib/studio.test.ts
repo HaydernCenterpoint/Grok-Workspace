@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   classifyStudioError,
+  clampStudioImageCount,
   extractStudioMediaPath,
   nextStudioAspect,
+  studioAspectBox,
   wrapStudioAgentText,
 } from "./studio";
 
@@ -19,9 +21,15 @@ describe("studio", () => {
   });
 
   it("cycles aspect ratios", () => {
-    expect(nextStudioAspect("1:1")).toBe("16:9");
-    expect(nextStudioAspect("3:2")).toBe("1:1");
-    expect(nextStudioAspect("nope")).toBe("1:1");
+    expect(nextStudioAspect("2:3")).toBe("3:2");
+    expect(nextStudioAspect("3:4")).toBe("2:3");
+    expect(nextStudioAspect("nope")).toBe("2:3");
+  });
+
+  it("sizes the aspect preview box", () => {
+    expect(studioAspectBox("16:9")).toEqual({ w: 16, h: 9 });
+    expect(studioAspectBox("1:1")).toEqual({ w: 1, h: 1 });
+    expect(studioAspectBox("bad")).toEqual({ w: 1, h: 1 });
   });
 
   it("wraps agent text without changing the user prompt line", () => {
@@ -34,6 +42,42 @@ describe("studio", () => {
     expect(wrapped.startsWith("Tạo ảnh Mèo")).toBe(true);
     expect(wrapped).toContain("image_gen");
     expect(wrapped).toContain("3:2");
+    expect(wrapped).toMatch(/do not load a skill/i);
+    expect(wrapped).not.toMatch(/exactly \d+ images/i);
+  });
+
+  it("clamps image count to 1–4", () => {
+    expect(clampStudioImageCount(1)).toBe(1);
+    expect(clampStudioImageCount(4)).toBe(4);
+    expect(clampStudioImageCount(0)).toBe(1);
+    expect(clampStudioImageCount(9)).toBe(4);
+    expect(clampStudioImageCount(Number.NaN)).toBe(1);
+  });
+
+  it("asks the agent for exactly N images when count is above 1", () => {
+    const wrapped = wrapStudioAgentText("Four cats", {
+      kind: "image",
+      aspect: "1:1",
+      resolution: "1080p",
+      duration: 6,
+      count: 4,
+    });
+    expect(wrapped.startsWith("Four cats")).toBe(true);
+    expect(wrapped).toContain("exactly 4 images");
+    expect(wrapped).toContain("4 times");
+    expect(wrapped).toContain("1:1");
+  });
+
+  it("ignores image count when wrapping video", () => {
+    const wrapped = wrapStudioAgentText("A walk", {
+      kind: "video",
+      aspect: "16:9",
+      resolution: "720p",
+      duration: 10,
+      count: 4,
+    });
+    expect(wrapped).toContain("image_to_video");
+    expect(wrapped).not.toContain("exactly 4 images");
   });
 
   it("classifies generate errors", () => {

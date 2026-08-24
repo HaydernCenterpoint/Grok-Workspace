@@ -23,6 +23,13 @@ describe("settingsCatalog", () => {
     expect(catalogInvariants()).toEqual([]);
   });
 
+  it("registers About auto-download updates", () => {
+    const entry = SETTINGS_ENTRIES.find((e) => e.id === "about.autoDownloadUpdates");
+    expect(entry?.section).toBe("about");
+    expect(entry?.anchorId).toBe("settings-anchor-autoDownloadUpdates");
+    expect(entry?.labelKey).toBe("settings.autoDownloadUpdates");
+  });
+
   it("registers three distinct static skin-share anchors", () => {
     const presets = SETTINGS_ENTRIES.find((e) => e.id === "appearance.skinPresets");
     const catalog = SETTINGS_ENTRIES.find((e) => e.id === "appearance.skinCatalog");
@@ -275,6 +282,11 @@ describe("settingsCatalog", () => {
     const claudeSkills = searchSettingsEntries("claude", tEn, tEn);
     expect(
       claudeSkills.some((h) => h.entry.id === "ext.skills.discoverExternal"),
+    ).toBe(true);
+    expect(
+      searchSettingsEntries("import from Codex", tEn, tEn).some(
+        (h) => h.entry.id === "ext.import",
+      ),
     ).toBe(true);
     expect(
       searchSettingsEntries("wallpaper", tEn, tEn).some(

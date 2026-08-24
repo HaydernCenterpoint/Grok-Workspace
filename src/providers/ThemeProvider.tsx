@@ -7,12 +7,17 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type ReactNode,
 } from "react";
 import { detectAppPlatform } from "@/lib/appPlatform";
+import { startVisibleInterval } from "@/lib/visibleInterval";
+import { installSplashParkFlag } from "@/lib/splashMotion";
+import { installWindowFocusedFlag } from "@/lib/windowFocusFlag";
+import { installWindowHiddenFlag } from "@/lib/windowHiddenFlag";
 import {
   applyNativeWindowTheme,
   applyThemePreference,
@@ -39,6 +44,8 @@ import {
 import {
   applySkinToDocument,
   applyWallpaperFlag,
+  applyWallpaperParkedFlag,
+  applyWallpaperVideoFlag,
   applyWallpaperScrimToDocument,
   clearWallpaper,
   loadSkin,
@@ -55,6 +62,12 @@ import {
   type WallpaperFocus,
   type WallpaperRecord,
 } from "@/lib/themeSkin";
+import {
+  installWallpaperParkGuard,
+  installWindowFocusParkHook,
+  parkWallpaperPlayback,
+  subscribeWallpaperPark,
+} from "@/lib/wallpaperPark";
 
 export type ThemeShellValue = {
   theme: Theme;
@@ -202,20 +215,18 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     if (!scheduleActive) return;
     const tick = () => setScheduleClock(new Date());
     tick();
-    const id = window.setInterval(tick, THEME_SCHEDULE_TICK_MS);
-    const onVis = () => {
-      if (document.visibilityState === "visible") tick();
-    };
-    document.addEventListener("visibilitychange", onVis);
-    return () => {
-      window.clearInterval(id);
-      document.removeEventListener("visibilitychange", onVis);
-    };
+    return startVisibleInterval(tick, THEME_SCHEDULE_TICK_MS);
   }, [scheduleActive]);
 
   useEffect(() => {
     applySkinToDocument(skin);
   }, [skin]);
+
+  useEffect(() => installWindowHiddenFlag(), []);
+  useEffect(() => installWindowFocusedFlag(), []);
+  useEffect(() => installSplashParkFlag(), []);
+  useEffect(() => installWallpaperParkGuard(), []);
+  useEffect(() => installWindowFocusParkHook(), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -234,7 +245,58 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     applyWallpaperFlag(wallpaperUrl !== null);
-  }, [wallpaperUrl]);
+    applyWallpaperVideoFlag(
+      wallpaperUrl !== null && wallpaperRecord?.kind === "video",
+    );
+  }, [wallpaperUrl, wallpaperRecord?.kind]);
+
+  // After a clip has played, WebView2 keeps the decoder/compositor hot if the
+  // object URL + wallpaper CSS flags stay up — even with `<video>` gone.
+  // Revoke the URL and drop flags (keep the blob in memory). Still-image frost
+  // is unchanged. Does not write IDB / shared settings.
+  useLayoutEffect(() => {
+    if (wallpaperRecord?.kind !== "video") {
+      applyWallpaperParkedFlag(false);
+      return;
+    }
+    const rec = wallpaperRecord;
+    let raf = 0;
+    let timer = 0;
+    const unsub = subscribeWallpaperPark((parked) => {
+      applyWallpaperParkedFlag(parked);
+      if (parked) {
+        applyWallpaperFlag(false);
+        applyWallpaperVideoFlag(false);
+        const url = wallpaperUrlRef.current;
+        wallpaperUrlRef.current = null;
+        parkWallpaperPlayback(url);
+        // Unmount after the media engine has processed load(). Same-turn
+        // React unmount is the 21:23 leftover (~41% / 13).
+        const dropUrl = () =>
+          setWallpaperUrl((prev) => (prev === null ? prev : null));
+        if (raf) cancelAnimationFrame(raf);
+        if (timer) window.clearTimeout(timer);
+        raf = requestAnimationFrame(() => {
+          raf = requestAnimationFrame(dropUrl);
+        });
+        timer = window.setTimeout(dropUrl, 80);
+        return;
+      }
+      if (raf) cancelAnimationFrame(raf);
+      if (timer) window.clearTimeout(timer);
+      raf = 0;
+      timer = 0;
+      if (wallpaperUrlRef.current || !rec.blob) return;
+      const url = URL.createObjectURL(rec.blob);
+      wallpaperUrlRef.current = url;
+      setWallpaperUrl(url);
+    });
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+      if (timer) window.clearTimeout(timer);
+      unsub();
+    };
+  }, [wallpaperRecord]);
 
   useEffect(() => {
     applyWallpaperScrimToDocument(wallpaperScrim);
@@ -362,10 +424,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
           opts?.onError?.(String(e));
           return;
         }
-        if (wallpaperUrlRef.current) {
-          URL.revokeObjectURL(wallpaperUrlRef.current);
-          wallpaperUrlRef.current = null;
-        }
+        const url = wallpaperUrlRef.current;
+        wallpaperUrlRef.current = null;
+        parkWallpaperPlayback(url);
         setWallpaperRecord(null);
         setWallpaperUrl(null);
         return;
@@ -380,8 +441,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         opts?.onError?.(String(e));
         return;
       }
+      const prevUrl = wallpaperUrlRef.current;
+      parkWallpaperPlayback(prevUrl);
       const url = URL.createObjectURL(toSave.blob);
-      if (wallpaperUrlRef.current) URL.revokeObjectURL(wallpaperUrlRef.current);
       wallpaperUrlRef.current = url;
       setWallpaperRecord(toSave);
       setWallpaperUrl(url);

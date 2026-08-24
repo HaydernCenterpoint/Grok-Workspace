@@ -184,14 +184,18 @@ pub fn start(app: AppHandle, mgr: Arc<SessionManager>) {
             "host automation scheduler started (window not required; tray-only ok)"
         );
         loop {
-            let outcome = fire_due_once(&app, &mgr).await;
-            mark_tick();
-            if outcome.kind == "error" {
-                warn!(
-                    target: "automation_runner",
-                    error = ?outcome.error,
-                    "tick error"
-                );
+            if store::automations_maybe_enabled() {
+                let outcome = fire_due_once(&app, &mgr).await;
+                mark_tick();
+                if outcome.kind == "error" {
+                    warn!(
+                        target: "automation_runner",
+                        error = ?outcome.error,
+                        "tick error"
+                    );
+                }
+            } else {
+                mark_tick();
             }
             tokio::time::sleep(TICK).await;
         }
@@ -249,6 +253,18 @@ pub fn start_oneshot(app: AppHandle, mgr: Arc<SessionManager>) {
 /// errors — never panics. Emits `automation://ran` / `automation://error` when
 /// a fire is attempted.
 pub async fn fire_due_once(app: &AppHandle, mgr: &Arc<SessionManager>) -> FireDueOutcome {
+    // Empty schedule list: skip disk + session locks after the first load.
+    if !store::automations_maybe_enabled() {
+        return FireDueOutcome {
+            kind: "none_due".into(),
+            automation_id: None,
+            title: None,
+            session_id: None,
+            error: None,
+            honesty: fire_due_honesty(),
+        };
+    }
+
     // Do not steal the agent while a turn is actively streaming.
     if mgr.any_turn_busy() {
         return FireDueOutcome {

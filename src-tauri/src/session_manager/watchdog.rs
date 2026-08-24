@@ -17,15 +17,22 @@ impl SessionManager {
     pub fn start_idle_watchdog(self: &Arc<Self>, app: AppHandle) {
         let mgr = Arc::clone(self);
         tauri::async_runtime::spawn(async move {
-            let mut ticker = tokio::time::interval(Duration::from_secs(30));
-            ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
             loop {
-                ticker.tick().await;
                 crate::host_runtime::touch_heartbeat();
-                mgr.tick_idle_recycle(&app).await;
+                let recycle = mgr.needs_idle_recycle();
+                if recycle {
+                    mgr.tick_idle_recycle(&app).await;
+                }
                 // Prewarm processes left un-consumed expire after a few minutes.
-                mgr.sweep_expired_prewarm(Duration::from_secs(10 * 60))
-                    .await;
+                let prewarm = mgr.needs_prewarm_sweep();
+                if prewarm {
+                    mgr.sweep_expired_prewarm(Duration::from_secs(10 * 60))
+                        .await;
+                }
+                tokio::time::sleep(Duration::from_secs(idle_watchdog_sleep_secs(
+                    recycle, prewarm,
+                )))
+                .await;
             }
         });
     }
@@ -35,18 +42,63 @@ impl SessionManager {
     pub fn start_stream_stall_watchdog(self: &Arc<Self>, app: AppHandle) {
         let mgr = Arc::clone(self);
         tauri::async_runtime::spawn(async move {
-            let mut ticker = tokio::time::interval(Duration::from_secs(5));
-            ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+            let mut first = true;
             loop {
-                ticker.tick().await;
-                mgr.tick_tool_heartbeats(&app);
-                mgr.tick_stream_stall(&app);
+                if !first {
+                    let wait = stream_watchdog_sleep_secs(
+                        mgr.needs_stream_watchdog(),
+                        crate::session_api::persisted_queue_maybe_nonempty(),
+                    );
+                    tokio::time::sleep(Duration::from_secs(wait)).await;
+                }
+                first = false;
+                if mgr.needs_stream_watchdog() {
+                    mgr.tick_tool_heartbeats(&app);
+                    mgr.tick_stream_stall(&app);
+                }
                 crate::session_api::schedule_drain_ready_external_queues(
                     app.clone(),
                     Arc::clone(&mgr),
                 );
             }
         });
+    }
+
+    /// Skip prewarm reap when the slot is empty (typical idle).
+    pub(super) fn needs_prewarm_sweep(&self) -> bool {
+        !matches!(*self.prewarm.lock(), PrewarmState::None)
+    }
+
+    /// Skip the connect-lock recycle walk when no session is warm.
+    pub(super) fn needs_idle_recycle(&self) -> bool {
+        if !self.parked.lock().is_empty() {
+            return true;
+        }
+        if !self.background.lock().is_empty() {
+            return true;
+        }
+        self.inner.lock().is_some()
+    }
+
+    /// Skip stall / tool-heartbeat walks when nothing is streaming or mid-tool.
+    pub(super) fn needs_stream_watchdog(&self) -> bool {
+        let live_busy = {
+            let guard = self.inner.lock();
+            guard.as_ref().is_some_and(Self::session_needs_watchdog)
+        };
+        if live_busy {
+            return true;
+        }
+        self.background
+            .lock()
+            .values()
+            .any(Self::session_needs_watchdog)
+    }
+
+    fn session_needs_watchdog(s: &LiveSession) -> bool {
+        s.fsm.state() == SessionState::Streaming
+            || s.prompt_in_flight
+            || !s.open_tool_ids.is_empty()
     }
 
     pub(super) fn tick_stream_stall(&self, app: &AppHandle) {
@@ -266,5 +318,58 @@ impl SessionManager {
                 );
             }
         }
+    }
+}
+
+/// Fully idle: 90s heartbeat. Warm session or prewarm slot: 30s.
+pub(super) fn idle_watchdog_sleep_secs(recycle: bool, prewarm: bool) -> u64 {
+    if recycle || prewarm {
+        30
+    } else {
+        90
+    }
+}
+
+/// Idle host: 30s. Live stream / leftover session-API queue: 5s.
+pub(super) fn stream_watchdog_sleep_secs(busy: bool, queue_maybe: bool) -> u64 {
+    if busy || queue_maybe {
+        5
+    } else {
+        30
+    }
+}
+
+#[cfg(test)]
+mod sleep_tests {
+    use super::{
+        idle_watchdog_sleep_secs, stream_watchdog_sleep_secs, PrewarmState, SessionManager,
+    };
+    use std::time::Instant;
+
+    #[test]
+    fn idle_sleep_is_slower() {
+        assert_eq!(stream_watchdog_sleep_secs(false, false), 30);
+        assert_eq!(stream_watchdog_sleep_secs(true, false), 5);
+        assert_eq!(stream_watchdog_sleep_secs(false, true), 5);
+        assert_eq!(stream_watchdog_sleep_secs(true, true), 5);
+    }
+
+    #[test]
+    fn idle_watchdog_sleeps_longer_when_cold() {
+        assert_eq!(idle_watchdog_sleep_secs(false, false), 90);
+        assert_eq!(idle_watchdog_sleep_secs(true, false), 30);
+        assert_eq!(idle_watchdog_sleep_secs(false, true), 30);
+    }
+
+    #[test]
+    fn needs_prewarm_sweep_skips_empty_slot() {
+        let mgr = SessionManager::new();
+        assert!(!mgr.needs_prewarm_sweep());
+        *mgr.prewarm.lock() = PrewarmState::Spawning {
+            since: Instant::now(),
+        };
+        assert!(mgr.needs_prewarm_sweep());
+        *mgr.prewarm.lock() = PrewarmState::None;
+        assert!(!mgr.needs_prewarm_sweep());
     }
 }

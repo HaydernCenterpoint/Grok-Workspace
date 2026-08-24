@@ -4,11 +4,11 @@
  */
 
 import { memo } from "react";
-import { Spinner } from "@/components/ui/spinner";
 import { Tip } from "@/components/ui/tooltip";
 import { useIsSessionBusy } from "@/hooks/useSessionLiveMap";
+import { ReasoningDots } from "@/components/lobe-chat/ActivityLoaders";
 
-/** Visible working spinner chip for a session row. */
+/** Visible working 3-dot chip for a session row. */
 export const SidebarSessionBusySpinner = memo(
   function SidebarSessionBusySpinner({
     sessionId,
@@ -26,7 +26,7 @@ export const SidebarSessionBusySpinner = memo(
           data-testid="sidebar-session-busy"
           aria-label={label}
         >
-          <Spinner size={14} className="tree-l3__spinner" />
+          <ReasoningDots className="tree-l3__spinner" />
         </span>
       </Tip>
     );

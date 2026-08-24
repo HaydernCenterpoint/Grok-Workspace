@@ -423,6 +423,8 @@ export const filSettingsUi = {
   "settings.autoUpdateError.other": "Nabigo ang update. Puwede mo pa ring buksan ang GitHub release page at i-install nang mano-mano.",
   "settings.autoUpdateChannelUnsupported": "Update channel: mano-manong install (hindi makapag-auto-update ang uri ng package na ito)",
   "settings.autoUpdateChannelHostOnly": "Update channel: desktop app lang (hindi available dito)",
+  "settings.autoDownloadUpdates": "Awtomatikong i-download ang mga update",
+  "settings.autoDownloadUpdatesDesc": "Ang mga signed release build ay dina-download sa background, tapos naghihintay ng kumpirma sa Install and restart. Ang unsigned at local builds ay nagbubukas pa rin ng GitHub — hindi sila silent-install. I-off para ikaw mismo mag-umpisa ng download.",
   "settings.askDemo.title": "Path ng Ask-user demo",
   "settings.askDemo.desc": "Iminumungkahing path para ihambing ang Ask vs YOLO nang hindi hinahanap ang mga setting. Inihanda lang ng App ang polisiya at sample na prompt — nakadepende pa rin ang live na questionnaire sa modelo at CLI.",
   "settings.askDemo.honesty": "Katapatan: nakadepende ang totoong `ask_user_question` sa modelo at Grok Build CLI. Hindi kailanman auto-send ng App ng prompt at hindi kailanman inaangkin na magtatanong ang agent.",

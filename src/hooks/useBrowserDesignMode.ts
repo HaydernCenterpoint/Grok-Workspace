@@ -4,6 +4,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { isTauri, sideBrowserEval } from "@/lib/api";
+import { startVisibleInterval } from "@/lib/visibleInterval";
 import {
   buildDesignModeClearScript,
   buildDesignModeInstallScript,
@@ -187,7 +188,6 @@ export function useBrowserDesignMode({
     ) {
       return;
     }
-    let timer = 0;
     let inflight = false;
     let cancelled = false;
     const gen = hostGenRef.current;
@@ -260,13 +260,13 @@ export function useBrowserDesignMode({
       }
     };
 
-    timer = window.setInterval(() => {
+    const stopPoll = startVisibleInterval(() => {
       void tick();
     }, POLL_MS);
     void tick();
     return () => {
       cancelled = true;
-      window.clearInterval(timer);
+      stopPoll();
     };
   }, [active, clearLocal, enabled, label, pageLoading, status]);
 

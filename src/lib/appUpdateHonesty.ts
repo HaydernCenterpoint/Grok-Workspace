@@ -622,6 +622,18 @@ export function shouldInstallWhenReady(intent: UpdateInstallIntent): boolean {
 }
 
 /**
+ * Signed silent discovery may auto-download only when the platform can
+ * in-app update AND the local auto-download pref is on. About / sidebar /
+ * banner still start download when the user asks.
+ */
+export function shouldSilentAutoDownload(input: {
+  autoUpdateSupported: boolean;
+  autoDownloadEnabled: boolean;
+}): boolean {
+  return input.autoUpdateSupported && input.autoDownloadEnabled;
+}
+
+/**
  * Signed in-app path: confirm before install+relaunch.
  * Manual GitHub (open URL) does not use this.
  */

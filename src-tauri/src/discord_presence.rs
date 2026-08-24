@@ -36,6 +36,8 @@ pub struct DiscordPresencePayload {
     pub details: String,
     pub state: String,
     pub start_sec: u64,
+    pub large_text: Option<String>,
+    pub small_text: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -247,19 +249,42 @@ where
     }
 }
 
+fn activity_object(p: &DiscordPresencePayload) -> serde_json::Value {
+    let mut activity = serde_json::json!({
+        "type": 0,
+        "name": "Grok App",
+        "details": truncate_line(&p.details),
+        "state": truncate_line(&p.state),
+        "timestamps": { "start": p.start_sec },
+        "instance": false,
+    });
+    let large = p
+        .large_text
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty());
+    let small = p
+        .small_text
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty());
+    if large.is_some() || small.is_some() {
+        let mut assets = serde_json::Map::new();
+        if let Some(t) = large {
+            assets.insert("large_text".into(), serde_json::json!(truncate_line(t)));
+        }
+        if let Some(t) = small {
+            assets.insert("small_text".into(), serde_json::json!(truncate_line(t)));
+        }
+        activity["assets"] = serde_json::Value::Object(assets);
+    }
+    activity
+}
+
 fn set_activity(payload: Option<&DiscordPresencePayload>) -> Result<(), String> {
     let nonce = Uuid::new_v4().to_string();
     let pid = std::process::id();
-    let activity = payload.map(|p| {
-        serde_json::json!({
-            "type": 0,
-            "name": "Grok App",
-            "details": truncate_line(&p.details),
-            "state": truncate_line(&p.state),
-            "timestamps": { "start": p.start_sec },
-            "instance": false,
-        })
-    });
+    let activity = payload.map(activity_object);
     let body = serde_json::json!({
         "cmd": "SET_ACTIVITY",
         "nonce": nonce,
@@ -321,6 +346,8 @@ pub async fn discord_presence_update(
     state: String,
     start_sec: u64,
     client_id: Option<String>,
+    large_text: Option<String>,
+    small_text: Option<String>,
 ) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
         remember_client_id(client_id);
@@ -328,6 +355,8 @@ pub async fn discord_presence_update(
             details,
             state,
             start_sec,
+            large_text,
+            small_text,
         })
     })
     .await
@@ -386,5 +415,22 @@ mod tests {
     fn detects_invalid_client_frames() {
         assert!(reject_if_error_frame(r#"{"code":4000,"message":"Invalid Client ID"}"#).is_err());
         assert!(reject_if_error_frame(r#"{"evt":"READY"}"#).is_ok());
+    }
+
+    #[test]
+    fn activity_includes_hover_assets() {
+        let activity = activity_object(&DiscordPresencePayload {
+            details: "SuperGrok Heavy · 99%".into(),
+            state: "Grok 4.6 · Extra high · Fix login".into(),
+            start_sec: 1_700_000_000,
+            large_text: Some("Fix login".into()),
+            small_text: Some("Grok 4.6 · Extra high".into()),
+        });
+        assert_eq!(activity["details"], "SuperGrok Heavy · 99%");
+        assert_eq!(activity["state"], "Grok 4.6 · Extra high · Fix login");
+        assert_eq!(activity["timestamps"]["start"], 1_700_000_000);
+        assert_eq!(activity["assets"]["large_text"], "Fix login");
+        assert_eq!(activity["assets"]["small_text"], "Grok 4.6 · Extra high");
+        assert!(activity.get("assets").unwrap().get("large_image").is_none());
     }
 }

@@ -266,6 +266,14 @@ export function summarizeGitDirty(
   };
 }
 
+export const GIT_DIRTY_POLL_BUSY_MS = 5_000;
+export const GIT_DIRTY_POLL_IDLE_MS = 15_000;
+
+/** Soft poll: live turns may `git switch`; idle only needs the chip. */
+export function gitDirtyPollMs(busy: boolean): number {
+  return busy ? GIT_DIRTY_POLL_BUSY_MS : GIT_DIRTY_POLL_IDLE_MS;
+}
+
 /** True when two chip summaries would paint the same (skip setState). */
 export function gitDirtySummariesEqual(
   a: GitDirtySummary | null | undefined,

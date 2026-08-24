@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import * as api from "@/lib/api";
+import { startVisibleInterval } from "@/lib/visibleInterval";
 import {
   computeNextRunAt,
   formatNextRunRelative,
@@ -226,8 +227,7 @@ export function AutomationsPage({
 
   // Refresh runner status occasionally while page is open.
   useEffect(() => {
-    const id = window.setInterval(() => void refreshRunner(), 45_000);
-    return () => window.clearInterval(id);
+    return startVisibleInterval(() => void refreshRunner(), 45_000);
   }, [refreshRunner]);
 
   // Live ring buffer updates from host fires + Run now (App records).
@@ -424,8 +424,7 @@ export function AutomationsPage({
 
   // Refresh relative "next run" labels once a minute.
   useEffect(() => {
-    const id = window.setInterval(() => setTick((n) => n + 1), 60_000);
-    return () => window.clearInterval(id);
+    return startVisibleInterval(() => setTick((n) => n + 1), 60_000);
   }, []);
 
   useEffect(() => {

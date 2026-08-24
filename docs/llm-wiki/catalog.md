@@ -75,6 +75,8 @@ Spawn：`--reasoning-effort <spawnId>`。Host **透传** catalog / 通道 id（�
 | `plan` | 计划模式（ACP `session/set_mode`） |
 | `ask` | 询问 / 偏只读协作 |
 
+Composer 权限芯片是一颗 pill：打开后只有 **Ask / Approve for me / Full access**（对齐 ChatGPT 三档，映射 CLI `default` / session grant / `bypassPermissions`）。产品 session mode（agent / plan / ask）不再出现在输入区——Plan 走 skill。Full access 用 Grok 标，选中整行橙色。模型芯片用 ChatGPT 式行：Model / Speed（effort）/ Context window。
+
 实现：
 
 1. 连接成功后 `session/set_mode`（尝试 `plan` / `ask` / `agent` 等候选 modeId）。  

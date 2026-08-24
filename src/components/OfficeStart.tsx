@@ -1,11 +1,12 @@
 /**
- * Grok Office start surface — daily-work starters above the composer.
- * Rows, not a card grid: picking one seeds the composer; the ACP agent still
- * does the work. Grok Build keeps its own welcome.
+ * Grok Office start surface — Grok mark + daily-work slogan + starter rows.
+ * Picking a row seeds the composer; the ACP agent still does the work.
+ * Grok Build keeps its own welcome (four coding lines).
  */
 
 import { useMemo } from "react";
 import { createT, type Locale } from "@/i18n";
+import { GrokLogo } from "@/components/GrokLogo";
 import {
   IconChevronRight,
   IconFileText,
@@ -35,6 +36,10 @@ function kindIcon(kind: OfficeStartKind) {
       return <IconPresentation size={16} />;
     case "sheet":
       return <IconTable size={16} />;
+    default: {
+      const _never: never = kind;
+      return _never;
+    }
   }
 }
 
@@ -48,11 +53,13 @@ export function OfficeStart({
 
   return (
     <div className="office-start">
-      <h2 className="office-start__title">
-        {name
-          ? tr("office.startTitleFromBuild", { name })
-          : tr("office.startTitle")}
-      </h2>
+      <GrokLogo size={56} />
+      <h2 className="office-start__slogan">{tr("office.welcomeSlogan")}</h2>
+      {name ? (
+        <p className="office-start__from">
+          {tr("office.startTitleFromBuild", { name })}
+        </p>
+      ) : null}
       <ul className="office-start__list">
         {OFFICE_START_KINDS.map((kind) => (
           <li key={kind}>

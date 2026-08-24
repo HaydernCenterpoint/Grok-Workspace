@@ -5,6 +5,7 @@ import {
   SESSION_DRAG_HOLD_MS,
   SESSION_DRAG_THRESHOLD_PX,
   sessionDragArmDecision,
+  sessionDragChangesHome,
   sessionDragDropFromElements,
   sessionDragShouldTrackPointer,
 } from "@/hooks/useSidebarSessionMoveDrag";
@@ -120,12 +121,66 @@ describe("sidebar attach vs move gestures", () => {
       kind: "move",
       node: project,
       projectId: "proj-a",
+      surface: null,
     });
     expect(sessionDragDropFromElements([orphan])).toEqual({
       kind: "move",
       node: orphan,
       projectId: null,
+      surface: null,
     });
     expect(sessionDragDropFromElements([ghost])).toEqual({ kind: "none" });
+  });
+
+  it("does not reorder inside a list; recency owns order. Cross-surface retag snaps back", () => {
+    if (typeof document === "undefined") return;
+    const row = document.createElement("div");
+    row.className = "tree-l3";
+    row.dataset.sessionId = "s1";
+    row.dataset.sessionList = "folderless:code";
+    Object.defineProperty(row, "getBoundingClientRect", {
+      value: () => ({ top: 0, height: 24, bottom: 24, left: 0, right: 100, width: 100 }),
+    });
+    const other = document.createElement("div");
+    other.className = "tree-l3";
+    other.dataset.sessionId = "s2";
+    other.dataset.sessionList = "folderless:office";
+    const header = document.createElement("div");
+    header.className = "tree-l1";
+    header.dataset.surfaceDrop = "studio";
+    const officeFolder = document.createElement("div");
+    officeFolder.setAttribute("data-session-drop", "proj-office");
+    officeFolder.dataset.sessionDropSurface = "office";
+    const buildFolder = document.createElement("div");
+    buildFolder.setAttribute("data-session-drop", "proj-build");
+    buildFolder.dataset.sessionDropSurface = "code";
+
+    expect(sessionDragChangesHome("code", "office")).toBe(true);
+    expect(sessionDragChangesHome("code", "code")).toBe(false);
+    expect(sessionDragChangesHome("code", null)).toBe(false);
+
+    const fromBuild = {
+      sourceListKey: "folderless:code",
+      sourceProjectId: null,
+      sourceWorkMode: "code" as const,
+    };
+    expect(
+      sessionDragDropFromElements([row], { ...fromBuild, clientY: 20 }),
+    ).toEqual({ kind: "none" });
+    expect(sessionDragDropFromElements([other], fromBuild)).toEqual({
+      kind: "none",
+    });
+    expect(sessionDragDropFromElements([header], fromBuild)).toEqual({
+      kind: "none",
+    });
+    expect(sessionDragDropFromElements([officeFolder], fromBuild)).toEqual({
+      kind: "none",
+    });
+    expect(sessionDragDropFromElements([buildFolder], fromBuild)).toEqual({
+      kind: "move",
+      node: buildFolder,
+      projectId: "proj-build",
+      surface: "code",
+    });
   });
 });

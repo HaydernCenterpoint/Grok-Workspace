@@ -32,6 +32,8 @@ const PREFS_FILE: &str = "pet-prefs.json";
 pub const PET_CURSOR_WATCH_ACTIVE_MS: u64 = 64;
 /// Hidden / disabled overlay — do not wake every frame.
 pub const PET_CURSOR_WATCH_IDLE_MS: u64 = 500;
+/// Overlay off and not dragging — skip window queries entirely.
+pub const PET_CURSOR_WATCH_PARKED_MS: u64 = 2_000;
 
 /// Sleep between pet cursor-watch ticks.
 pub fn pet_cursor_watch_sleep_ms(want_show: bool, visible: bool, dragging: bool) -> u64 {
@@ -1071,6 +1073,10 @@ pub fn start_cursor_watch(app: AppHandle) {
         loop {
             let want = WANT_SHOW.load(Ordering::SeqCst);
             let dragging = DRAGGING.load(Ordering::Relaxed);
+            if !want && !dragging {
+                tokio::time::sleep(Duration::from_millis(PET_CURSOR_WATCH_PARKED_MS)).await;
+                continue;
+            }
             let visible = app
                 .get_webview_window(PET_WINDOW_LABEL)
                 .and_then(|w| w.is_visible().ok())
@@ -1079,9 +1085,6 @@ pub fn start_cursor_watch(app: AppHandle) {
                 want, visible, dragging,
             )))
             .await;
-            if !want && !dragging {
-                continue;
-            }
             let Some(win) = app.get_webview_window(PET_WINDOW_LABEL) else {
                 continue;
             };
@@ -1422,6 +1425,7 @@ mod tests {
             pet_cursor_watch_sleep_ms(false, false, true),
             PET_CURSOR_WATCH_ACTIVE_MS
         );
+        const { assert!(PET_CURSOR_WATCH_PARKED_MS > PET_CURSOR_WATCH_IDLE_MS) };
     }
 
     #[test]

@@ -4,9 +4,11 @@
  * Event-driven refreshes (boot, Account tab, user menu, login) stay as they
  * are. This module only decides the 10-minute background tick and how a
  * billing-only snapshot merges into the surfaces that already read `account`.
+ * Hidden windows park the timer so a tray-idle app does not probe Host.
  */
 
 import type { AccountStatus } from "./api";
+import { startVisibleInterval } from "./visibleInterval";
 
 /** Background SuperGrok quota probe interval. */
 export const ACCOUNT_QUOTA_AUTO_REFRESH_MS = 10 * 60 * 1000;
@@ -102,28 +104,15 @@ export type OfficialQuotaAutoRefreshSchedule = {
 
 /**
  * Owns the 10-minute interval + visibility listener.
- * `dispose()` clears both and flips `isCurrent` so a late Host reply is dropped.
+ * Hidden windows disarm the timer (no wakeup / no Host billing I/O).
+ * Showing the window fires one due check. `dispose()` clears both and
+ * flips `isCurrent` so a late Host reply is dropped.
  */
 export function startOfficialQuotaAutoRefresh(
   opts: OfficialQuotaAutoRefreshSchedule,
 ): OfficialQuotaAutoRefreshHandle {
   const intervalMs = opts.intervalMs ?? ACCOUNT_QUOTA_AUTO_REFRESH_MS;
   const now = opts.now ?? Date.now;
-  const setIntervalFn =
-    opts.setIntervalFn ??
-    ((handler: () => void, ms: number) => window.setInterval(handler, ms));
-  const clearIntervalFn =
-    opts.clearIntervalFn ?? ((id: unknown) => window.clearInterval(id as number));
-  const addListener =
-    opts.addListener ??
-    ((type: "visibilitychange", handler: () => void) => {
-      document.addEventListener(type, handler);
-    });
-  const removeListener =
-    opts.removeListener ??
-    ((type: "visibilitychange", handler: () => void) => {
-      document.removeEventListener(type, handler);
-    });
   const getVisibility =
     opts.getVisibility ?? (() => document.visibilityState);
 
@@ -134,6 +123,7 @@ export function startOfficialQuotaAutoRefresh(
 
   const tick = () => {
     if (!alive) return;
+    if (getVisibility() === "hidden") return;
     if (
       !shouldAutoRefreshOfficialQuota({
         nowMs: now(),
@@ -157,20 +147,19 @@ export function startOfficialQuotaAutoRefresh(
       });
   };
 
-  const onVis = () => {
-    if (!alive) return;
-    if (getVisibility() === "visible") tick();
-  };
-
-  const intervalId = setIntervalFn(tick, intervalMs);
-  addListener("visibilitychange", onVis);
+  const stopVisible = startVisibleInterval(tick, intervalMs, {
+    getVisibility,
+    setIntervalFn: opts.setIntervalFn,
+    clearIntervalFn: opts.clearIntervalFn,
+    addListener: opts.addListener,
+    removeListener: opts.removeListener,
+  });
 
   return {
     dispose() {
       if (!alive) return;
       alive = false;
-      clearIntervalFn(intervalId);
-      removeListener("visibilitychange", onVis);
+      stopVisible();
     },
   };
 }

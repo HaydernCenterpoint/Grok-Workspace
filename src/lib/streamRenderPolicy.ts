@@ -130,14 +130,86 @@ export function readStreamPerfFlag(
   return dataset?.streamPerf === "1";
 }
 
-/**
- * Wallpaper `<video>` should decode only when the window is visible and
- * stream-perf is off. CSS drops sidebar blur separately.
- */
-export function shouldPlayWallpaperVideo(opts: {
+export type WallpaperVideoPlayOpts = {
   visibilityState?: string;
   streamPerf?: boolean;
-}): boolean {
-  if ((opts.visibilityState ?? "visible") === "hidden") return false;
+  setupGate?: boolean;
+  hasFocus?: boolean;
+};
+
+/**
+ * Park = OS-unfocused, `document.hidden`, or first-run setup gate.
+ * Park must **unload** the `<video>` (unmount / clear src). `pause()` alone
+ * still leaves WebView decoding/compositing at play-level CPU/GPU.
+ * Live-turn `data-stream-perf` is pause-only — not a park.
+ */
+export function shouldParkWallpaperVideo(
+  opts: Pick<WallpaperVideoPlayOpts, "visibilityState" | "setupGate" | "hasFocus">,
+): boolean {
+  if ((opts.visibilityState ?? "visible") === "hidden") return true;
+  if (opts.hasFocus === false) return true;
+  if (opts.setupGate) return true;
+  return false;
+}
+
+/**
+ * Wallpaper `<video>` should play only when the window is visible,
+ * OS-focused (Tauri `WindowEvent::Focused` / `data-window-focused`, not only
+ * `document.hasFocus()`), the first-run / timeout gate is down, and
+ * stream-perf is off. CSS drops sidebar blur separately.
+ */
+export function shouldPlayWallpaperVideo(opts: WallpaperVideoPlayOpts): boolean {
+  if (shouldParkWallpaperVideo(opts)) return false;
   return !opts.streamPerf;
+}
+
+/**
+ * Parked wallpaper must not stay on the GPU compositor.
+ * Unmount or `src=""` both count as not compositing.
+ */
+export function wallpaperVideoIsCompositing(state: {
+  parked: boolean;
+  mounted: boolean;
+  src?: string | null;
+}): boolean {
+  if (state.parked || !state.mounted) return false;
+  const src = typeof state.src === "string" ? state.src.trim() : "";
+  return src.length > 0;
+}
+
+export type WallpaperVideoReleaseTarget = {
+  pause?: () => void;
+  removeAttribute?: (name: string) => void;
+  src?: string;
+  srcObject?: unknown;
+  load?: () => void;
+};
+
+/**
+ * WebView2 keeps the decoder/compositor at play-level cost if `<video>` is
+ * unmounted while `src` is still set. Pause, drop src, then `load()` while
+ * the node is still in the document — then let React unmount. Do not
+ * `el.remove()` here: React still owns the fiber and will throw.
+ */
+export function releaseWallpaperVideoElement(
+  el: WallpaperVideoReleaseTarget | null | undefined,
+): void {
+  if (!el) return;
+  try {
+    el.pause?.();
+  } catch {
+    /* jsdom / already detached */
+  }
+  try {
+    if ("srcObject" in el) el.srcObject = null;
+  } catch {
+    /* ignore */
+  }
+  try {
+    el.removeAttribute?.("src");
+    el.src = "";
+    el.load?.();
+  } catch {
+    /* ignore */
+  }
 }

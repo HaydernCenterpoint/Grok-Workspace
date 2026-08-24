@@ -31,6 +31,7 @@ import { pathToPreviewUrl } from "@/lib/filePreviewSrc";
 import { IconCopy, IconExternalLink, IconFolder } from "@/components/icons";
 import { Tip } from "@/components/ui/tooltip";
 import { ContextMenu, type ContextMenuItem } from "@/components/ContextMenu";
+import { useMediaHandoffMenuItems } from "@/providers/MediaHandoffContext";
 import { createT, type Locale } from "@/i18n";
 import { pathBasename } from "@/lib/attachments";
 import { revealInOsLabel } from "@/lib/appPlatform";
@@ -196,6 +197,7 @@ export const VideoUi = memo(function VideoUi({
     : isLocalFsPath(src)
       ? src
       : undefined;
+  const handoffItems = useMediaHandoffMenuItems(localPath, title);
 
   /** User has asked to play — only then resolve media HTTP and mount <video>. */
   const [started, setStarted] = useState(false);
@@ -411,6 +413,7 @@ export const VideoUi = memo(function VideoUi({
       },
     );
   }
+  menuItems.push(...handoffItems);
 
   const ar =
     aspectRatio > 0 && Number.isFinite(aspectRatio) ? aspectRatio : DEFAULT_AR;

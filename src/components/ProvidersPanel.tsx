@@ -15,6 +15,7 @@ import * as api from "@/lib/api";
 import { createT, type Locale, type MessageKey } from "@/i18n";
 import { Select } from "@/components/Select";
 import { GlassModal } from "@/components/GlassModal";
+import { ExternalImportModal } from "@/components/ExternalImportModal";
 import {
   IconCheck,
   IconClose,
@@ -284,6 +285,7 @@ export function ProvidersPanel({
   const [ccImportBusy, setCcImportBusy] = useState(false);
   const [ccSelected, setCcSelected] = useState<Set<string>>(new Set());
   const [ccImportMsg, setCcImportMsg] = useState<string | null>(null);
+  const [externalImportOpen, setExternalImportOpen] = useState(false);
 
   const protocolOptions = useMemo(
     () => [
@@ -1100,6 +1102,17 @@ export function ProvidersPanel({
               title={tr("prov.ccSwitch.importBtnHint")}
             >
               {tr("prov.ccSwitch.importBtn")}
+            </button>
+            <button
+              type="button"
+              className="btn btn--ghost prov-cc-import-btn"
+              onClick={() => setExternalImportOpen(true)}
+              disabled={busy || !api.isTauri()}
+              data-testid="prov-external-import"
+              id="settings-anchor-prov-external-import"
+              title={tr("ext.import.btnHint")}
+            >
+              {tr("ext.import.btn")}
             </button>
           </div>
 
@@ -2565,6 +2578,18 @@ export function ProvidersPanel({
           </p>
         ) : null}
       </GlassModal>
+
+      <ExternalImportModal
+        open={externalImportOpen}
+        onClose={() => setExternalImportOpen(false)}
+        locale={locale}
+        focus="providers"
+        onImported={() => {
+          void reload();
+          onProvidersChanged?.();
+        }}
+        onToast={onToast}
+      />
     </div>
   );
 }

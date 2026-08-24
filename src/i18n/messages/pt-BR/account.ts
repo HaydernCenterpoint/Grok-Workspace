@@ -30,6 +30,7 @@ export const ptBRAccount = {
   "account.weeklyTitle": "Cota semanal SuperGrok",
   "account.quota": "Cota usada",
   "account.quotaRemaining": "restante",
+  "account.usage": "Uso",
   "account.quotaUsed": "usado",
   "account.quotaUnknown": "Cota ainda não carregada",
   "account.period": "Período de cobrança",

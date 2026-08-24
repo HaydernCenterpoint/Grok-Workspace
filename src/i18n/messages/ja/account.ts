@@ -30,6 +30,7 @@ export const jaAccount = {
   "account.weeklyTitle": "週次 SuperGrok クォータ",
   "account.quota": "クォータ使用量",
   "account.quotaRemaining": "残り",
+  "account.usage": "使用量",
   "account.quotaUsed": "使用済み",
   "account.quotaUnknown": "クォータはまだ読み込んでいません",
   "account.period": "請求期間",

@@ -70,8 +70,9 @@ export const ASIDE_MAIN_RESERVE = MAIN_CHAT_MIN_WIDTH;
 export const SIDEBAR_DEFAULT_WIDTH = 240;
 
 /**
- * Narrowest *open* left rail (session titles + chrome still usable).
- * The rail never paints narrower than this — dragging past it collapses live.
+ * Narrowest *painted* open left rail (session titles + chrome still usable).
+ * Live drag clamps here and stays open; collapse is a separate snap below
+ * {@link SIDEBAR_COLLAPSE_THRESHOLD} (decided on pointer-up).
  */
 export const SIDEBAR_WIDTH_MIN = 200;
 
@@ -79,11 +80,21 @@ export const SIDEBAR_WIDTH_MIN = 200;
 export const SIDEBAR_WIDTH_MAX = 420;
 
 /**
- * Desired width below this (during drag or on release) → auto-collapse.
- * Equal to open min so the rail never enters a crushed / deformed layout.
- * Reopen via the top-left icon uses {@link SIDEBAR_WIDTH_MIN}.
+ * Desired width below this on **pointer-up** → collapse.
+ * Well under {@link SIDEBAR_WIDTH_MIN} so a short leftward drag from the
+ * 240px default cannot slam the rail shut. Between this and open-min the
+ * rail stays painted at min.
  */
-export const SIDEBAR_COLLAPSE_THRESHOLD = SIDEBAR_WIDTH_MIN;
+export const SIDEBAR_COLLAPSE_THRESHOLD = 96;
+
+/**
+ * One-sample |ΔclientX| above this is treated as lost tracking (rebase),
+ * not a real collapse swipe.
+ */
+export const SIDEBAR_DRAG_JUMP_PX = 160;
+
+/** clientX this far outside the viewport is an impossible sample. */
+export const SIDEBAR_DRAG_OUTSIDE_SLACK_PX = 64;
 
 export type SidebarClampOpts = {
   /** `window.innerWidth` — caps max so chat (+ open aside) stay usable. */
@@ -112,8 +123,9 @@ export function clampSidebarWidth(
 
 /**
  * Live width while dragging — stays within open [min, max] only.
- * Callers should collapse as soon as the *desired* width is below
- * {@link SIDEBAR_COLLAPSE_THRESHOLD} (before applying this clamp).
+ * Desired values between {@link SIDEBAR_COLLAPSE_THRESHOLD} and min paint
+ * at min and stay open. Collapse is decided on pointer-up via
+ * {@link resolveSidebarDragEnd}, not a single move sample.
  */
 export function clampSidebarDragWidth(
   w: number,
@@ -122,22 +134,83 @@ export function clampSidebarDragWidth(
   return clampSidebarWidth(w, opts);
 }
 
+/** True when a (finite) desired width should snap the rail closed. */
+export function shouldCollapseSidebarFromDesired(desired: number): boolean {
+  return Number.isFinite(desired) && Math.round(desired) < SIDEBAR_COLLAPSE_THRESHOLD;
+}
+
+export type SidebarDragPointerSample = {
+  clientX: number;
+  previousClientX: number | null;
+  viewportWidth: number;
+};
+
+export type SidebarDragPointerDecision = "apply" | "ignore" | "rebase";
+
+/**
+ * Drop or rebase impossible pointer samples so a stray `clientX` (0 on
+ * Windows, off-window, or a huge jump) cannot collapse the rail.
+ */
+export function classifySidebarDragPointerSample(
+  sample: SidebarDragPointerSample,
+): SidebarDragPointerDecision {
+  const { clientX, previousClientX, viewportWidth } = sample;
+  if (!Number.isFinite(clientX)) return "ignore";
+  // Windows sometimes emits clientX=0 while the pointer is mid-window.
+  if (
+    clientX === 0 &&
+    previousClientX != null &&
+    previousClientX > 16
+  ) {
+    return "ignore";
+  }
+  const vw = Number.isFinite(viewportWidth) ? viewportWidth : 0;
+  if (vw > 0) {
+    if (
+      clientX < -SIDEBAR_DRAG_OUTSIDE_SLACK_PX ||
+      clientX > vw + SIDEBAR_DRAG_OUTSIDE_SLACK_PX
+    ) {
+      return "ignore";
+    }
+  }
+  if (
+    previousClientX != null &&
+    Number.isFinite(previousClientX) &&
+    Math.abs(clientX - previousClientX) > SIDEBAR_DRAG_JUMP_PX
+  ) {
+    return "rebase";
+  }
+  return "apply";
+}
+
 export type SidebarDragEndResult =
   | { action: "collapse"; sidebarWidth: number }
   | { action: "open"; sidebarWidth: number };
 
+export type SidebarDragEndOpts = SidebarClampOpts & {
+  /**
+   * Last *open* painted width. Stored on collapse so reopen is ≥ min,
+   * never the crushed desired pixels.
+   */
+  lastOpenWidth?: number;
+};
+
 /**
- * Resolve a drag sample (move or pointer-up).
- * - desired &lt; collapse threshold → close; store min for next open
- * - otherwise → clamp to open [min, max]
+ * Resolve pointer-up (not live move).
+ * - desired &lt; snap threshold → close; persist last open width (≥ min)
+ * - otherwise → stay open at the clamped desired width
  */
 export function resolveSidebarDragEnd(
   w: number,
-  opts?: SidebarClampOpts,
+  opts?: SidebarDragEndOpts,
 ): SidebarDragEndResult {
   const raw = Number.isFinite(w) ? Math.round(w) : SIDEBAR_DEFAULT_WIDTH;
-  if (raw < SIDEBAR_COLLAPSE_THRESHOLD) {
-    return { action: "collapse", sidebarWidth: SIDEBAR_WIDTH_MIN };
+  if (shouldCollapseSidebarFromDesired(raw)) {
+    const stored = clampSidebarWidth(
+      opts?.lastOpenWidth ?? SIDEBAR_WIDTH_MIN,
+      opts,
+    );
+    return { action: "collapse", sidebarWidth: stored };
   }
   return { action: "open", sidebarWidth: clampSidebarWidth(raw, opts) };
 }

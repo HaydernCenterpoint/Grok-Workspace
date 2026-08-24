@@ -422,6 +422,8 @@ export async function discordPresenceUpdate(payload: {
   state: string;
   startSec: number;
   clientId?: string;
+  largeText?: string;
+  smallText?: string;
 }) {
   if (!isDesktopHost()) return;
   try {
@@ -430,6 +432,8 @@ export async function discordPresenceUpdate(payload: {
       state: payload.state,
       startSec: payload.startSec,
       clientId: payload.clientId || null,
+      largeText: payload.largeText || null,
+      smallText: payload.smallText || null,
     });
   } catch {
     /* Discord optional */
