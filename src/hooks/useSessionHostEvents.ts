@@ -2008,13 +2008,19 @@ export function useSessionHostEvents(ctx: SessionHostEventsCtx) {
             "session://index_changed",
             (p) => {
               if (cancelled) return;
+              const sid = p?.sessionId;
+              if (sid && p?.source === "remote_im") {
+                const stamp = c.stampSessionWorkMode as
+                  | ((sessionId: string, mode: "code") => void)
+                  | undefined;
+                stamp?.(sid, "code");
+              }
               void (async () => {
                 try {
                   const list = await api.sessionsList();
                   if (cancelled) return;
                   c.setSessions(list.map(mapSessionListRow));
                   c.setSessions(list.map((s) => mapSessionListRow(s)));
-                  const sid = p?.sessionId;
                   if (
                     !sid ||
                     c.viewingSessionIdRef.current !== sid ||

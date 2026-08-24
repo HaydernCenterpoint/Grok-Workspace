@@ -80,12 +80,10 @@ export function usePetCompanion(opts: {
       if (!gone && enabledRef.current) bridge.tick();
     });
     void listen<StreamPayload>("session://stream", (chunk) => {
-      if (gone || !chunk?.sessionId) return;
+      // Overlay off: skip stage fold/regex on every Host stream emit.
+      if (gone || !chunk?.sessionId || !enabledRef.current) return;
       const snap = sessionLiveMapStore.getSnapshot(chunk.sessionId);
-      if (
-        petStageSnippetStore.applyStream(chunk, snap?.startedAt ?? 0) &&
-        enabledRef.current
-      ) {
+      if (petStageSnippetStore.applyStream(chunk, snap?.startedAt ?? 0)) {
         bridge.tick();
       }
     }).then((u) => {

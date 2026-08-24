@@ -84,7 +84,15 @@ export function startPetFocusBridge(opts: PetFocusBridgeOpts): PetFocusBridge {
     });
     if (held.some((h) => h.expireAt != null)) {
       if (expireTimer == null) {
-        expireTimer = setInterval(() => tick(), 500);
+        expireTimer = setInterval(() => {
+          if (
+            typeof document !== "undefined" &&
+            document.visibilityState === "hidden"
+          ) {
+            return;
+          }
+          tick();
+        }, 1000);
       }
     } else {
       stopExpire();

@@ -12,7 +12,7 @@ ${OFFICE_SKILL_MARKER}
 
 # Grok Office documents
 
-A \`.office.json\` file is the source. Grok Office compiles Word / Excel / PowerPoint when the file is opened.
+A \`.office.json\` file is the source. Grok Office opens it on the canvas above the composer and compiles Word / Excel / PowerPoint from there.
 
 Do **not** unzip OOXML or write \`word/document.xml\` yourself.
 
@@ -85,6 +85,6 @@ Read \`.docx\` / \`.xlsx\` / \`.pptx\` in the files pane. For a spreadsheet you 
 
 ## After writing
 
-Tell the user to open the \`.office.json\` beside chat and use Save Word / Excel / PowerPoint.
+The Office canvas above the composer picks up the file. Tell the user they can edit it there and use Save Word / Excel / PowerPoint.
 `;
 }

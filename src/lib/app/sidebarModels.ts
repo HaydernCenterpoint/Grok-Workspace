@@ -7,6 +7,11 @@ import { normalizeProjectColor } from "@/lib/projectColor";
 import { sanitizeExtraRules } from "@/lib/sessionExtraRules";
 import { normalizeMaxAgentTurns } from "@/lib/sessionMaxAgentTurns";
 import { sanitizeSystemPromptOverride } from "@/lib/sessionSystemPrompt";
+import {
+  sessionWorkModeOf,
+  type SessionWorkModeMap,
+} from "@/lib/sessionWorkMode";
+import type { WorkMode } from "@/lib/grokOffice";
 
 export interface Project {
   id: string;
@@ -36,6 +41,58 @@ export function isGeneralProject(p: { id?: string | null; system?: boolean } | n
 export function normalizeProjectId(id: string | null | undefined): string | null {
   if (!id || id === GENERAL_PROJECT_ID) return null;
   return id;
+}
+
+/**
+ * Live chat with no known project folder (including retired `system:general`).
+ * Folderless chats are Recents only when stamped; otherwise they sit on a surface.
+ */
+export function isSidebarOrphanSession(
+  session: { projectId?: string | null; archived?: boolean },
+  projectIds: ReadonlySet<string>,
+): boolean {
+  if (session.archived) return false;
+  const id = normalizeProjectId(session.projectId);
+  return !id || !projectIds.has(id);
+}
+
+/** Folder session is never Recents — stamp is ignored while a known project binds it. */
+export function isRecentsSidebarSession(
+  session: { id?: string; projectId?: string | null; archived?: boolean },
+  projectIds: ReadonlySet<string>,
+  recentsSet: ReadonlySet<string>,
+): boolean {
+  if (!isSidebarOrphanSession(session, projectIds)) return false;
+  const id = typeof session.id === "string" ? session.id.trim() : "";
+  return !!id && recentsSet.has(id);
+}
+
+/** Folderless + no Recents stamp → Grok Build / Office / Studio stack. */
+export function isSurfaceFolderlessSession(
+  session: { id?: string; projectId?: string | null; archived?: boolean },
+  projectIds: ReadonlySet<string>,
+  recentsSet: ReadonlySet<string>,
+): boolean {
+  return (
+    isSidebarOrphanSession(session, projectIds) &&
+    !isRecentsSidebarSession(session, projectIds, recentsSet)
+  );
+}
+
+export function surfaceFolderlessSessions<
+  T extends { id: string; projectId?: string | null; archived?: boolean },
+>(
+  sessions: readonly T[],
+  projectIds: ReadonlySet<string>,
+  recentsSet: ReadonlySet<string>,
+  surface: WorkMode,
+  map: SessionWorkModeMap,
+): T[] {
+  return sessions.filter(
+    (s) =>
+      isSurfaceFolderlessSession(s, projectIds, recentsSet) &&
+      sessionWorkModeOf(s.id, map) === surface,
+  );
 }
 
 export function projectDisplayName(

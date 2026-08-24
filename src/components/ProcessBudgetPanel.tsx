@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createT, intlLocale, type Locale, type MessageKey } from "@/i18n";
 import * as api from "@/lib/api";
+import { startVisibleInterval } from "@/lib/visibleInterval";
 import {
   DEFAULT_MAX_CONCURRENT_AGENTS,
   emptyProcessBudgetSnapshot,
@@ -88,10 +89,9 @@ export function ProcessBudgetPanel({
   useEffect(() => {
     if (!active) return;
     void load();
-    const timer = window.setInterval(() => {
+    return startVisibleInterval(() => {
       void load();
     }, PROCESS_BUDGET_POLL_MS);
-    return () => window.clearInterval(timer);
   }, [active, load]);
 
   const empty = resolveProcessBudgetEmptyState({

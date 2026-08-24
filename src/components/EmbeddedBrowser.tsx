@@ -54,10 +54,15 @@ import {
   clipHostRectToAncestor,
   createTrailingSingleFlight,
   isAsideWebviewSuppressed,
+  shouldDeferNativeWebviewBoundsSync,
   snapBounds,
   type BoundsPx,
   type HostRectPx,
 } from "@/lib/nativeWebviewBounds";
+import {
+  isWorkbenchSplitResizing,
+  subscribeWorkbenchSplitResize,
+} from "@/lib/paneDragLive";
 import {
   isPaneSplitMotionActive,
   runAfterPaneSplitMotion,
@@ -411,7 +416,12 @@ export function EmbeddedBrowser({
       return;
     }
 
-    if (isPaneSplitMotionActive()) {
+    if (
+      shouldDeferNativeWebviewBoundsSync({
+        paneSplitMotionActive: isPaneSplitMotionActive(),
+        workbenchSplitResizing: isWorkbenchSplitResizing(),
+      })
+    ) {
       runAfterPaneSplitMotion(() => {
         scheduleRef.current?.schedule();
       });
@@ -486,6 +496,13 @@ export function EmbeddedBrowser({
       scheduleSync();
     });
   };
+
+  useEffect(() => {
+    return subscribeWorkbenchSplitResize(() => {
+      scheduleSyncRaf();
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     return subscribeNativeWebviewCover((next) => {
@@ -730,11 +747,27 @@ export function EmbeddedBrowser({
             resizeObs.observe(node);
             node = node.parentElement;
           }
+          // Sibling sidebar/aside width changes move this host; observe the
+          // workbench chrome so a live split drag retargets even if the host
+          // box is a frame late.
+          const workbench = hostRef.current.closest(".workbench");
+          if (workbench instanceof HTMLElement) {
+            resizeObs.observe(workbench);
+            const sidebar = workbench.querySelector(":scope > .sidebar");
+            const asidePane = workbench.querySelector(":scope > .aside");
+            if (sidebar instanceof HTMLElement) resizeObs.observe(sidebar);
+            if (asidePane instanceof HTMLElement) resizeObs.observe(asidePane);
+          }
         }
         if (hostRef.current && typeof IntersectionObserver !== "undefined") {
           io = new IntersectionObserver(
             (entries) => {
-              if (isPaneSplitMotionActive()) {
+              if (
+                shouldDeferNativeWebviewBoundsSync({
+                  paneSplitMotionActive: isPaneSplitMotionActive(),
+                  workbenchSplitResizing: isWorkbenchSplitResizing(),
+                })
+              ) {
                 runAfterPaneSplitMotion(() => scheduleSyncRaf());
                 return;
               }

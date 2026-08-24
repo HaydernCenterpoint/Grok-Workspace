@@ -13,6 +13,7 @@ import {
   shouldHealGhostStreaming,
   stripGhostTurnMessages,
 } from "@/lib/ghostStreamingHeal";
+import { startVisibleInterval } from "@/lib/visibleInterval";
 import {
   shouldHealZombieBusy,
   shouldReleaseStaleConnectingClaim,
@@ -318,8 +319,7 @@ export function useGhostStreamingHeal(deps: GhostStreamingHealDeps): void {
 
     // Immediate check (covers already-stuck sessions when effect re-arms).
     tick();
-    const id = window.setInterval(tick, GHOST_STREAMING_POLL_MS);
-    return () => window.clearInterval(id);
+    return startVisibleInterval(tick, GHOST_STREAMING_POLL_MS);
   }, [
     watch,
     deps.sessionState,

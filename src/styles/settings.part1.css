@@ -437,10 +437,14 @@
   box-sizing: border-box;
 }
 
-/* Win / non-mac: no vibrancy — use solid rail like workbench */
+/* Win / non-mac: same ChatGPT rail wash as workbench .sidebar */
 .platform-win .settings-page__nav,
 .platform-other .settings-page__nav {
-  background: var(--bg-sidebar-solid, var(--bg-sidebar));
+  background:
+    var(--sidebar-wash),
+    var(--bg-sidebar-solid, var(--bg-sidebar));
+  border-right: none;
+  box-shadow: var(--sidebar-edge-inset);
 }
 
 /* Legacy class kept for any residual selectors */

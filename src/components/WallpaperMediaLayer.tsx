@@ -25,9 +25,12 @@ import {
   type WallpaperFocus,
 } from "@/lib/themeSkin";
 import {
-  readStreamPerfFlag,
+  releaseWallpaperVideoElement,
+  shouldParkWallpaperVideo,
   shouldPlayWallpaperVideo,
 } from "@/lib/streamRenderPolicy";
+import { readWallpaperVideoEnv } from "@/lib/wallpaperPark";
+import { subscribeWindowFocused } from "@/lib/windowFocusFlag";
 
 export type WallpaperMediaSize = { w: number; h: number };
 
@@ -52,6 +55,17 @@ function validSize(s: WallpaperMediaSize | null | undefined): s is WallpaperMedi
   return !!s && s.w > 0 && s.h > 0 && Number.isFinite(s.w) && Number.isFinite(s.h);
 }
 
+function playWallpaperVideo(el: HTMLVideoElement): void {
+  try {
+    const pending = el.play();
+    if (pending && typeof pending.catch === "function") {
+      void pending.catch(() => {});
+    }
+  } catch {
+    /* jsdom / autoplay policy */
+  }
+}
+
 export function WallpaperMediaLayer({
   url,
   kind,
@@ -71,6 +85,12 @@ export function WallpaperMediaLayer({
   const [media, setMedia] = useState<WallpaperMediaSize>(() =>
     validSize(intrinsicSize) ? { w: intrinsicSize.w, h: intrinsicSize.h } : { w: 0, h: 0 },
   );
+  const [videoParked, setVideoParked] = useState(() =>
+    shouldParkWallpaperVideo(readWallpaperVideoEnv()),
+  );
+  // Release src+load while the node is still mounted, then unmount.
+  // Unmount-with-src-set leaves WebView2 at play-level CPU/GPU.
+  const [videoReleased, setVideoReleased] = useState(videoParked);
 
   const f = normalizeWallpaperFocus(focus ?? DEFAULT_WALLPAPER_FOCUS);
   clipRef.current = clip ?? null;
@@ -95,14 +115,23 @@ export function WallpaperMediaLayer({
         return { w, h };
       });
     };
-    apply(el.clientWidth, el.clientHeight);
     const ro = new ResizeObserver((entries) => {
       const cr = entries[0]?.contentRect;
       if (!cr) return;
       apply(cr.width, cr.height);
     });
-    ro.observe(el);
-    return () => ro.disconnect();
+    const sync = () => {
+      ro.disconnect();
+      if (document.visibilityState === "hidden") return;
+      apply(el.clientWidth, el.clientHeight);
+      ro.observe(el);
+    };
+    sync();
+    document.addEventListener("visibilitychange", sync);
+    return () => {
+      document.removeEventListener("visibilitychange", sync);
+      ro.disconnect();
+    };
   }, []);
 
   const publishSize = useCallback(
@@ -160,7 +189,7 @@ export function WallpaperMediaLayer({
 
   // Clip loop: disable native loop when a range is set; seek on timeupdate.
   useEffect(() => {
-    if (kind !== "video") return;
+    if (kind !== "video" || videoParked) return;
     const el = mediaRef.current;
     if (!(el instanceof HTMLVideoElement)) return;
 
@@ -178,11 +207,14 @@ export function WallpaperMediaLayer({
         }
       };
       startAt();
-      const onTime = () => enforceVideoClip(el, c);
+      const onTime = () => {
+        if (el.paused) return;
+        enforceVideoClip(el, c);
+      };
       const onEnded = () => {
         try {
           el.currentTime = c.start;
-          void el.play().catch(() => {});
+          playWallpaperVideo(el);
         } catch {
           /* ignore */
         }
@@ -196,20 +228,57 @@ export function WallpaperMediaLayer({
     }
 
     return undefined;
-  }, [kind, clip, url]);
+  }, [kind, clip, url, videoParked]);
 
-  // Pause wallpaper video while hidden or while stream-perf is on (live turn).
+  // Park: drop src + load() while mounted, then unmount. Stream-perf only pauses.
+  useLayoutEffect(() => {
+    if (kind !== "video") {
+      if (videoReleased) setVideoReleased(false);
+      return;
+    }
+    if (!videoParked) {
+      if (videoReleased) setVideoReleased(false);
+      return;
+    }
+    const el = mediaRef.current;
+    if (el instanceof HTMLVideoElement) {
+      releaseWallpaperVideoElement(el);
+    }
+    if (!videoReleased) setVideoReleased(true);
+  }, [kind, videoParked, videoReleased]);
+
+  useLayoutEffect(() => {
+    const syncPark = () => {
+      setVideoParked(shouldParkWallpaperVideo(readWallpaperVideoEnv()));
+    };
+    syncPark();
+    document.addEventListener("visibilitychange", syncPark);
+    window.addEventListener("focus", syncPark);
+    window.addEventListener("blur", syncPark);
+    const unsubHostFocus = subscribeWindowFocused(() => syncPark());
+    const root = document.documentElement;
+    const obs = new MutationObserver(syncPark);
+    obs.observe(root, {
+      attributes: true,
+      attributeFilter: ["data-setup-gate", "data-window-focused"],
+    });
+    return () => {
+      document.removeEventListener("visibilitychange", syncPark);
+      window.removeEventListener("focus", syncPark);
+      window.removeEventListener("blur", syncPark);
+      unsubHostFocus();
+      obs.disconnect();
+    };
+  }, [kind, url]);
+
   useEffect(() => {
-    if (kind !== "video") return;
-    const apply = () => {
+    if (kind !== "video" || videoParked) return;
+    const applyPlay = () => {
       const el = mediaRef.current;
       if (!(el instanceof HTMLVideoElement)) return;
-      const play = shouldPlayWallpaperVideo({
-        visibilityState: document.visibilityState,
-        streamPerf: readStreamPerfFlag(document.documentElement.dataset),
-      });
+      const play = shouldPlayWallpaperVideo(readWallpaperVideoEnv());
       if (play) {
-        void el.play().catch(() => {});
+        playWallpaperVideo(el);
         return;
       }
       try {
@@ -218,19 +287,17 @@ export function WallpaperMediaLayer({
         /* ignore */
       }
     };
-    apply();
-    document.addEventListener("visibilitychange", apply);
+    applyPlay();
     const root = document.documentElement;
-    const obs = new MutationObserver(apply);
+    const obs = new MutationObserver(applyPlay);
     obs.observe(root, {
       attributes: true,
       attributeFilter: ["data-stream-perf"],
     });
     return () => {
-      document.removeEventListener("visibilitychange", apply);
       obs.disconnect();
     };
-  }, [kind, url]);
+  }, [kind, url, videoParked]);
 
   const layout =
     media.w > 0 && media.h > 0 && view.w > 0 && view.h > 0
@@ -259,30 +326,33 @@ export function WallpaperMediaLayer({
         opacity: 0,
       };
 
+  const showVideo = kind === "video" && !videoReleased;
+
   return (
     <div
       ref={rootRef}
       className={className + (ready ? " is-ready" : "")}
+      data-wallpaper-parked={kind === "video" && videoParked ? "1" : undefined}
       aria-hidden
     >
-      {kind === "video" ? (
+      {showVideo ? (
         <video
           ref={(el) => {
             mediaRef.current = el;
           }}
           className={mediaClassName}
-          src={url}
+          src={videoParked ? "" : url}
           autoPlay
           muted
           loop={!clip}
           playsInline
           disablePictureInPicture
-          preload="auto"
+          preload="metadata"
           style={style}
           onLoadedMetadata={onReady}
           onLoadedData={onReady}
         />
-      ) : (
+      ) : kind !== "video" ? (
         <img
           ref={(el) => {
             mediaRef.current = el;
@@ -290,11 +360,12 @@ export function WallpaperMediaLayer({
           className={mediaClassName}
           src={url}
           alt=""
+          decoding="async"
           draggable={false}
           style={style}
           onLoad={onReady}
         />
-      )}
+      ) : null}
     </div>
   );
 }

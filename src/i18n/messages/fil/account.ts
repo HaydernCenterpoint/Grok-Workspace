@@ -30,6 +30,7 @@ export const filAccount = {
   "account.weeklyTitle": "Lingguhang SuperGrok quota",
   "account.quota": "Nagamit na quota",
   "account.quotaRemaining": "natitira",
+  "account.usage": "Paggamit",
   "account.quotaUsed": "nagastos",
   "account.quotaUnknown": "Hindi pa na-load ang quota",
   "account.period": "Panahon ng billing",

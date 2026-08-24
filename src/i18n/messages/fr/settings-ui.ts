@@ -423,6 +423,8 @@ export const frSettingsUi = {
   "settings.autoUpdateError.other": "Échec de la mise à jour. Vous pouvez encore ouvrir la page de version GitHub et installer manuellement.",
   "settings.autoUpdateChannelUnsupported": "Canal de mise à jour : installation manuelle (ce type de paquet ne peut pas se mettre à jour automatiquement)",
   "settings.autoUpdateChannelHostOnly": "Canal de mise à jour : application de bureau uniquement (non disponible ici)",
+  "settings.autoDownloadUpdates": "Télécharger les mises à jour automatiquement",
+  "settings.autoDownloadUpdatesDesc": "Les builds de version signés se téléchargent en arrière-plan, puis attendent votre confirmation Installer et redémarrer. Les builds non signés et locaux ouvrent toujours GitHub — jamais d’installation silencieuse. Désactivez pour lancer le téléchargement vous-même.",
   "settings.askDemo.title": "Chemin de démo ask-user",
   "settings.askDemo.desc": "Chemin suggéré pour comparer Demander vs YOLO sans chercher dans les réglages. L’app prépare uniquement la politique et une invite d’exemple — un questionnaire en direct dépend encore du modèle et de la CLI.",
   "settings.askDemo.honesty": "Honnêteté : un vrai `ask_user_question` dépend du modèle et de Grok Build CLI. L’app n’envoie jamais auto une invite et ne prétend jamais que l’agent demandera.",

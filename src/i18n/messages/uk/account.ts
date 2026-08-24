@@ -30,6 +30,7 @@ export const ukAccount = {
   "account.weeklyTitle": "Тижнева квота SuperGrok",
   "account.quota": "Використано квоти",
   "account.quotaRemaining": "залишилось",
+  "account.usage": "Використання",
   "account.quotaUsed": "використано",
   "account.quotaUnknown": "Квоту ще не завантажено",
   "account.period": "Розрахунковий період",

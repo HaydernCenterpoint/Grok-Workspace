@@ -171,6 +171,8 @@ Host must rebind both sides on every switch and before each ACP spawn (`prepare_
 | `providers_balance` | Account balance / plan probe (Phase 1: **DeepSeek only**) |
 | `providers_cc_switch_scan` | Read-only scan of local **CC Switch** Grok Build providers |
 | `providers_cc_switch_import` | Import selected CC Switch rows into custom providers |
+| `external_import_scan` | Read-only Host scan of Codex / Claude / Cursor / agents skill homes + MCP / permission / provider preview (no secrets) |
+| `external_import_apply` | Import selected skills (copy) and MCP / permission rules; shared mode never rewrites `~/.grok` config.toml unless the user switches to independent. Providers are preview-only (no API keys copied) |
 | `editors_list` | Detected local IDEs |
 | `open_in_editor` | Open path in chosen editor |
 

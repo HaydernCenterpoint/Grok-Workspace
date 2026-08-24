@@ -24,7 +24,7 @@ import {
   IconPinOff,
   IconPlan,
 } from "@/components/icons";
-import { Spinner } from "@/components/ui/spinner";
+import { ReasoningDots } from "@/components/lobe-chat/ActivityLoaders";
 import { Tip } from "@/components/ui/tooltip";
 import { SidebarSessionName } from "@/components/SidebarSessionName";
 import { SidebarSessionRelativeTime } from "@/components/SidebarSessionRelativeTime";
@@ -104,6 +104,8 @@ export type SidebarSessionRowProps = {
   onMenu: (e: MouseEvent, session: SidebarSessionRowSession) => void;
   /** Persist a committed in-row title (already trimmed, non-empty, changed). */
   onRename: (session: SidebarSessionRowSession, title: string) => void;
+  /** Sidebar list this row belongs to (`folder:…` / `folderless:…` / recents). */
+  listKey?: string | null;
 };
 
 function SidebarSessionRowInner({
@@ -128,6 +130,7 @@ function SidebarSessionRowInner({
   onArchive,
   onMenu,
   onRename,
+  listKey,
 }: SidebarSessionRowProps) {
   const displayTitle = session.title || labels.untitled;
   const [editing, setEditing] = useState(false);
@@ -237,6 +240,7 @@ function SidebarSessionRowInner({
     <div
       className={className}
       data-session-id={session.id}
+      data-session-list={listKey || undefined}
       role="button"
       tabIndex={0}
       aria-checked={selectMode ? checked : undefined}
@@ -368,7 +372,7 @@ function SidebarSessionRowInner({
       {selectMode ? null : working ? (
         <Tip label={labels.working}>
           <span className="tree-l3__status" aria-label={labels.working}>
-            <Spinner size={14} className="tree-l3__spinner" />
+            <ReasoningDots className="tree-l3__spinner" />
           </span>
         </Tip>
       ) : (
@@ -459,6 +463,7 @@ function sidebarSessionRowPropsEqual(
     prev.onArchive === next.onArchive &&
     prev.onMenu === next.onMenu &&
     prev.onRename === next.onRename &&
+    prev.listKey === next.listKey &&
     worktreeBadgeEqual(prev.worktreeBadge, next.worktreeBadge)
   );
 }

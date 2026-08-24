@@ -249,6 +249,78 @@ describe("startOfficialQuotaAutoRefresh", () => {
     expect(started).toBe(0);
   });
 
+  it("does not probe Host while the document is hidden", () => {
+    let visibility: DocumentVisibilityState = "visible";
+    let started = 0;
+    const intervals = new Set<number>();
+    const vis = new Set<() => void>();
+    let intervalTick: () => void = () => {};
+    let nextId = 1;
+    const handle = startOfficialQuotaAutoRefresh({
+      intervalMs,
+      now: () => intervalMs,
+      seedLastAtMs: 0,
+      canFetch: () => true,
+      refresh: async () => {
+        started += 1;
+      },
+      setIntervalFn: (fn) => {
+        intervalTick = fn;
+        const id = nextId++;
+        intervals.add(id);
+        return id;
+      },
+      clearIntervalFn: (id) => {
+        intervals.delete(Number(id));
+      },
+      addListener: (_type, fn) => {
+        vis.add(fn);
+      },
+      removeListener: (_type, fn) => {
+        vis.delete(fn);
+      },
+      getVisibility: () => visibility,
+    });
+    expect(intervals.size).toBe(1);
+    visibility = "hidden";
+    for (const fn of vis) fn();
+    expect(intervals.size).toBe(0);
+    intervalTick();
+    expect(started).toBe(0);
+    handle.dispose();
+    expect(intervals.size).toBe(0);
+    expect(vis.size).toBe(0);
+  });
+
+  it("probes when the window is shown again and the interval has elapsed", () => {
+    let visibility: DocumentVisibilityState = "hidden";
+    let started = 0;
+    const vis = new Set<() => void>();
+    const handle = startOfficialQuotaAutoRefresh({
+      intervalMs,
+      now: () => intervalMs,
+      seedLastAtMs: 0,
+      canFetch: () => true,
+      refresh: async () => {
+        started += 1;
+      },
+      setIntervalFn: () => 1,
+      clearIntervalFn: () => {},
+      addListener: (_type, fn) => {
+        vis.add(fn);
+      },
+      removeListener: (_type, fn) => {
+        vis.delete(fn);
+      },
+      getVisibility: () => visibility,
+    });
+    expect(started).toBe(0);
+    visibility = "visible";
+    for (const fn of vis) fn();
+    expect(started).toBe(1);
+    handle.dispose();
+  });
+
   it("does not apply an in-flight refresh after dispose", async () => {
     let release!: () => void;
     const gate = new Promise<void>((resolve) => {

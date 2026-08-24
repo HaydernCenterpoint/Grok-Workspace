@@ -805,11 +805,11 @@
   flex-direction: column;
   gap: 1px;
   width: 100%;
-  padding: 6px 8px;
+  padding: 5px 8px;
   border-radius: var(--radius-md);
   text-align: left;
   color: var(--text-secondary);
-  font-size: var(--text-sm);
+  font-size: 16px;
 }
 
 .session-row:hover {
@@ -829,27 +829,27 @@
 }
 
 .session-row__meta {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text-tertiary);
 }
 
 /*
  * Sidebar session list density (Settings → Appearance → Interface).
  * Prefer html[data-sidebar-density] so VirtualList CSS + metrics stay aligned.
- * Comfortable = defaults above (.tree-l3 30px / gap 2; .session-row padding 6×8).
+ * Comfortable = defaults above (.tree-l3 24px / gap 2; .session-row padding 5×8).
  * Keep row heights in sync with sidebarSessionRowMetrics() / SIDEBAR_DENSITY_METRICS.
  */
 html[data-sidebar-density="compact"] .tree-l3 {
-  height: 24px;
-  min-height: 24px;
-  max-height: 24px;
+  height: 19px;
+  min-height: 19px;
+  max-height: 19px;
   gap: 4px;
   padding: 0 4px 0 10px;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 html[data-sidebar-density="compact"] .tree-l3__title {
-  line-height: 24px;
+  line-height: 19px;
   gap: 4px;
 }
 
@@ -860,8 +860,8 @@ html[data-sidebar-density="compact"] .tree-l3__rename {
 }
 
 html[data-sidebar-density="compact"] .tree-l3--hint {
-  height: 22px;
-  min-height: 22px;
-  font-size: 11px;
+  height: 18px;
+  min-height: 18px;
+  font-size: 12px;
 }
 

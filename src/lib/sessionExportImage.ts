@@ -6,6 +6,7 @@
  */
 
 import { escapeHtml, type ExportableMessage } from "@/lib/sessionExport";
+import { UI_SANS_STACK } from "@/lib/uiFontStack";
 import {
   buildSmartShareSummary,
   type ShareCardTheme,
@@ -460,7 +461,7 @@ ${msgHtml}
 
 /** Inline CSS for share card (light, print-friendly, social-share friendly). */
 export const SHARE_CARD_STYLES = `
-.sc-card{box-sizing:border-box;background:#0b0c0f;color:#f4f4f5;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;border-radius:16px;overflow:hidden;border:1px solid #27272a;box-shadow:0 12px 40px rgba(0,0,0,.35)}
+.sc-card{box-sizing:border-box;background:#0b0c0f;color:#f4f4f5;font-family:${UI_SANS_STACK};border-radius:16px;overflow:hidden;border:1px solid #27272a;box-shadow:0 12px 40px rgba(0,0,0,.35)}
 .sc-header{display:flex;align-items:center;gap:12px;padding:18px 20px 14px;background:linear-gradient(180deg,#14151a 0%,#0b0c0f 100%);border-bottom:1px solid #27272a}
 .sc-logo{width:36px;height:36px;border-radius:10px;object-fit:cover;flex-shrink:0;background:#18181b}
 .sc-logo--mark{display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;color:#fff;background:linear-gradient(135deg,#3b82f6,#8b5cf6)}
@@ -474,7 +475,7 @@ export const SHARE_CARD_STYLES = `
 .sc-msg--assistant{background:#18181b;border:1px solid #27272a;margin-right:8px}
 .sc-msg--other{background:#18181b;opacity:.9}
 .sc-msg__role{font-size:11px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;color:#a1a1aa;margin-bottom:6px}
-.sc-body,.sc-thought pre{margin:0;white-space:pre-wrap;word-break:break-word;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;font-size:13.5px;line-height:1.55;color:#e4e4e7}
+.sc-body,.sc-thought pre{margin:0;white-space:pre-wrap;word-break:break-word;font-family:${UI_SANS_STACK};font-size:13.5px;line-height:1.55;color:#e4e4e7}
 .sc-thought{margin-bottom:8px;padding:8px;border-radius:8px;background:#09090b;border:1px solid #27272a}
 .sc-thought__label{display:block;font-size:10px;font-weight:600;color:#71717a;margin-bottom:4px;text-transform:uppercase}
 .sc-footer{display:flex;align-items:center;justify-content:flex-end;padding:12px 18px 14px;border-top:1px solid #27272a;background:#0b0c0f}

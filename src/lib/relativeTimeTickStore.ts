@@ -7,19 +7,58 @@
 let tick = 0;
 const listeners = new Set<() => void>();
 let intervalId: ReturnType<typeof globalThis.setInterval> | null = null;
+let listening = false;
+
+function bump(): void {
+  tick += 1;
+  for (const l of listeners) l();
+}
+
+function parkInterval(): void {
+  if (intervalId == null) return;
+  globalThis.clearInterval(intervalId);
+  intervalId = null;
+}
+
+function ensureVisibilityListener(): void {
+  if (listening || typeof document === "undefined") return;
+  document.addEventListener("visibilitychange", onVisibility);
+  listening = true;
+}
+
+function dropVisibilityListener(): void {
+  if (!listening || typeof document === "undefined") return;
+  document.removeEventListener("visibilitychange", onVisibility);
+  listening = false;
+}
+
+function onVisibility(): void {
+  if (typeof document !== "undefined" && document.visibilityState === "visible") {
+    ensureInterval();
+    bump();
+    return;
+  }
+  parkInterval();
+}
 
 function ensureInterval(): void {
+  ensureVisibilityListener();
   if (intervalId != null) return;
+  if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+    return;
+  }
   intervalId = globalThis.setInterval(() => {
-    tick += 1;
-    for (const l of listeners) l();
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+      return;
+    }
+    bump();
   }, 60_000);
 }
 
 function stopIntervalIfIdle(): void {
-  if (listeners.size > 0 || intervalId == null) return;
-  globalThis.clearInterval(intervalId);
-  intervalId = null;
+  if (listeners.size > 0) return;
+  parkInterval();
+  dropVisibilityListener();
 }
 
 /** Subscribe to the shared 60s tick. Starts the interval on first listener. */
@@ -59,8 +98,6 @@ export function __testAdvanceRelativeTimeTick(): number {
 export function __testResetRelativeTimeTickStore(): void {
   tick = 0;
   listeners.clear();
-  if (intervalId != null) {
-    globalThis.clearInterval(intervalId);
-    intervalId = null;
-  }
+  parkInterval();
+  dropVisibilityListener();
 }

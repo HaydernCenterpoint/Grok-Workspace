@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useState } from "react";
 import * as api from "@/lib/api";
 import { isDesktopHost } from "@/lib/api";
+import { startVisibleInterval } from "@/lib/visibleInterval";
 import type { MessageKey, Vars } from "@/i18n";
 
 type TFn = (key: MessageKey, vars?: Vars) => string;
@@ -34,8 +35,7 @@ export function SessionApiPanel({ t }: { t: TFn }) {
   useEffect(() => {
     refresh();
     if (!isDesktopHost()) return;
-    const id = window.setInterval(refresh, 4000);
-    return () => window.clearInterval(id);
+    return startVisibleInterval(refresh, 4000);
   }, [refresh]);
 
   const run = useCallback(

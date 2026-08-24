@@ -68,6 +68,7 @@ import {
 import { VirtualList } from "@/components/VirtualList";
 import { ToolExpandBody } from "./ToolExpandBody";
 import { MarkdownChat } from "./MarkdownChat";
+import { ReasoningDots, ToolGrid } from "./ActivityLoaders";
 import { findMatchesBeforeVisible } from "@/lib/chatFind";
 import {
   IconBulb,
@@ -136,10 +137,20 @@ export function ToolBucketIcon({
   }
 }
 
-function StepIcon({ step }: { step: GrokActivityStep }) {
+function StepIcon({
+  step,
+  running,
+}: {
+  step: GrokActivityStep;
+  running?: boolean;
+}) {
   // Official icons are ~15–16px, thin stroke, muted gray
   const size = 15;
   const stroke = 1.5;
+  if (running) {
+    if (step.type === "thought") return <ReasoningDots />;
+    if (step.type !== "speech") return <ToolGrid />;
+  }
   if (step.type === "speech") return null;
   if (step.type === "thought") return <IconBulb size={size} stroke={stroke} />;
   if (step.type === "bash-group")
@@ -364,7 +375,7 @@ const GrokActivityStepRow = memo(function GrokActivityStepRow({
     >
       <div className="grok-act__icon-col" aria-hidden>
         <span className="grok-act__icon">
-          <StepIcon step={step} />
+          <StepIcon step={step} running={running} />
         </span>
         {!isLast ? <span className="grok-act__rail" /> : null}
       </div>
@@ -723,6 +734,7 @@ export const TimelinePhaseBlock = memo(function TimelinePhaseBlock({
         startRef.current = earliest;
       }
       const tick = () => {
+        if (document.visibilityState === "hidden") return;
         if (startRef.current != null) {
           setLiveSec(
             Math.max(1, Math.floor((Date.now() - startRef.current) / 1000)),
@@ -731,7 +743,14 @@ export const TimelinePhaseBlock = memo(function TimelinePhaseBlock({
       };
       tick();
       const id = window.setInterval(tick, 1000);
-      return () => window.clearInterval(id);
+      const onVis = () => {
+        if (document.visibilityState === "visible") tick();
+      };
+      document.addEventListener("visibilitychange", onVis);
+      return () => {
+        window.clearInterval(id);
+        document.removeEventListener("visibilitychange", onVis);
+      };
     }
     if (startRef.current != null) {
       setLiveSec(
@@ -797,7 +816,11 @@ export const TimelinePhaseBlock = memo(function TimelinePhaseBlock({
         }}
       >
         <span className="grok-act__header-icon" aria-hidden>
-          <IconGridDots size={15} stroke={1.5} />
+          {phaseRunning ? (
+            <ReasoningDots />
+          ) : (
+            <IconGridDots size={15} stroke={1.5} />
+          )}
         </span>
         <span className="grok-act__header-text">{phaseChromeLabel}</span>
         {collapsedSummary ? (

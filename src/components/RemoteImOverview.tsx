@@ -39,6 +39,7 @@ import {
   remoteSecurityRiskTone,
 } from "@/lib/remoteSecurityOps";
 import * as api from "@/lib/api";
+import { startVisibleInterval } from "@/lib/visibleInterval";
 import {
   RimBadge,
   RimChoiceRow,
@@ -123,10 +124,10 @@ export function RemoteImOverview({
       }
     };
     void load();
-    const id = window.setInterval(() => void load(), 8000);
+    const stop = startVisibleInterval(() => void load(), 8000);
     return () => {
       cancelled = true;
-      window.clearInterval(id);
+      stop();
     };
   }, []);
 

@@ -42,6 +42,7 @@ describe("quotaFromHostItem", () => {
       usedPercent: null,
       resetsAt: null,
       available: false,
+      subscriptionTier: null,
     });
   });
 
@@ -54,6 +55,16 @@ describe("quotaFromHostItem", () => {
     expect(q.available).toBe(true);
     expect(q.remainingPercent).toBe(0);
     expect(q.usedPercent).toBe(100);
+  });
+
+  it("keeps an official subscription tier from the probe", () => {
+    const q = quotaFromHostItem({
+      remainingPercent: 40,
+      usedPercent: 60,
+      available: true,
+      subscriptionTier: "SuperGrok Heavy",
+    });
+    expect(q.subscriptionTier).toBe("SuperGrok Heavy");
   });
 });
 
@@ -77,6 +88,7 @@ describe("mergeAccountQuota", () => {
           usedPercent: 92,
           resetsAt: null,
           available: true,
+          subscriptionTier: "SuperGrok",
         },
       },
       { id: "u1", email: "a@x.ai", remaining: 70, used: 30 },
@@ -89,13 +101,21 @@ describe("mergeAccountQuota", () => {
       "u1",
       "a@x.ai",
       {},
-      { id: "u1", email: "a@x.ai", remaining: 69, used: 31, resetsAt: "t" },
+      {
+        id: "u1",
+        email: "a@x.ai",
+        remaining: 69,
+        used: 31,
+        resetsAt: "t",
+        subscriptionTier: "SuperGrok Heavy",
+      },
     );
     expect(q).toEqual({
       remainingPercent: 69,
       usedPercent: 31,
       resetsAt: "t",
       available: true,
+      subscriptionTier: "SuperGrok Heavy",
     });
   });
 
@@ -109,6 +129,7 @@ describe("mergeAccountQuota", () => {
           usedPercent: null,
           resetsAt: null,
           available: false,
+          subscriptionTier: null,
         },
       },
       { id: "u1", email: "a@x.ai", remaining: 69, used: 31 },

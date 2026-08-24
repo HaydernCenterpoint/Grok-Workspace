@@ -5,6 +5,7 @@ import {
   clipHostRectToAncestor,
   createTrailingSingleFlight,
   isAsideWebviewSuppressed,
+  shouldDeferNativeWebviewBoundsSync,
   snapBounds,
 } from "./nativeWebviewBounds";
 
@@ -32,6 +33,29 @@ describe("boundsNearlyEqual", () => {
   it("false when previous missing", () => {
     expect(
       boundsNearlyEqual(null, { x: 0, y: 0, width: 1, height: 1 }),
+    ).toBe(false);
+  });
+});
+
+describe("shouldDeferNativeWebviewBoundsSync", () => {
+  it("defers only while pane motion is active and the split is not dragging", () => {
+    expect(
+      shouldDeferNativeWebviewBoundsSync({
+        paneSplitMotionActive: true,
+        workbenchSplitResizing: false,
+      }),
+    ).toBe(true);
+    expect(
+      shouldDeferNativeWebviewBoundsSync({
+        paneSplitMotionActive: true,
+        workbenchSplitResizing: true,
+      }),
+    ).toBe(false);
+    expect(
+      shouldDeferNativeWebviewBoundsSync({
+        paneSplitMotionActive: false,
+        workbenchSplitResizing: false,
+      }),
     ).toBe(false);
   });
 });

@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   applySkinToDocument,
   applyWallpaperFlag,
+  applyWallpaperParkedFlag,
+  applyWallpaperVideoFlag,
   applyWallpaperScrimToDocument,
   clearWallpaper,
   DEFAULT_SKIN,
@@ -215,6 +217,42 @@ describe("wallpaper storage", () => {
     expect(attrs.get("data-wallpaper")).toBe("1");
     applyWallpaperFlag(false, el);
     expect(attrs.has("data-wallpaper")).toBe(false);
+    expect(attrs.has("data-wallpaper-video")).toBe(false);
+  });
+
+  it("applyWallpaperVideoFlag toggles the video wallpaper attribute", () => {
+    const attrs = new Map<string, string>();
+    const el = {
+      setAttribute(name: string, value: string) {
+        attrs.set(name, value);
+      },
+      removeAttribute(name: string) {
+        attrs.delete(name);
+      },
+    };
+    applyWallpaperVideoFlag(true, el);
+    expect(attrs.get("data-wallpaper-video")).toBe("1");
+    applyWallpaperVideoFlag(false, el);
+    expect(attrs.has("data-wallpaper-video")).toBe(false);
+    applyWallpaperVideoFlag(true, el);
+    applyWallpaperFlag(false, el);
+    expect(attrs.has("data-wallpaper-video")).toBe(false);
+  });
+
+  it("applyWallpaperParkedFlag toggles the parked compositor attribute", () => {
+    const attrs = new Map<string, string>();
+    const el = {
+      setAttribute(name: string, value: string) {
+        attrs.set(name, value);
+      },
+      removeAttribute(name: string) {
+        attrs.delete(name);
+      },
+    };
+    applyWallpaperParkedFlag(true, el);
+    expect(attrs.get("data-wallpaper-parked")).toBe("1");
+    applyWallpaperParkedFlag(false, el);
+    expect(attrs.has("data-wallpaper-parked")).toBe(false);
   });
 
   it("saveWallpaperFocus updates meta only (no blob rewrite)", async () => {

@@ -30,6 +30,7 @@ export const esAccount = {
   "account.weeklyTitle": "Cuota semanal de SuperGrok",
   "account.quota": "Cuota usada",
   "account.quotaRemaining": "restante",
+  "account.usage": "Uso",
   "account.quotaUsed": "usada",
   "account.quotaUnknown": "Cuota aún no cargada",
   "account.period": "Periodo de facturación",
