@@ -16,6 +16,10 @@ See `docs/llm-wiki/release.md`.
 ### Changed
 
 ### Fixed
+- **Website download aliases match Grok Workspace installer names**: `publish-website-downloads.py` now maps Tauri’s `Grok.Workspace_*` DMG / setup / AppImage / .deb / .rpm (and the existing `Grok_*` portable zip) so a tag can publish `Grok_mac_x64.dmg`, `Grok_windows_x64-setup.exe`, `downloads.json`, and SHA256SUMS. v1.1.0 failed that job because the contract still expected the old `Grok_{ver}_*` prefix.
+
+**中文 · 修复**
+- **官网下载别名认 Grok Workspace 安装包文件名**：`publish-website-downloads.py` 现在能对上 Tauri 的 `Grok.Workspace_*`（以及原来的 `Grok_*` 绿色版 zip），tag 之后才会挂上 `Grok_mac_x64.dmg` / `Grok_windows_x64-setup.exe` / `downloads.json` / SHA256SUMS。v1.1.0 那次仍在找旧的 `Grok_{ver}_*` 前缀，所以 checksums job 红了。
 
 ## [1.1.0] - 2026-08-24
 

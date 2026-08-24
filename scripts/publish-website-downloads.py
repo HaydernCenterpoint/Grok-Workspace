@@ -27,12 +27,27 @@ from pathlib import Path
 from typing import Any
 
 SCHEMA_VERSION = 1
-PRODUCT = "Grok App"
+PRODUCT = "Grok Workspace"
 OFFICIAL_SITE = "https://grok-app.com"
 DOWNLOADS_JSON_NAME = "downloads.json"
 
 # Website buttons that must exist or the job fails.
 REQUIRED_IDS = ("mac-x64", "windows-x64")
+
+
+def grok_sources(*suffixes: str) -> tuple[str, ...]:
+    """Versioned names for current `Grok Workspace` bundles and legacy `Grok_*`.
+
+    Tauri turns productName ``Grok Workspace`` into ``Grok.Workspace_*``
+    (spaces → dots). The portable zip script still emits ``Grok_{ver}_*``.
+    First existing file wins.
+    """
+    names: list[str] = []
+    for suffix in suffixes:
+        names.append(f"Grok.Workspace{suffix}")
+        names.append(f"Grok{suffix}")
+    return tuple(names)
+
 
 # source_names: first existing file wins. `{ver}` is the tag without leading v.
 INSTALLER_SPEC: tuple[dict[str, Any], ...] = (
@@ -43,7 +58,7 @@ INSTALLER_SPEC: tuple[dict[str, Any], ...] = (
         "kind": "dmg",
         "label": "macOS Apple Silicon",
         "stable": "Grok_mac_aarch64.dmg",
-        "sources": ("Grok_{ver}_aarch64.dmg",),
+        "sources": grok_sources("_{ver}_aarch64.dmg"),
     },
     {
         "id": "mac-x64",
@@ -52,7 +67,7 @@ INSTALLER_SPEC: tuple[dict[str, Any], ...] = (
         "kind": "dmg",
         "label": "macOS Intel",
         "stable": "Grok_mac_x64.dmg",
-        "sources": ("Grok_{ver}_x64.dmg",),
+        "sources": grok_sources("_{ver}_x64.dmg"),
     },
     {
         "id": "windows-x64",
@@ -61,7 +76,7 @@ INSTALLER_SPEC: tuple[dict[str, Any], ...] = (
         "kind": "nsis",
         "label": "Windows x64",
         "stable": "Grok_windows_x64-setup.exe",
-        "sources": ("Grok_{ver}_x64-setup.exe",),
+        "sources": grok_sources("_{ver}_x64-setup.exe"),
     },
     {
         "id": "windows-x64-portable",
@@ -70,7 +85,7 @@ INSTALLER_SPEC: tuple[dict[str, Any], ...] = (
         "kind": "portable-zip",
         "label": "Windows x64 portable",
         "stable": "Grok_windows_x64-portable.zip",
-        "sources": ("Grok_{ver}_x64-portable.zip",),
+        "sources": grok_sources("_{ver}_x64-portable.zip"),
     },
     {
         "id": "linux-x64-appimage",
@@ -79,7 +94,7 @@ INSTALLER_SPEC: tuple[dict[str, Any], ...] = (
         "kind": "appimage",
         "label": "Linux x64 AppImage",
         "stable": "Grok_linux_x64.AppImage",
-        "sources": ("Grok_{ver}_amd64.AppImage", "Grok_{ver}_x86_64.AppImage"),
+        "sources": grok_sources("_{ver}_amd64.AppImage", "_{ver}_x86_64.AppImage"),
     },
     {
         "id": "linux-x64-deb",
@@ -88,7 +103,7 @@ INSTALLER_SPEC: tuple[dict[str, Any], ...] = (
         "kind": "deb",
         "label": "Linux x64 .deb",
         "stable": "Grok_linux_x64.deb",
-        "sources": ("Grok_{ver}_amd64.deb", "Grok_{ver}_x86_64.deb"),
+        "sources": grok_sources("_{ver}_amd64.deb", "_{ver}_x86_64.deb"),
     },
     {
         "id": "linux-x64-rpm",
@@ -97,11 +112,11 @@ INSTALLER_SPEC: tuple[dict[str, Any], ...] = (
         "kind": "rpm",
         "label": "Linux x64 .rpm",
         "stable": "Grok_linux_x64.rpm",
-        "sources": (
-            "Grok-{ver}-1.x86_64.rpm",
-            "Grok-{ver}.x86_64.rpm",
-            "Grok_{ver}_x86_64.rpm",
-            "Grok_{ver}_amd64.rpm",
+        "sources": grok_sources(
+            "-{ver}-1.x86_64.rpm",
+            "-{ver}.x86_64.rpm",
+            "_{ver}_x86_64.rpm",
+            "_{ver}_amd64.rpm",
         ),
     },
 )
@@ -318,7 +333,50 @@ class WebsiteDownloadsTests(unittest.TestCase):
             self.assertEqual(installers["linux-x64-rpm"]["versionedFilename"], "Grok-0.2.20-1.x86_64.rpm")
             self.assertNotIn("sig", json.dumps(installers))
             self.assertEqual(payload["manifest"]["officialSite"], OFFICIAL_SITE)
+            self.assertEqual(payload["manifest"]["product"], PRODUCT)
             self.assertEqual(payload["manifest"]["schemaVersion"], SCHEMA_VERSION)
+
+    def test_accepts_workspace_bundle_prefix(self) -> None:
+        """Tauri productName 'Grok Workspace' emits Grok.Workspace_* assets."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            samples = {
+                "Grok.Workspace_0.2.20_aarch64.dmg": b"arm-dmg",
+                "Grok.Workspace_0.2.20_x64.dmg": b"intel-dmg",
+                "Grok.Workspace_0.2.20_x64-setup.exe": b"win-setup",
+                "Grok_0.2.20_x64-portable.zip": b"win-zip",
+                "Grok.Workspace_0.2.20_amd64.AppImage": b"appimage",
+                "Grok.Workspace_0.2.20_amd64.deb": b"deb",
+                "Grok.Workspace-0.2.20-1.x86_64.rpm": b"rpm",
+            }
+            for name, body in samples.items():
+                (root / name).write_bytes(body)
+
+            payload = build_manifest(
+                root,
+                tag="v0.2.20",
+                repo="HaydernCenterpoint/Grok-Workspace",
+                write_aliases=True,
+            )
+            installers = payload["manifest"]["installers"]
+            self.assertEqual(
+                installers["mac-x64"]["versionedFilename"],
+                "Grok.Workspace_0.2.20_x64.dmg",
+            )
+            self.assertEqual(
+                installers["windows-x64"]["versionedFilename"],
+                "Grok.Workspace_0.2.20_x64-setup.exe",
+            )
+            self.assertEqual(
+                installers["windows-x64-portable"]["versionedFilename"],
+                "Grok_0.2.20_x64-portable.zip",
+            )
+            self.assertEqual(
+                installers["linux-x64-rpm"]["versionedFilename"],
+                "Grok.Workspace-0.2.20-1.x86_64.rpm",
+            )
+            self.assertTrue((root / "Grok_mac_x64.dmg").is_file())
+            self.assertTrue((root / "Grok_windows_x64-setup.exe").is_file())
 
             json_out = root / DOWNLOADS_JSON_NAME
             upload_list = root / ".website-upload.txt"
