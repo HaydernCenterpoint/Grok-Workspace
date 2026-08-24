@@ -11,8 +11,7 @@ use crate::acp_client::{AcpClient, StreamKind};
 use crate::session_fsm::SessionState;
 use crate::store::{self, ChatMessageStored};
 use crate::stream_emit::{
-    should_flush_stream_emit, stream_emit_can_merge, stream_emit_interval_ms,
-    stream_emit_max_chars,
+    should_flush_stream_emit, stream_emit_can_merge, stream_emit_interval_ms, stream_emit_max_chars,
 };
 use crate::stream_stall::{
     journal_tool_is_terminal, normalize_stream_stall_seconds, should_prune_open_tool_id,
