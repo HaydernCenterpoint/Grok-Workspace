@@ -12,6 +12,20 @@ See `docs/llm-wiki/release.md`.
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+## [1.1.0] - 2026-08-24
+
+> Workbench polish after the 1.0.0 public cut: three surfaces, idle Host/WebView, Codex/Claude import, and a Grok-styled Windows installer.
+>
+> **Highlight:** ChatGPT-soft Build / Office / Studio chrome, Office as a document canvas, Studio send-to-Build/Office, and hidden windows that stop waking the machine.
+>
+> **中文 · 摘要：** 三个工作面做成 ChatGPT 软炭灰外壳；Office 是文档画布；Studio 可把生成媒体送到 Build / Office；隐藏窗口不再空转唤醒机器。还可从 Codex / Claude 导入技能，Windows 安装包换成 Grok 风格。
+
+### Added
 - **Create project workspace**: The Create project dialog has **Choose workspace** (Build or Office). Default is the surface you are already on (Studio falls back to Build). The new folder’s home is stored in `localStorage` (`grok.projectWorkMode`) so the sidebar lists it under Grok Build or Grok Office even before a chat exists. After create, the app switches to that workspace and selects the project.
 - **Import from Codex / Claude + find installed skills**: Settings → Extensions → Skills (and MCP / Account → Providers) can scan `~/.codex`, `~/.claude`, Claude Desktop, `~/.cursor/skills`, `~/.agents/skills`, Grok / project skill folders. The review modal imports selected MCP servers (command/URL only) and Claude permission rules into independent agent-home, and copies SKILL.md trees into the active skills root. Shared mode never rewrites `~/.grok` config.toml unless you opt in to independent. API keys, `auth.json`, `.env`, and MCP env/headers are never copied; Codex provider rows are preview-only.
 - **ChatGPT-style update banner**: When a signed download finishes, a workbench bar says the version is ready with **Restart now** and **Later**. Downloading is a quiet line (no fake percent). Unsigned / local / Linux non-AppImage still say a new version is available with **Download** (GitHub) and **Later** — never a silent-install claim. Later hides the bar for this session; the sidebar icon stays. Restart now still opens the in-app confirm, then `install()` → `prepare_for_app_update` → relaunch.
@@ -71,6 +85,12 @@ See `docs/llm-wiki/release.md`.
 - **Studio prints the generated image**: A leftover card was dropped whenever the agent also wrote the filesystem path as prose, and the Studio “fill the column” CSS used `width: auto` so the frame collapsed to empty. Prose paths keep the card; markdown ticks/links still inline; the frame now has a definite width.
 - **Recents no longer swallows surface chats**: Folderless chats created from Grok Build / Office / Studio (or tagged for those surfaces) stay under that workspace. Recents is only for chats started from Recents `+`. A folder session never appears in Recents.
 - **Workbench split drag no longer slams the left rail shut or leaves a black browser gap**: The sidebar stays open down to 200px; it collapses only when you release below a 96px snap (a stray `clientX` of 0 cannot close it). Live width writes coalesce to one frame, both handles capture the pointer, and the native right-pane browser resyncs while siblings resize — then once more after pointer-up — so it does not sit offset from the column.
+
+### Notes
+- **Not an official xAI product.** Real agents still need a working Grok Build CLI on the machine.
+- Auto-download is signed-only. Unsigned / local / Linux non-AppImage builds open GitHub instead of claiming a silent install.
+- Shared `GROK_HOME` (`~/.grok`) is never rewritten by the Codex/Claude importer unless you switch to independent agent-home.
+- Chinese UI remains unshipped (`zh*` → English). Tray `zh` / `zh-TW` strings stay on disk.
 
 **中文 · 新增**
 
@@ -133,6 +153,12 @@ See `docs/llm-wiki/release.md`.
 - **Studio 会画出生成的图**：模型把文件路径写在正文里时，底部图片卡会被误删；Studio 铺满列宽的 CSS 用了 `width: auto`，框在解码前是 0×0。纯文本路径会留卡；markdown 反引号/链接仍内联；框现在有确定宽度。
 - **Recents 不再吞掉工作面会话**：从 Grok Build / Office / Studio 创建（或已标记到这些空间）的无文件夹聊天留在对应工作面。Recents 只收 Recents `+` 开的短聊。文件夹里的会话不会再出现在 Recents。
 - **工作台左右分栏拖动不再误关左侧栏，也不再把右侧内嵌浏览器拖出黑缝**：侧栏开着最窄仍是 200px；只有松开时宽度低于 96px 才收起（Windows 上偶发的 `clientX = 0` 不会关栏）。拖动按帧合并写宽度，手柄会捕获指针；右侧原生浏览器跟着侧栏/工具栏改边界，松开后再对齐一次，避免留下黑边或空列。
+
+**中文 · 说明**
+- **非 xAI 官方产品。** 真 Agent 仍需本机 Grok Build CLI。
+- 自动下载只走签名通道；未签名 / 本地 / Linux 非 AppImage 仍打开 GitHub，不会声称静默安装。
+- 共享 `GROK_HOME`（`~/.grok`）不会被 Codex / Claude 导入改写，除非切到独立 agent-home。
+- 中文 UI 仍未上架（`zh*` 回落英文）。托盘 `zh` / `zh-TW` 文案留在磁盘。
 
 ## [1.0.0] - 2026-08-22
 
