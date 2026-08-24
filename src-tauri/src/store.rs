@@ -3029,7 +3029,7 @@ mod tests {
             last_run_at: None,
             next_run_at: None,
         };
-        note_automations_list(&[disabled.clone()]);
+        note_automations_list(std::slice::from_ref(&disabled));
         assert!(!automations_maybe_enabled());
         let mut enabled = disabled;
         enabled.enabled = true;
