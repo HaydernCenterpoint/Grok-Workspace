@@ -33,6 +33,7 @@ import type { SkillInfo } from "@/lib/slashCatalog";
 import type { SkillsPickerSkill } from "@/lib/skillsTaskPicker";
 import { workSurfaceChrome, type WorkMode } from "@/lib/grokOffice";
 import { FilesWorkspace } from "./FilesWorkspace";
+import type { ProjectOption } from "@/components/ComposerProjectMenu";
 import { PlanTab, type PlanTabChrome } from "./PlanTab";
 import { ReviewTab } from "./ReviewTab";
 import { SkillsTab } from "./SkillsTab";
@@ -74,6 +75,13 @@ export type SideWorkbenchProps = {
   skillsLoadError?: string | null;
   onSelectSkill?: (skill: SkillsPickerSkill) => void;
   workMode?: WorkMode;
+  officeFolder?: {
+    projects: ProjectOption[];
+    activeProject: ProjectOption | null;
+    onSelect: (project: ProjectOption | null) => void;
+    onAdd: () => void;
+    onPickFolder: () => void;
+  } | null;
 };
 
 export function SideWorkbench({
@@ -106,10 +114,12 @@ export function SideWorkbench({
   skillsLoadError = null,
   onSelectSkill,
   workMode = "code",
+  officeFolder = null,
 }: SideWorkbenchProps) {
   const [internal, setInternal] = useState(emptySideWorkbenchState);
   const state = controlled ?? internal;
   const lastPlanFocusKey = useRef<number | null>(null);
+  const lastPlanVisibleRef = useRef(false);
   const [dirtyPaths, setDirtyPaths] = useState<string[]>([]);
   const [closePathRequest, setClosePathRequest] = useState<{
     path: string;
@@ -291,10 +301,12 @@ export function SideWorkbench({
     const { open, nextLastFocusKey } = shouldOpenPlanSideTab({
       autoOpenEnabled: autoOpenPlanTab,
       planVisible: !!plan?.visible,
+      lastPlanVisible: lastPlanVisibleRef.current,
       focusKey: planFocusKey,
       lastFocusKey: lastPlanFocusKey.current,
     });
     lastPlanFocusKey.current = nextLastFocusKey;
+    lastPlanVisibleRef.current = !!plan?.visible;
     if (!open) return;
     setState(openSideTab(state, "plan", { name: "side.tab.plan" }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -404,6 +416,7 @@ export function SideWorkbench({
                   }
                   onClosePathResult={onClosePathResult}
                   paneActive={paneActive && active.kind === "file"}
+                  officeFolder={workMode === "office" ? officeFolder : null}
                 />
               </div>
             ) : null}

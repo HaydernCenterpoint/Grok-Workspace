@@ -119,7 +119,7 @@ function formatSessionMenu(sessions: SessionIndexEntry[]): string {
     return `${i + 1}. ${title}`;
   });
   return (
-    "Resume a session (send number):\n" +
+    "Resume a Grok Build session (send number):\n" +
     lines.join("\n") +
     "\n0. Cancel"
   );

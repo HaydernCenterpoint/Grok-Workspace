@@ -93,19 +93,8 @@
 │ rim-sidebar (~210px)          │ rim-panel（可滚动）               │
 │                               │                                   │
 │ ● Bridge 总览                 │  ← 选中后右侧内容切换             │
-│ ── 国内 ──                    │                                   │
-│   飞书 / Lark        ●绿      │                                   │
-│   钉钉               ○灰      │                                   │
-│   企业微信                    │                                   │
-│   微信个人                    │                                   │
-│   WPS 协作                    │                                   │
-│   微博                        │                                   │
-│   QQ 官方 / OneBot            │                                   │
-│ ── 海外 ──                    │                                   │
 │   Telegram / Slack / Discord  │                                   │
 │   Matrix / LINE               │                                   │
-│ ── 其他 ──                    │                                   │
-│   WPS 数字员工（可选）        │                                   │
 └───────────────────────────────┴───────────────────────────────────┘
 ```
 
@@ -114,6 +103,8 @@
 | Bridge 总览 | 运行状态、启停、总开关、全局安全、已连接摘要 |
 | 某渠道 | 该渠道 **绑定表单 + ACL + 项目范围 + 交互 + Doctor + 危险区** |
 | 未实现渠道 | 「即将支持」说明 + 能力标签，表单 disabled |
+
+侧栏只列出 Telegram / Slack / Discord / Matrix / LINE，**不**再显示「国内 / 海外」分组标题。国内渠道仍保留在 schema 里供遗留实例解析，但不进选择器。
 
 侧栏行：图标 + 名称 + **状态点**（绿连接 / 黄已配置未连 / 灰未配置 / 红错误）+ 可选实例数角标。  
 交互：对齐 `.settings-page__nav-item` 的 hover / `is-active`。
@@ -198,9 +189,9 @@
 | 命令 | 行为 |
 |------|------|
 | `/start` `/help` | 欢迎与命令帮助（Telegram 首开默认发 `/start`） |
-| `/p` `/project` | 项目列表：A 档卡片 / Telegram Inline Keyboard / C 档编号菜单 |
+| `/p` `/project` | 项目列表：Telegram / Slack / Discord / LINE 原生按钮，Matrix 编号菜单 |
 | `/p <名\|序号>` | 直接绑定项目 → **mode=new** |
-| `/r` `/resume` | 当前项目历史会话列表（App sessions_index；Telegram 可点按钮恢复） |
+| `/r` `/resume` | 当前项目 **Grok Build** 会话列表（App sessions_index；可点按钮的渠道恢复） |
 | `/r <序号>` | 绑定会话 → **mode=resume** |
 | `/new` | 清 session 绑定，保持项目，mode=new |
 | `/status` | 项目、cwd、mode、session、chatKey |
@@ -212,7 +203,7 @@
 | `/whoami` | 平台 user id |
 | `0` / 取消 | 退出编号选择模式 |
 
-Telegram：启动 / 测试连接时 `setMyCommands` 注册上表到原生 **`/` 菜单**；`/p`、`/r`、`/account` 的结果使用 Inline Keyboard 原生展示与选择（见 §6.5）。
+Telegram：启动 / 测试连接时 `setMyCommands` 注册上表到原生 **`/` 菜单**；`/p`、`/r`、`/account` 用 Inline Keyboard。Slack / Discord / LINE 用各自按钮（Block Kit / components / Flex）；Matrix 仍为编号文本菜单。Remote IM 写入的会话打 **Grok Build** 标签。
 
 规则：
 
@@ -432,6 +423,8 @@ Bridge **启动**与 **测试连接成功** 时自动调用 `setMyCommands`，�
 
 引导步骤条：创建 App → Socket Mode → 事件 → Install → 双 Token。
 
+`/p`、`/r`、`/account` 发 Slack Block Kit 按钮（每页 20，翻页 `chat.update`）。Socket Mode 必须订阅 **interactivity**；按钮点进 `interactive` envelope → 统一 `CardAction`。无 App Token 时只做 `auth.test` 健康检查，不收消息。
+
 ---
 
 ### 6.7 Discord `discord`
@@ -445,6 +438,8 @@ Bridge **启动**与 **测试连接成功** 时自动调用 `setMyCommands`，�
 | 线程隔离会话 | `thread_isolation` | Cb | | false |
 | 进度样式 | `progress_style` | Sel | | compact |
 | 特权 Intent 提示 | — | Callout 只读 | | Message Content Intent 必开 |
+
+`/p`、`/r`、`/account` 发 Discord message components（每行最多 5 按钮）。按钮走 `INTERACTION_CREATE`（3s 内 type 6 ACK）→ 统一 `CardAction`；翻页 `PATCH` 原消息。
 
 ---
 
@@ -552,6 +547,8 @@ Callout：社区桥、风险自负。
 | 群内回复全部消息 | `group_reply_all` | Cb | | false |
 | 代理 | `proxy` | T | | 空 |
 
+Matrix 客户端没有统一的消息按钮；`/p` `/r` 用编号文本菜单。会话仍写入 Grok Build。
+
 ---
 
 ### 6.13 微博 `weibo`
@@ -582,6 +579,8 @@ Callout：社区桥、风险自负。
 | 回调路径 | `callback_path` | T | |
 | 公网说明 | — | **强 Callout**：需隧道；提供「推荐 cloudflared」复制片段（辅助） | |
 
+`/p`、`/r`、`/account` 发 LINE Flex 按钮（每页 10；`postback.data` 为紧凑 `CardAction`）。入站同时解析 `message` 与 `postback`。
+
 ---
 
 ## 7. Grok Build 对接
@@ -590,10 +589,11 @@ Callout：社区桥、风险自负。
 |----|------|
 | Agent | 仅 Grok Build CLI / ACP（`--resume` + `GROK_HOME=agent-home`） |
 | work_dir | 仅 App 信任项目 path。`{ allow: [] }` / 未知 scope **不**回退 `$HOME`，自由文本不 spawn，回复「没有可用项目，请 /p」 |
-| 新会话 | IM 首轮后写入 `sessions_index` + `sessions/<id>/messages.json`；标题取自首条用户消息 |
+| 新会话 | IM 首轮后写入 `sessions_index` + `sessions/<id>/messages.json`；标题取自首条用户消息；`session://index_changed` `source=remote_im` 时 App 打 **Grok Build**（`code`）标签 |
 | 继续 | 绑定 `agentSessionId`；每轮 append user/assistant 到 App journal |
 | 恢复 | `/r` 读 `sessions_index`；`--resume` 用 `agentSessionId` |
-| 侧栏同步 | 写盘后 emit `session://index_changed`，App 刷新会话列表 |
+| 侧栏同步 | 写盘后 emit `session://index_changed`，App 刷新会话列表并归入 Grok Build |
+| Bridge 启停 | 只拉起 Telegram / Slack / Discord / Matrix / LINE。国内遗留实例不 spawn、不把 Bridge 标成可连 |
 | 权限 | 受「允许远程 YOLO」总闸 |
 | 飞书渲染 | 含 Markdown 时用 interactive 卡片 `schema 2.0` markdown 元素（非 plain text） |
 | 媒体 | 按渠道能力入站/出站；路径防穿越 |

@@ -423,6 +423,8 @@ export const idSettingsUi = {
   "settings.autoUpdateError.other": "Pembaruan gagal. Anda masih dapat membuka halaman rilis GitHub dan menginstal secara manual.",
   "settings.autoUpdateChannelUnsupported": "Saluran pembaruan: instal manual (jenis paket ini tidak dapat memperbarui otomatis)",
   "settings.autoUpdateChannelHostOnly": "Saluran pembaruan: hanya aplikasi desktop (tidak tersedia di sini)",
+  "settings.autoDownloadUpdates": "Unduh pembaruan secara otomatis",
+  "settings.autoDownloadUpdatesDesc": "Build rilis bertanda tangan diunduh di latar belakang, lalu menunggu konfirmasi Instal dan mulai ulang. Build tanpa tanda tangan dan lokal tetap membuka GitHub — tidak pernah memasang diam-diam. Matikan untuk memulai unduhan sendiri.",
   "settings.askDemo.title": "Jalur demo tanya-pengguna",
   "settings.askDemo.desc": "Jalur yang disarankan untuk membandingkan Tanya vs YOLO tanpa mencari pengaturan. App hanya menyiapkan kebijakan dan prompt sampel — kuesioner langsung masih bergantung pada model dan CLI.",
   "settings.askDemo.honesty": "Kejujuran: `ask_user_question` nyata bergantung pada model dan Grok Build CLI. App tidak pernah mengirim prompt otomatis dan tidak pernah mengklaim agen akan bertanya.",

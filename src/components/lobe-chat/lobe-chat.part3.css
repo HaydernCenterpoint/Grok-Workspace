@@ -611,6 +611,27 @@ html[data-chat-width="full"],
   --chat-width-max: none;
 }
 
+/*
+ * Build / Office / Studio: the command column matches the docked composer
+ * card. Settings → Chat width (760 / 1120 / 1440 / none) would otherwise
+ * fill the pane (medium 1120px ≥ a typical stage) while `.composer-stack`
+ * stays 52rem and centered. Two attributes beat the ladder above.
+ * The element rule hits ConversationThread's `.lobe-chat__inner` — not the
+ * unused `[data-slot="conversation-content"]` wrapper.
+ */
+html[data-work-mode="code"][data-chat-width],
+html[data-work-mode="office"][data-chat-width],
+html[data-work-mode="studio"][data-chat-width] {
+  --chat-width-max: var(--composer-width-max, 52rem);
+}
+
+html[data-work-mode="code"] .lobe-chat__inner,
+html[data-work-mode="office"] .lobe-chat__inner,
+html[data-work-mode="studio"] .lobe-chat__inner {
+  max-width: min(100%, var(--composer-width-max, 52rem));
+  margin-inline: auto;
+}
+
 /* Structured JSON output panel (optional session JSON Schema) */
 .struct-json {
   margin-top: 10px;

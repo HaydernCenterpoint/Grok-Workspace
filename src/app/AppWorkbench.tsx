@@ -90,6 +90,7 @@ import {
   clampAsideWidth,
   clampSidebarDragWidth,
   clampSidebarWidth,
+  classifySidebarDragPointerSample,
   resolveSidebarDragEnd,
   SIDEBAR_DEFAULT_WIDTH,
   SIDEBAR_WIDTH_MIN,
@@ -97,8 +98,18 @@ import {
 } from "@/lib/layout";
 import {
   applyLiveSplitWidth,
+  beginWorkbenchSplitResize,
+  createRafLiveSplitWriter,
+  notifyWorkbenchSplitResize,
   queryWorkbenchSplitPane,
+  scheduleWorkbenchSplitResizeFlush,
 } from "@/lib/paneDragLive";
+import { startVisibleInterval } from "@/lib/visibleInterval";
+import {
+  COMPOSER_TOKEN_POLL_BURST_FRAMES,
+  composerTokenEventShouldKick,
+  nextComposerTokenPollBurst,
+} from "@/lib/composerTokenPoll";
 import { resolveWorkbenchPaneOverlay } from "@/lib/paneOverlay";
 import {
   ensureWindowFitsLayout,
@@ -107,6 +118,7 @@ import {
 import { isFakeMaximized } from "@/lib/windowChrome";
 import {
   bumpPaneSplitMotion,
+  endPaneSplitMotion,
   isPaneSplitMotionActive,
   paneSplitSizeStyle,
 } from "@/lib/paneSplitMotion";
@@ -200,6 +212,8 @@ import { saveTrayBusyBadgePref } from "@/lib/trayBusyBadgePref";
 import { saveWinTaskbarOverlayPref } from "@/lib/winTaskbarOverlayPref";
 import {
   packagePresenceLabel,
+  presenceModelLabel,
+  presenceQuotaLine,
   saveDiscordPresencePref,
 } from "@/lib/discordPresence";
 import { useDiscordPresence } from "@/hooks/useDiscordPresence";
@@ -516,7 +530,6 @@ import {
   clearNote as clearSessionNote,
   getNote as getSessionNote,
   loadSessionNotes,
-  notePreview,
   setNote as setSessionNote,
   shouldConfirmSessionNoteClear,
   shouldConfirmSessionNoteDiscard,
@@ -692,21 +705,23 @@ import {
 import type { MessageKey } from "@/i18n";
 import { AttachmentCard } from "@/components/AttachmentCard";
 import { ImageViewerProvider } from "@/components/ImageViewer";
-import { OverlayScroll } from "@/components/OverlayScroll";
-import { VirtualList } from "@/components/VirtualList";
+import { MediaHandoffProvider } from "@/providers/MediaHandoffContext";
 import {
-  SidebarSessionRow,
+  attachmentFromMediaPath,
+  type MediaHandoffTarget,
+} from "@/lib/mediaHandoff";
+import { OverlayScroll } from "@/components/OverlayScroll";
+import {
   type SidebarSessionRowLabels,
   type SidebarSessionWorktreeBadgeProp,
 } from "@/components/SidebarSessionRow";
-import { SidebarTreeReveal } from "@/components/SidebarTreeReveal";
 import { sidebarSessionRowMetrics } from "@/lib/sidebarDensity";
-import { sortSessionsForSidebar } from "@/lib/sidebarDateGroups";
 import { nextSessionTitle } from "@/lib/sidebarSessionRename";
 import { GrokLogo } from "@/components/GrokLogo";
 import { GrokLogoLoader } from "@/components/GrokLogoLoader";
 import { SidebarProductSwitch } from "@/components/SidebarProductSwitch";
 import { SidebarUpdateButton } from "@/components/SidebarUpdateButton";
+import { UpdateReadyBanner } from "@/components/UpdateReadyBanner";
 import type { SetupCliInfo } from "@/components/SetupWizard";
 import {
   buildAuthDeferredFlags,
@@ -714,6 +729,7 @@ import {
   isCliVersionUnsupported,
   resolveSetupGateBoot
 } from "@/lib/setupGatePro";
+import { applySetupGateFlag } from "@/lib/splashMotion";
 import { mapProbeToCliInfo } from "@/lib/cliVersionStatus";
 import {
   getComposerCaretOffset,
@@ -824,7 +840,6 @@ import { UsageLimitModal } from "@/components/UsageLimitModal";
 import {
   IconChevronDown,
   IconChevronUp,
-  IconChevronRight,
   IconMore,
   IconPlus,
   IconQueue,
@@ -834,14 +849,12 @@ import {
   IconMic,
   IconFolder,
   IconFolderPlus,
-  IconArrowsVerticalCollapse,
   IconArrowsMinimize,
   IconChat,
   IconClock,
   IconClose,
   IconCode,
   IconClipboardList,
-  IconNewChat as IconSquarePen,
   IconNewChat,
   IconImagine,
   IconScheduled,
@@ -929,9 +942,11 @@ import {
 import type { ResourceOpenTarget } from "@/components/ResourceViewer";
 import { EnvInfoButton } from "@/components/side-workbench/EnvInfoButton";
 import {
+  activeSideTab,
   applySideStripClose,
   emptySideWorkbenchState,
   filterSideTabsForWorkMode,
+  shouldAutoUncollapseOfficeFilesAside,
   openSideTab,
   openSideTabFromPicker,
   type SidePickerKind,
@@ -947,6 +962,7 @@ import { resolveSidePathDeepLink } from "@/lib/sidePathDeepLink";
 import { PromptHistoryClearModal } from "@/components/workbench-modals/PromptHistoryClearModal";
 import { ArchiveAgeConfirmModal } from "@/components/workbench-modals/ArchiveAgeConfirmModal";
 import { WorktreeCreateModal } from "@/components/workbench-modals/WorktreeCreateModal";
+import { CreateProjectModal } from "@/components/workbench-modals/CreateProjectModal";
 import { WorktreeGcModal } from "@/components/workbench-modals/WorktreeGcModal";
 import { WorktreeShipModal } from "@/components/workbench-modals/WorktreeShipModal";
 import { ShortcutsHelpModal } from "@/components/workbench-modals/ShortcutsHelpModal";
@@ -977,11 +993,13 @@ import {
   type SessionFileChange
 } from "@/lib/sessionChanges";
 import {
+  gitDirtyPollMs,
   gitDirtySummariesEqual,
   summarizeGitDirty,
   type GitDirtySummary
 } from "@/lib/workspaceGit";
 import { ConversationThreadLive } from "@/components/lobe-chat";
+import { OfficeWorkspace } from "@/components/OfficeWorkspace";
 import { AgentTasksPanelLive } from "@/components/AgentTasksPanelLive";
 import { PermissionCountdown } from "@/components/PermissionCountdown";
 
@@ -1077,23 +1095,7 @@ import {
   resolveOpenSettingsLocation,
   saveSettingsLastRoute
 } from "@/lib/settingsLastRoute";
-import {
-  accountDisplayName,
-  accountInitials,
-  loadCachedSuperGrokBrand,
-  resolveWelcomeBrandKind,
-  saveCachedSuperGrokBrand,
-  superGrokBrandKind
-} from "@/lib/accountUi";
-import {
-  SuperGrokMark,
-  type SuperGrokBrandKind
-} from "@/components/SuperGrokMark";
-import {
-  DeepSeekFullMark,
-  OpenCodeWordmark,
-  VolcanoArkWelcomeMark
-} from "@/components/ProviderWelcomeMark";
+import { accountDisplayName, accountInitials } from "@/lib/accountUi";
 import { Tip } from "@/components/ui/tooltip";
 import {
   WindowControls,
@@ -1103,6 +1105,7 @@ import {
 
 import {
   isGeneralProject,
+  isRecentsSidebarSession,
   mapProjectsList,
   mapSessionListRow,
   normalizeProject,
@@ -1119,7 +1122,6 @@ import {
 import { useSidebarProjectReorder } from "@/hooks/useSidebarProjectReorder";
 import { useSessionMoveProject } from "@/hooks/useSessionMoveProject";
 import { useSidebarSessionMoveDrag } from "@/hooks/useSidebarSessionMoveDrag";
-import { SESSION_DROP_ORPHAN } from "@/lib/sessionMoveProject";
 import { useSideWorkbenchProjectIsolation } from "@/hooks/useSideWorkbenchProjectIsolation";
 import { useBottomTerminal } from "@/hooks/useBottomTerminal";
 import { BottomTerminalToggle } from "@/components/bottom-terminal/BottomTerminalToggle";
@@ -1140,20 +1142,59 @@ import { wrapStudioAgentText } from "@/lib/studio";
 import {
   composerPlaceholderKey,
   isOfficeHash,
+  isOfficePath,
   isStudioHash,
+  newSessionKey,
   OFFICE_HASH,
   STUDIO_HASH,
   officeStartSeedKey,
   productTitleKey,
+  shouldShowOfficeCommandChat,
   workSurfaceChrome,
+  type WorkMode,
 } from "@/lib/grokOffice";
+import {
+  consumePendingWorkMode,
+  loadSessionWorkModes,
+  projectVisibleOnSurface,
+  retagSessionsWorkMode,
+  saveSessionWorkModes,
+  sessionMatchesSurface,
+  sessionWorkModeOf,
+  stampSessionHome,
+} from "@/lib/sessionWorkMode";
+import {
+  defaultCreateProjectWorkspace,
+  forgetProjectWorkMode,
+  loadProjectWorkModes,
+  saveProjectWorkModes,
+  upsertProjectWorkMode,
+  type CreateProjectWorkspace,
+} from "@/lib/projectWorkMode";
+import {
+  addSessionRecents,
+  loadSessionRecents,
+  removeSessionRecents,
+  saveSessionRecents,
+} from "@/lib/sessionRecents";
+import { loadSessionSidebarOrder } from "@/lib/sessionSidebarOrder";
+import {
+  buildSidebarSessionLists,
+  sessionsInSidebarScope,
+  sidebarNavSessionIdsFromLists,
+  sidebarScopeOfSession,
+  sidebarSelectOrderIdsFromLists,
+  type SidebarActionScope,
+} from "@/lib/sessionSidebarLists";
+import { SidebarSurfaceTrees } from "@/components/SidebarSurfaceTrees";
+import { buildWelcomeSeedKey } from "@/lib/buildWelcome";
 import {
   persistComposerPrefsToHost,
   resolveSurfaceComposerChoice,
   saveSurfaceComposerChoice,
   type SurfaceComposerChoice,
 } from "@/lib/surfaceComposerPrefs";
-import { ensureProjectOfficeSkill } from "@/lib/officeDoc";
+import { ensureProjectOfficeSkill, isOfficeDocPath } from "@/lib/officeDoc";
 import { useProjectSpaces } from "@/hooks/useProjectSpaces";
 import { SpaceSwitcher } from "@/components/SpaceSwitcher";
 import {
@@ -1289,6 +1330,7 @@ export function AppWorkbench() {
   const { workMode, setWorkMode, isOffice, isStudio } = useGrokOffice();
   const workModeRef = useRef(workMode);
   const activeProjectIdRef = useRef<string | null>(null);
+  const activeProjectRef = useRef<Project | null>(null);
   const studio = useStudioComposer();
   const surface = workSurfaceChrome(workMode);
   /**
@@ -1752,6 +1794,7 @@ export function AppWorkbench() {
   });
   const [activeProject, setActiveProject] = useState<Project | null>(null);
   activeProjectIdRef.current = activeProject?.id ?? null;
+  activeProjectRef.current = activeProject;
   useSideWorkbenchProjectIsolation(
     activeProject?.id,
     sideWorkbench,
@@ -1797,13 +1840,78 @@ export function AppWorkbench() {
   const [expandedProjects, setExpandedProjects] = useState<Record<string, boolean>>({});
   /** Avoid writing collapse prefs before settings hydrate on launch. */
   const expandedProjectsHydratedRef = useRef(false);
-  const [projectsOpen, setProjectsOpen] = useState(true);
+  const [surfaceOpen, setSurfaceOpen] = useState<Record<WorkMode, boolean>>({
+    code: true,
+    office: true,
+    studio: true,
+  });
+  const [sessionWorkModes, setSessionWorkModes] = useState(loadSessionWorkModes);
+  const sessionWorkModesRef = useRef(sessionWorkModes);
+  const [projectWorkModes, setProjectWorkModes] = useState(loadProjectWorkModes);
+  const pendingWorkModeRef = useRef<WorkMode | null>(null);
+  const [sessionRecents, setSessionRecents] = useState(loadSessionRecents);
+  const sessionRecentsRef = useRef(sessionRecents);
+  const pendingRecentsRef = useRef(false);
+  useEffect(() => {
+    sessionWorkModesRef.current = sessionWorkModes;
+  }, [sessionWorkModes]);
+  const stampSessionWorkMode = useCallback(
+    (sessionId: string | null | undefined, mode: WorkMode) => {
+      if (!sessionId) return;
+      setSessionWorkModes((prev) => {
+        const next = stampSessionHome(prev, sessionId, mode);
+        if (next === prev) return prev;
+        sessionWorkModesRef.current = next;
+        saveSessionWorkModes(next);
+        return next;
+      });
+    },
+    [],
+  );
+  const stampSessionsWorkMode = useCallback(
+    (sessionIds: readonly string[], mode: WorkMode) => {
+      if (!sessionIds.length) return;
+      setSessionWorkModes((prev) => {
+        const next = retagSessionsWorkMode(prev, sessionIds, mode);
+        if (next === prev) return prev;
+        sessionWorkModesRef.current = next;
+        saveSessionWorkModes(next);
+        return next;
+      });
+    },
+    [],
+  );
+  const stampProjectWorkMode = useCallback(
+    (projectId: string, mode: CreateProjectWorkspace) => {
+      setProjectWorkModes((prev) => {
+        const next = upsertProjectWorkMode(prev, projectId, mode);
+        if (next === prev) return prev;
+        saveProjectWorkModes(next);
+        return next;
+      });
+    },
+    [],
+  );
+  const unstampProjectWorkMode = useCallback((projectId: string) => {
+    setProjectWorkModes((prev) => {
+      const next = forgetProjectWorkMode(prev, projectId);
+      if (next === prev) return prev;
+      saveProjectWorkModes(next);
+      return next;
+    });
+  }, []);
+  useEffect(() => {
+    sessionRecentsRef.current = sessionRecents;
+  }, [sessionRecents]);
+  const [sessionSidebarOrder] = useState(loadSessionSidebarOrder);
   /** Orphan / “Other sessions” tree section. Hydrated from AppSettings. */
   const [historyOpen, setHistoryOpen] = useState(true);
   /** Avoid writing other-sessions collapse before settings hydrate on launch. */
   const historyOpenHydratedRef = useRef(false);
   /** Sidebar multi-select: archive / restore several sessions at once. */
   const [sessionSelectMode, setSessionSelectMode] = useState(false);
+  const [sessionSelectScope, setSessionSelectScope] =
+    useState<SidebarActionScope | null>(null);
   const [selectedSessionIds, setSelectedSessionIds] = useState<Set<string>>(
     () => new Set(),
   );
@@ -2276,6 +2384,10 @@ export function AppWorkbench() {
     if (appGate !== "ready") return;
     void ensureNotifyPermission();
   }, [appGate]);
+  useEffect(() => {
+    applySetupGateFlag(document.documentElement.dataset, appGate !== "ready");
+    return () => applySetupGateFlag(document.documentElement.dataset, false);
+  }, [appGate]);
   /** Soft CLI update offer after Ready (#238) — never blocks startup. */
   const [cliUpdateOffer, setCliUpdateOffer] = useState<{
     current: string;
@@ -2504,6 +2616,8 @@ export function AppWorkbench() {
    * open is a clean files pane, not a stuck Plan workbench.
    */
   const planOpenedAsideRef = useRef(false);
+  /** Office auto-opened the files pane once this process; do not reset on leave. */
+  const officeFilesOpenedRef = useRef(false);
   /** Live drag-drop target for zone overlays (null = not dragging). */
   const [dragZone, setDragZone] = useState<"sidebar" | "main" | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -2614,6 +2728,16 @@ export function AppWorkbench() {
   const [gitWorktreesReason, setGitWorktreesReason] = useState<string | null>(
     null,
   );
+  /** ChatGPT-style create-project dialog (name + source folder). */
+  const [createProjectOpen, setCreateProjectOpen] = useState(false);
+  const [createProjectBusy, setCreateProjectBusy] = useState(false);
+  const [createProjectError, setCreateProjectError] = useState<string | null>(
+    null,
+  );
+  const [createProjectBindSession, setCreateProjectBindSession] =
+    useState(false);
+  const [createProjectWorkspaceHint, setCreateProjectWorkspaceHint] =
+    useState<CreateProjectWorkspace | null>(null);
   /** New worktree dialog (name + optional start-point + layout). */
   const [worktreeCreateOpen, setWorktreeCreateOpen] = useState(false);
   const [worktreeCreateName, setWorktreeCreateName] = useState("");
@@ -3241,6 +3365,22 @@ export function AppWorkbench() {
   useEffect(() => {
     applyChatWidth(loadChatWidth());
   }, []);
+
+  // Maximize / surface switch can leave a stale aside width (empty strip until
+  // the window is closed and restored). Reclamp, and keep Studio pane-free.
+  useEffect(() => {
+    if (phoneLayout) return;
+    if (workMode === "studio") closeAsidePane();
+    const opts = asideClampOpts();
+    setLayout((l) => {
+      if (l.asideCollapsed) return l;
+      const next = clampAsideWidth(l.asideWidth, opts);
+      if (next === l.asideWidth) return l;
+      const n = { ...l, asideWidth: next };
+      saveLayout(localStorage, n);
+      return n;
+    });
+  }, [windowMaximized, workMode, phoneLayout, asideClampOpts, closeAsidePane]);
 
   /**
    * Detect secondary session window early (label + deep-link hash).
@@ -4117,7 +4257,7 @@ export function AppWorkbench() {
       applyHello();
     };
     tick();
-    const id = window.setInterval(tick, 1500);
+    const stopPoll = startVisibleInterval(tick, 3000);
     void api
       .listen<unknown>("mirror://hello", () => {
         if (!cancelled) {
@@ -4131,16 +4271,30 @@ export function AppWorkbench() {
       });
     return () => {
       cancelled = true;
-      window.clearInterval(id);
+      stopPoll();
       for (const u of cleanups) u();
     };
   }, [tr]);
 
   useEffect(() => {
-    const sync = () => setViewportWidth(window.innerWidth);
+    const sync = () => {
+      const w = window.innerWidth;
+      setViewportWidth((prev) => (prev === w ? prev : w));
+    };
     sync();
-    window.addEventListener("resize", sync);
-    return () => window.removeEventListener("resize", sync);
+    let raf = 0;
+    const onResize = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        sync();
+      });
+    };
+    window.addEventListener("resize", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      if (raf) cancelAnimationFrame(raf);
+    };
   }, []);
 
   // User-driven window resize only: clamp open aside. Ignore programmatic setSize
@@ -4293,6 +4447,7 @@ export function AppWorkbench() {
     setLocalError,
     setToast,
     setSessions,
+    stampSessionWorkMode,
     sessionsRef,
     projectsRef,
     setSessionChangesById,
@@ -4375,6 +4530,15 @@ export function AppWorkbench() {
       const base = !("created" in next) ? s : next;
       return filterSideTabsForWorkMode(base, "office");
     });
+    if (
+      !shouldAutoUncollapseOfficeFilesAside({
+        alreadyOpenedThisSession: officeFilesOpenedRef.current,
+        asideCollapsed: layoutRef.current.asideCollapsed,
+      })
+    ) {
+      return;
+    }
+    officeFilesOpenedRef.current = true;
     openAsidePane();
   }, [sideIsGitProject, openAsidePane]);
 
@@ -4417,14 +4581,73 @@ export function AppWorkbench() {
     }
   }, [setWorkMode, closeAsidePane, bottomTerminal]);
 
-  const officeFilesOpenedRef = useRef(false);
+  const applySurface = useCallback(
+    (mode: WorkMode) => {
+      switch (mode) {
+        case "office":
+          enterOffice();
+          return;
+        case "studio":
+          enterStudio();
+          return;
+        case "code":
+          exitOffice();
+          return;
+        default: {
+          const _never: never = mode;
+          return _never;
+        }
+      }
+    },
+    [enterOffice, enterStudio, exitOffice],
+  );
+
+  const stampSessionRecents = useCallback((sessionIds: readonly string[]) => {
+    if (!sessionIds.length) return;
+    setSessionRecents((prev) => {
+      const next = addSessionRecents(prev, sessionIds);
+      if (next === prev) return prev;
+      sessionRecentsRef.current = next;
+      saveSessionRecents(next);
+      return next;
+    });
+  }, []);
+
+  const clearSessionRecents = useCallback((sessionIds: readonly string[]) => {
+    if (!sessionIds.length) return;
+    setSessionRecents((prev) => {
+      const next = removeSessionRecents(prev, sessionIds);
+      if (next === prev) return prev;
+      sessionRecentsRef.current = next;
+      saveSessionRecents(next);
+      return next;
+    });
+  }, []);
+
   useEffect(() => {
-    if (workMode !== "office" || mainPane !== "chat") {
-      if (workMode !== "office") officeFilesOpenedRef.current = false;
-      return;
+    const id = session.sessionId;
+    if (!id) return;
+    const pending = pendingWorkModeRef.current;
+    if (pending) {
+      const { map, applied } = consumePendingWorkMode(
+        sessionWorkModesRef.current,
+        id,
+        pending,
+      );
+      sessionWorkModesRef.current = map;
+      if (applied) stampSessionWorkMode(id, applied);
+      pendingWorkModeRef.current = null;
     }
-    if (officeFilesOpenedRef.current) return;
-    officeFilesOpenedRef.current = true;
+    if (pendingRecentsRef.current) {
+      const nextRecents = addSessionRecents(sessionRecentsRef.current, [id]);
+      sessionRecentsRef.current = nextRecents;
+      pendingRecentsRef.current = false;
+      stampSessionRecents([id]);
+    }
+  }, [session.sessionId, stampSessionWorkMode, stampSessionRecents]);
+
+  useEffect(() => {
+    if (workMode !== "office" || mainPane !== "chat") return;
     openOfficeFilesPane();
   }, [workMode, mainPane, openOfficeFilesPane]);
 
@@ -4606,9 +4829,28 @@ export function AppWorkbench() {
       project ||
       projects.find((p) => p.id === s.projectId) ||
       null;
+    const targetMode = sessionWorkModeOf(s.id, sessionWorkModesRef.current);
+    pendingWorkModeRef.current = targetMode;
+    applySurface(targetMode);
+    setSurfaceOpen((prev) => ({ ...prev, [targetMode]: true }));
+    if (
+      isRecentsSidebarSession(
+        s,
+        new Set(projects.map((p) => p.id)),
+        sessionRecentsRef.current,
+      )
+    ) {
+      setHistoryOpen(true);
+    } else if (s.projectId) {
+      setExpandedProjects((e) => ({ ...e, [s.projectId!]: true }));
+    }
     setMainPane("chat");
     setAppView("workbench");
-    if (typeof window !== "undefined" && window.location.hash) {
+    if (
+      targetMode === "code" &&
+      typeof window !== "undefined" &&
+      window.location.hash
+    ) {
       window.history.replaceState(null, "", window.location.pathname + window.location.search);
     }
     // Phone drawer: selecting a session closes the overlay (does not push layout).
@@ -5553,6 +5795,10 @@ export function AppWorkbench() {
       switchToChat?: boolean;
       /** Enter conversation-driven scheduled-task setup mode. */
       automationSetup?: boolean;
+      /** Stamp the new draft for a sidebar surface (+ / project pen). */
+      workMode?: WorkMode;
+      /** Recents `+` only — folderless chats from a surface must not stamp. */
+      recents?: boolean;
     },
   ) => {
     // Explicit null → orphan; undefined → keep active project when set,
@@ -5597,11 +5843,16 @@ export function AppWorkbench() {
         window.history.replaceState(null, "", window.location.pathname + window.location.search);
       }
     }
+    const nextMode = opts?.workMode ?? workMode;
+    pendingWorkModeRef.current = nextMode;
+    pendingRecentsRef.current = !!opts?.recents;
+    applySurface(nextMode);
+    setSurfaceOpen((prev) => ({ ...prev, [nextMode]: true }));
     if (phoneLayout) closePhoneDrawer();
     setActiveProject(proj);
     if (proj) {
       setExpandedProjects((e) => ({ ...e, [proj.id]: true }));
-    } else {
+    } else if (opts?.recents) {
       setHistoryOpen(true);
     }
     // User navigation: a connect/send still in flight for the previous chat must
@@ -5696,6 +5947,56 @@ export function AppWorkbench() {
     api.sessionPrewarm();
   };
 
+  const newChatRef = useRef(newChat);
+  newChatRef.current = newChat;
+
+  // Logo / #/office / slash must not keep a Build transcript on the Office canvas.
+  // Only react to the surface change — not to a draft materializing an id.
+  // Depending on session.sessionId raced the pending stamp: the new id defaulted
+  // to Build, this effect called newChat(), and the user never stayed on the
+  // thread they just sent (Studio / Office first message).
+  useEffect(() => {
+    const id = viewingSessionIdRef.current;
+    if (!id) return;
+    if (
+      sessionMatchesSurface(
+        id,
+        sessionWorkModesRef.current,
+        workMode,
+        pendingWorkModeRef.current,
+      )
+    ) {
+      return;
+    }
+    void newChatRef.current(activeProjectRef.current, { workMode });
+  }, [workMode]);
+
+  const sendMediaToSurface = useCallback(
+    (target: MediaHandoffTarget, media: { path: string; name?: string }) => {
+      const att = attachmentFromMediaPath(media.path, media.name);
+      if (!att) return;
+      void (async () => {
+        await newChatRef.current(activeProjectRef.current ?? null, {
+          workMode: target,
+          switchToChat: true,
+        });
+        setAttachments((prev) => mergeAttachments(prev, [att]));
+        requestComposerFocus();
+      })();
+    },
+    [requestComposerFocus, setAttachments],
+  );
+
+  const mediaHandoff = useMemo(
+    () => ({
+      workMode,
+      label: (target: MediaHandoffTarget) =>
+        target === "code" ? tr("image.sendBuild") : tr("image.sendOffice"),
+      sendToSurface: sendMediaToSurface,
+    }),
+    [workMode, tr, sendMediaToSurface],
+  );
+
   /** Build folder → Office work session for a report / brief / slides. */
   const handoffBuildProjectToOffice = async () => {
     const proj = activeProject;
@@ -5706,86 +6007,91 @@ export function AppWorkbench() {
           name: projectDisplayName(proj, tr),
         })
       : tr("composer.officeReportDraftGeneric");
-    await newChat(proj ?? null, { seedDraft: seed, switchToChat: true });
+    await newChat(proj ?? null, {
+      seedDraft: seed,
+      switchToChat: true,
+      workMode: "office",
+    });
     if (typeof window !== "undefined" && window.location.hash !== OFFICE_HASH) {
       window.location.hash = OFFICE_HASH;
     }
   };
 
-  const sessionsForProject = (projectId: string) =>
-    sessions.filter((s) => s.projectId === projectId && !s.archived);
-
-  const orphanSessions = sessions.filter(
-    (s) =>
-      (!s.projectId || !projects.some((p) => p.id === s.projectId)) &&
-      !s.archived,
+  const projectIdSet = useMemo(
+    () => new Set(projects.map((p) => p.id)),
+    [projects],
   );
-  const orphanSessionIds = orphanSessions.map((s) => s.id);
-  const orphanAllSelected = areAllIdsSelected(
-    selectedSessionIds,
-    orphanSessionIds,
+
+  const sidebarSessionLists = useMemo(
+    () =>
+      buildSidebarSessionLists({
+        sessions,
+        projectIds: projectIdSet,
+        sessionWorkModes,
+        recentsSet: sessionRecents,
+        orderMap: sessionSidebarOrder,
+      }),
+    [sessions, projectIdSet, sessionWorkModes, sessionRecents, sessionSidebarOrder],
   );
 
   /**
-   * Visual order of sessions in the open sidebar (expanded projects + orphans).
-   * Used by j/k navigation via {@link nextSessionId}.
+   * Visual order of sessions in the open sidebar (expanded project folders,
+   * folderless stacks, then Recents if open). Used by j/k via {@link nextSessionId}.
    */
-  const sidebarNavSessionIds = useMemo(() => {
-    const ids: string[] = [];
-    const projectIdSet = new Set(projects.map((p) => p.id));
-    if (projectsOpen) {
-      for (const proj of projects) {
-        if (expandedProjects[proj.id] === false) continue;
-        const projSessions = sessions.filter(
-          (s) => s.projectId === proj.id && !s.archived,
-        );
-        for (const s of sortSessionsForSidebar(projSessions)) ids.push(s.id);
-      }
-    }
-    if (historyOpen) {
-      const orphans = sessions.filter(
-        (s) =>
-          (!s.projectId || !projectIdSet.has(s.projectId)) && !s.archived,
-      );
-      for (const s of sortSessionsForSidebar(orphans)) ids.push(s.id);
-    }
-    return ids;
-  }, [projectsOpen, projects, expandedProjects, sessions, historyOpen]);
+  const sidebarNavSessionIds = useMemo(
+    () =>
+      sidebarNavSessionIdsFromLists({
+        lists: sidebarSessionLists,
+        projects,
+        surfaceOpen,
+        expandedProjects,
+        recentsOpen: historyOpen,
+      }),
+    [
+      sidebarSessionLists,
+      projects,
+      surfaceOpen,
+      expandedProjects,
+      historyOpen,
+    ],
+  );
   sidebarNavIdsRef.current = sidebarNavSessionIds;
   sidebarNavCurrentIdRef.current =
     session.sessionId ?? viewingSessionIdRef.current ?? null;
 
   /**
-   * Full multi-select order (all projects + orphans), independent of expand/collapse.
+   * Full multi-select order (all surfaces + Recents), independent of expand/collapse.
    * Shift+click range uses this so contiguous select matches tree order.
    */
-  const sidebarSelectOrderIds = useMemo(() => {
-    const ids: string[] = [];
-    const projectIdSet = new Set(projects.map((p) => p.id));
-    for (const proj of projects) {
-      const projSessions = sessions.filter(
-        (s) => s.projectId === proj.id && !s.archived,
-      );
-      for (const s of sortSessionsForSidebar(projSessions)) ids.push(s.id);
-    }
-    const orphans = sessions.filter(
-      (s) =>
-        (!s.projectId || !projectIdSet.has(s.projectId)) && !s.archived,
-    );
-    for (const s of sortSessionsForSidebar(orphans)) ids.push(s.id);
-    return ids;
-  }, [projects, sessions]);
+  const sidebarSelectOrderIds = useMemo(
+    () =>
+      sidebarSelectOrderIdsFromLists({
+        lists: sidebarSessionLists,
+        projects,
+      }),
+    [sidebarSessionLists, projects],
+  );
   sidebarSelectOrderIdsRef.current = sidebarSelectOrderIds;
 
   /** Active (non-archived) session ids visible in the sidebar tree. */
   const selectableSessionIds = useMemo(() => {
-    const ids = new Set<string>();
-    for (const s of sessions) {
-      if (!s.archived) ids.add(s.id);
-    }
-    return ids;
-  }, [sessions]);
-  const selectableSessionCount = selectableSessionIds.size;
+    const pool = sessionSelectScope
+      ? sessionsInSidebarScope({
+          sessions,
+          scope: sessionSelectScope,
+          projectIds: projectIdSet,
+          sessionWorkModes,
+          recentsSet: sessionRecents,
+        })
+      : sessions.filter((s) => !s.archived);
+    return new Set(pool.map((s) => s.id));
+  }, [
+    sessions,
+    sessionSelectScope,
+    projectIdSet,
+    sessionWorkModes,
+    sessionRecents,
+  ]);
 
   // Drop selection for sessions that left the active list.
   useEffect(() => {
@@ -5798,6 +6104,7 @@ export function AppWorkbench() {
 
   const exitSessionSelectMode = useCallback(() => {
     setSessionSelectMode(false);
+    setSessionSelectScope(null);
     setSelectedSessionIds(new Set());
     sessionSelectAnchorIdRef.current = null;
   }, []);
@@ -5805,12 +6112,17 @@ export function AppWorkbench() {
   /**
    * Enter multi-select. `preselectId` seeds the selection so right-clicking a
    * chat → "Select" starts with that chat ticked (and anchors Shift-range).
+   * `scope` limits ticks / archive to one workspace or Recents.
    */
-  const enterSessionSelectMode = useCallback((preselectId?: string) => {
-    setSessionSelectMode(true);
-    setSelectedSessionIds(preselectId ? new Set([preselectId]) : new Set());
-    sessionSelectAnchorIdRef.current = preselectId ?? null;
-  }, []);
+  const enterSessionSelectMode = useCallback(
+    (preselectId?: string, scope?: SidebarActionScope | null) => {
+      setSessionSelectMode(true);
+      setSessionSelectScope(scope ?? null);
+      setSelectedSessionIds(preselectId ? new Set([preselectId]) : new Set());
+      sessionSelectAnchorIdRef.current = preselectId ?? null;
+    },
+    [],
+  );
 
   const toggleSessionSelected = useCallback(
     (id: string, opts?: { shiftKey?: boolean }) => {
@@ -6698,6 +7010,7 @@ export function AppWorkbench() {
           }
           await api.projectRemove(proj.id);
           projectSpaces.forgetProject(proj.id);
+          unstampProjectWorkMode(proj.id);
           if (activeProject?.id === proj.id) {
             // Unbound — sessions for this folder show under "其他会话".
             setActiveProject(null);
@@ -7122,9 +7435,21 @@ export function AppWorkbench() {
    * Skips pinned + already-archived. Preview count + GlassModal confirm
    * (never window.confirm). Empty → classified honesty toast.
    */
-  const confirmArchiveOlderThan = (days: number) => {
+  const confirmArchiveOlderThan = (
+    days: number,
+    scope?: SidebarActionScope | null,
+  ) => {
     setCtxMenu(null);
-    const plan = planArchiveOlderThan(sessions, days);
+    const pool = scope
+      ? sessionsInSidebarScope({
+          sessions,
+          scope,
+          projectIds: projectIdSet,
+          sessionWorkModes,
+          recentsSet: sessionRecents,
+        })
+      : sessions;
+    const plan = planArchiveOlderThan(pool, days);
     if (!plan.confirmNeeded || plan.count === 0) {
       return;
     }
@@ -7893,6 +8218,8 @@ export function AppWorkbench() {
     // Capture view identity before awaits. Drafts are all `null`, so the epoch
     // is what distinguishes "still on my draft" from "user opened a new one".
     const originView = currentViewFocus();
+    const originStampMode = pendingWorkModeRef.current ?? workModeRef.current;
+    const originStampRecents = pendingRecentsRef.current;
     try {
       let sessionId = preferredId ?? null;
       // First send: materialize draft into a real session (project or orphan).
@@ -7979,10 +8306,33 @@ export function AppWorkbench() {
             }
           }
         }
+        // Stamp the new id onto this draft's surface *before* setSession so
+        // the sidebar lists it under Studio/Office and the mismatch effect
+        // cannot default it to Build.
+        {
+          const { map, applied } = consumePendingWorkMode(
+            sessionWorkModesRef.current,
+            meta.id,
+            originStampMode,
+          );
+          sessionWorkModesRef.current = map;
+          if (applied) stampSessionWorkMode(meta.id, applied);
+          if (originStampRecents) {
+            const nextRecents = addSessionRecents(sessionRecentsRef.current, [
+              meta.id,
+            ]);
+            sessionRecentsRef.current = nextRecents;
+            stampSessionRecents([meta.id]);
+          }
+        }
         // Only take over the workbench if the user has not navigated since.
         // `viewingSessionIdRef.current === null` used to pass here, which is how
         // opening a new chat in another project got yanked back to this one.
         if (shouldAdoptView(originView, currentViewFocus(), meta.id)) {
+          if (pendingWorkModeRef.current === originStampMode) {
+            pendingWorkModeRef.current = null;
+          }
+          if (originStampRecents) pendingRecentsRef.current = false;
           viewingSessionIdRef.current = meta.id;
           setSession((prev) => ({
             ...prev,
@@ -7997,8 +8347,10 @@ export function AppWorkbench() {
               ...e,
               [connectProject.id]: true,
             }));
-          } else {
+          } else if (originStampRecents) {
             setHistoryOpen(true);
+          } else {
+            setSurfaceOpen((prev) => ({ ...prev, [originStampMode]: true }));
           }
         }
         await refreshSessions();
@@ -8263,6 +8615,7 @@ export function AppWorkbench() {
         aspect: studio.aspect,
         resolution: studio.resolution,
         duration: studio.duration,
+        count: studio.count,
       });
     }
     const schemaForSend = sessionJsonSchemaRef.current?.trim() || "";
@@ -9482,16 +9835,26 @@ export function AppWorkbench() {
       layoutRef.current.asideWidth,
       clampOpts(),
     );
-    applyLiveSplitWidth(pane, liveAsideWidthRef.current);
+    const writer = createRafLiveSplitWriter(() => {
+      notifyWorkbenchSplitResize();
+    });
+    const releaseSplit = beginWorkbenchSplitResize();
+    endPaneSplitMotion();
+    writer.enqueue(pane, liveAsideWidthRef.current);
+    notifyWorkbenchSplitResize();
+    let finished = false;
     const onMove = (e: PointerEvent) => {
       if (isWindowFitSuppressed()) return;
       const desired = Math.round(window.innerWidth - e.clientX);
       const next = clampAsideWidth(desired, clampOpts());
       if (next === liveAsideWidthRef.current) return;
       liveAsideWidthRef.current = next;
-      applyLiveSplitWidth(pane, next);
+      writer.enqueue(pane, next);
     };
     const onUp = () => {
+      if (finished) return;
+      finished = true;
+      writer.flush();
       setResizingAside(false);
       // Persist the last live width (same clamp as drag). No window grow /
       // preferredAside bump — those caused a visible spring-back at chat min.
@@ -9507,20 +9870,26 @@ export function AppWorkbench() {
       });
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
+      releaseSplit();
+      scheduleWorkbenchSplitResizeFlush();
     };
     document.body.style.cursor = "col-resize";
     document.body.style.userSelect = "none";
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
     return () => {
+      writer.cancel();
+      releaseSplit();
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
     };
   }, [asideClampOpts, resizingAside]);
 
   // Drag-resize left session rail.
-  // Collapse as soon as desired width crosses below the open min — never paint
-  // a crushed rail, and do not wait for pointer-up.
+  // Live paint clamps to the open min; collapse is decided on pointer-up
+  // only when desired is below the snap threshold (not a single move sample).
   useEffect(() => {
     if (!resizingSidebar) return;
     const clampOpts = () => {
@@ -9537,76 +9906,86 @@ export function AppWorkbench() {
     const pane = queryWorkbenchSplitPane("sidebar");
     liveSidebarWidthRef.current =
       layoutRef.current.sidebarWidth || SIDEBAR_DEFAULT_WIDTH;
-    applyLiveSplitWidth(pane, liveSidebarWidthRef.current);
-    const applyCollapseLive = () => {
-      const cur = layoutRef.current;
-      const n = {
-        ...cur,
-        sidebarCollapsed: true,
-        sidebarWidth: SIDEBAR_WIDTH_MIN,
-      };
-      setLayout(n);
-      saveLayout(localStorage, n);
-      sidebarResizeStartRef.current = null;
-      setResizingSidebar(false);
-      endResizeChrome();
-    };
+    let lastDesired = liveSidebarWidthRef.current;
+    let persistOpen = liveSidebarWidthRef.current;
+    let lastClientX = sidebarResizeStartRef.current?.x ?? null;
+    const writer = createRafLiveSplitWriter(() => {
+      notifyWorkbenchSplitResize();
+    });
+    const releaseSplit = beginWorkbenchSplitResize();
+    endPaneSplitMotion();
+    writer.enqueue(pane, liveSidebarWidthRef.current);
+    notifyWorkbenchSplitResize();
+    let finished = false;
     const onMove = (e: PointerEvent) => {
       if (isWindowFitSuppressed()) return;
       const start = sidebarResizeStartRef.current;
       if (!start) return;
-      const desired = Math.round(start.width + (e.clientX - start.x));
-      // Live collapse before any compressed layout is shown.
-      if (desired < SIDEBAR_WIDTH_MIN) {
-        applyCollapseLive();
+      const decision = classifySidebarDragPointerSample({
+        clientX: e.clientX,
+        previousClientX: lastClientX,
+        viewportWidth: window.innerWidth,
+      });
+      if (decision === "ignore") return;
+      if (decision === "rebase") {
+        start.x = e.clientX;
+        start.width = liveSidebarWidthRef.current;
+        lastClientX = e.clientX;
         return;
       }
+      lastClientX = e.clientX;
+      const desired = Math.round(start.width + (e.clientX - start.x));
+      lastDesired = desired;
       const next = clampSidebarDragWidth(desired, clampOpts());
+      if (desired >= SIDEBAR_WIDTH_MIN) {
+        persistOpen = next;
+      }
       if (next === liveSidebarWidthRef.current) return;
       liveSidebarWidthRef.current = next;
-      applyLiveSplitWidth(pane, next);
+      writer.enqueue(pane, next);
     };
     const onUp = () => {
-      // If we already live-collapsed, effect teardown cleared state — still safe.
-      if (!sidebarResizeStartRef.current && layoutRef.current.sidebarCollapsed) {
-        setResizingSidebar(false);
-        endResizeChrome();
-        return;
-      }
+      if (finished) return;
+      finished = true;
+      writer.flush();
       setResizingSidebar(false);
       sidebarResizeStartRef.current = null;
       const cur = layoutRef.current;
-      if (cur.sidebarCollapsed) {
-        endResizeChrome();
-        return;
+      if (!cur.sidebarCollapsed) {
+        const resolved = resolveSidebarDragEnd(lastDesired, {
+          ...clampOpts(),
+          lastOpenWidth: persistOpen,
+        });
+        const n =
+          resolved.action === "collapse"
+            ? {
+                ...cur,
+                sidebarCollapsed: true,
+                sidebarWidth: resolved.sidebarWidth,
+              }
+            : {
+                ...cur,
+                sidebarCollapsed: false,
+                sidebarWidth: resolved.sidebarWidth,
+              };
+        setLayout(n);
+        saveLayout(localStorage, n);
       }
-      const resolved = resolveSidebarDragEnd(
-        liveSidebarWidthRef.current || SIDEBAR_DEFAULT_WIDTH,
-        clampOpts(),
-      );
-      const n =
-        resolved.action === "collapse"
-          ? {
-              ...cur,
-              sidebarCollapsed: true,
-              sidebarWidth: resolved.sidebarWidth,
-            }
-          : {
-              ...cur,
-              sidebarCollapsed: false,
-              sidebarWidth: resolved.sidebarWidth,
-            };
-      setLayout(n);
-      saveLayout(localStorage, n);
       endResizeChrome();
+      releaseSplit();
+      scheduleWorkbenchSplitResizeFlush();
     };
     document.body.style.cursor = "col-resize";
     document.body.style.userSelect = "none";
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
     return () => {
+      writer.cancel();
+      releaseSplit();
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
     };
   }, [resizingSidebar]);
 
@@ -9812,14 +10191,24 @@ export function AppWorkbench() {
   const composerMenuOpen = showComposerPlus || liveSlash.present;
 
   /**
-   * rAF poll → live slash token (open palette + filter).
+   * Live slash/@ tokens: draft/caret events + a short rAF burst.
    * Prefer DOM serialize, fall back to draft store (Enter SoT can leave DOM
    * one frame behind; slash is end-anchored so we need a reliable string).
+   * Idle composer no longer runs a perpetual vsync poll.
    */
   useEffect(() => {
     let raf = 0;
     let alive = true;
-    const tick = () => {
+    let burstLeft = 0;
+
+    const composerActive = () => {
+      const node = composerInputRef.current;
+      if (!node || typeof document === "undefined") return false;
+      const ae = document.activeElement;
+      return ae === node || (ae != null && node.contains(ae));
+    };
+
+    const scan = () => {
       if (!alive) return;
       const el = composerInputRef.current;
       const detected =
@@ -9913,12 +10302,66 @@ export function AppWorkbench() {
         setLiveAt(atNext);
         if (atNext.present) setAtActiveIndex(0);
       }
-      raf = requestAnimationFrame(tick);
     };
-    raf = requestAnimationFrame(tick);
+
+    const tick = () => {
+      raf = 0;
+      if (!alive) return;
+      if (
+        typeof document !== "undefined" &&
+        document.visibilityState === "hidden"
+      ) {
+        burstLeft = 0;
+        return;
+      }
+      scan();
+      if (burstLeft > 0) {
+        burstLeft -= 1;
+        raf = requestAnimationFrame(tick);
+      }
+    };
+
+    const kick = (frames = COMPOSER_TOKEN_POLL_BURST_FRAMES) => {
+      if (!alive) return;
+      if (
+        typeof document !== "undefined" &&
+        document.visibilityState === "hidden"
+      ) {
+        return;
+      }
+      burstLeft = nextComposerTokenPollBurst(burstLeft, frames);
+      if (!raf) raf = requestAnimationFrame(tick);
+    };
+
+    const onVis = () => {
+      if (document.visibilityState === "visible") kick(1);
+    };
+
+    const onCaret = () => {
+      if (
+        composerTokenEventShouldKick({
+          hidden:
+            typeof document !== "undefined" &&
+            document.visibilityState === "hidden",
+          composerActive: composerActive(),
+          slashPresent: liveSlashRef.current.present,
+          atPresent: liveAtRef.current.present,
+        })
+      ) {
+        kick();
+      }
+    };
+
+    const unsubDraft = composerDraftStore.subscribe(() => kick());
+    document.addEventListener("visibilitychange", onVis);
+    document.addEventListener("selectionchange", onCaret);
+    kick(1);
     return () => {
       alive = false;
       cancelAnimationFrame(raf);
+      unsubDraft();
+      document.removeEventListener("visibilitychange", onVis);
+      document.removeEventListener("selectionchange", onCaret);
     };
   }, []);
 
@@ -12812,10 +13255,6 @@ export function AppWorkbench() {
     !journalPending &&
     session.state !== "streaming" &&
     session.state !== "connecting";
-  // Live billing can take seconds (quota network). Cache last mark so the
-  // welcome logo paints immediately — the SVG itself is inline, not a fetch.
-  const [cachedBrandKind, setCachedBrandKind] =
-    useState<SuperGrokBrandKind | null>(() => loadCachedSuperGrokBrand());
   /** Active inference channel: custom relay identity replaces official account chrome. */
   const [activeCustomProvider, setActiveCustomProvider] =
     useState<api.CustomProvider | null>(null);
@@ -12900,18 +13339,37 @@ export function AppWorkbench() {
   useDiscordPresence({
     enabled: discordPresence,
     active: !isSecondaryWindow,
-    projectName: activeProject
-      ? projectDisplayName(activeProject, tr)
-      : tr("project.general"),
-    workMode,
     sessionState: session.state,
-    percent: contextUsageDisplay.percent,
+    sessionId: session.sessionId ?? "",
+    sessionTitle: session.title ?? "",
+    sessionIsPlaceholder: isPlaceholderTitle(session.title),
+    quotaLabel: presenceQuotaLine({
+      signedIn: !!account?.profile?.signedIn,
+      remainingPercent: remainingPercent(account),
+      customRoute: !!activeCustomProvider,
+      customBalanceLine:
+        activeCustomProvider &&
+        providerBalanceCache?.providerId === activeCustomProvider.id
+          ? formatProviderBalanceLine(providerBalanceCache.result)
+          : null,
+    }),
     packageLabel: packagePresenceLabel({
       signedIn: !!account?.profile?.signedIn,
       billing: account?.billing,
       channel: account?.channel ?? "none",
       noneLabel: tr("discord.presence.package.none"),
     }),
+    modelLabel: presenceModelLabel({
+      modelId,
+      officialLabel: findModel(modelId, availableModels)?.label,
+      customModelName: activeCustomProvider
+        ? activeCustomProvider.models?.find(
+            (m) =>
+              m.id === activeCustomProvider.model || m.id === modelId,
+          )?.name || activeCustomProvider.model
+        : null,
+    }),
+    effortId: effort,
     locale,
   });
   const sessionSpend = useSessionSpend(session.sessionId);
@@ -13295,60 +13753,6 @@ export function AppWorkbench() {
     },
     [activeCustomProvider, refreshProviderRoute, showToast],
   );
-  const liveBrandKind = useMemo(
-    () =>
-      superGrokBrandKind(
-        account?.billing,
-        !!account?.profile?.signedIn,
-      ),
-    [account?.billing, account?.profile?.signedIn],
-  );
-  useEffect(() => {
-    // Do not cache Heavy while on a custom route — welcome mark is always SuperGrok.
-    if (customRouteActive) return;
-    if (liveBrandKind) {
-      saveCachedSuperGrokBrand(liveBrandKind);
-      setCachedBrandKind(liveBrandKind);
-      return;
-    }
-    if (account && !account.profile.signedIn) {
-      saveCachedSuperGrokBrand(null);
-      setCachedBrandKind(null);
-    }
-  }, [liveBrandKind, account, customRouteActive]);
-  const welcomeBrandKind = useMemo(
-    () =>
-      resolveWelcomeBrandKind(liveBrandKind, cachedBrandKind, {
-        accountReady: account != null,
-        signedIn: !!account?.profile?.signedIn,
-        customRoute: customRouteActive,
-      }),
-    [liveBrandKind, cachedBrandKind, account, customRouteActive],
-  );
-
-  /**
-   * Preset provider wordmark on the welcome composer.
-   * DeepSeek → full DeepSeek wordmark; OpenCode → theme-aware wordmark;
-   * Volcengine Ark → logo + “火山方舟”; every other channel keeps SuperGrok.
-   */
-  const welcomeProviderBrandNode = useMemo(() => {
-    if (!customRouteActive) return null;
-    const brand = resolveProviderBrandId({
-      providerId: activeCustomProvider?.id ?? null,
-      baseUrl: activeCustomProvider?.baseUrl ?? null,
-    });
-    if (brand === "deepseek") {
-      return <DeepSeekFullMark title="DeepSeek" />;
-    }
-    if (brand === "opencode-go") {
-      return <OpenCodeWordmark title="OpenCode" />;
-    }
-    if (brand === "volcano-ark") {
-      return <VolcanoArkWelcomeMark title="火山方舟" />;
-    }
-    return null;
-  }, [customRouteActive, activeCustomProvider]);
-
   // Floating composer height → chat bottom pad so messages can scroll under it.
   // ResizeObserver covers typing growth; no draft subscription (would thrash shell).
   useEffect(() => {
@@ -13372,7 +13776,6 @@ export function AppWorkbench() {
     showComposerPlus,
     messages.length,
     welcomeSession,
-    welcomeBrandKind,
   ]);
 
   const hideChatForSideExpand = shouldHideChatForSideExpand({
@@ -13601,6 +14004,11 @@ export function AppWorkbench() {
       onViewingMoved: resetLiveAfterMove,
       refreshSessions,
       onMoved: exitSessionSelectMode,
+      onPlaced: (ids, targetProjectId, opts) => {
+        if (targetProjectId == null) stampSessionRecents(ids);
+        else clearSessionRecents(ids);
+        if (opts?.workMode) stampSessionsWorkMode(ids, opts.workMode);
+      },
     });
 
   useSidebarSessionMoveDrag({
@@ -13612,11 +14020,46 @@ export function AppWorkbench() {
       count > 1
         ? tr("session.move.ghostMany", { n: String(count) })
         : title || tr("session.untitled"),
-    onDrop: requestMove,
+    getSessionList: (listKey) => sidebarSessionLists[listKey] ?? [],
+    workModeOf: (id) => sessionWorkModeOf(id, sessionWorkModesRef.current),
+    onDrop: (rows, targetProjectId, surface) => {
+      const ids = rows.map((r) => r.id);
+      if (targetProjectId == null) {
+        const bound = rows.filter((r) => normalizeProjectId(r.projectId));
+        if (bound.length) requestMove(bound, null);
+        const alreadyOrphan = ids.filter(
+          (id) => !bound.some((r) => r.id === id),
+        );
+        if (alreadyOrphan.length) stampSessionRecents(alreadyOrphan);
+        setHistoryOpen(true);
+        return;
+      }
+      if (rows.every((r) => normalizeProjectId(r.projectId) === targetProjectId)) {
+        clearSessionRecents(ids);
+        if (surface) {
+          stampSessionsWorkMode(ids, surface);
+          setSurfaceOpen((prev) => ({ ...prev, [surface]: true }));
+        }
+        return;
+      }
+      requestMove(rows, targetProjectId, {
+        workMode: surface ?? undefined,
+      });
+    },
     onAttach: (rows) => {
       for (const row of rows) {
         applyAttachedChat(row.id, row.title, row.updatedAt);
       }
+    },
+    onReorder: () => {
+      /* Recency owns folder order — in-list drag does not persist. */
+    },
+    onRetag: (rows, mode) => {
+      const ids = rows.map((r) => r.id);
+      stampSessionsWorkMode(ids, mode);
+      clearSessionRecents(ids);
+      setSurfaceOpen((prev) => ({ ...prev, [mode]: true }));
+      if (rows.some((r) => r.id === session.sessionId)) applySurface(mode);
     },
   });
 
@@ -13803,22 +14246,17 @@ export function AppWorkbench() {
     if (!path || !api.isTauri()) return;
     const busy =
       session.state === "streaming" || session.state === "awaiting_permission";
-    const intervalMs = busy ? 2000 : 8000;
-    const id = window.setInterval(() => {
+    const intervalMs = gitDirtyPollMs(busy);
+    const stopPoll = startVisibleInterval(() => {
       void refreshGitDirtyStatus();
     }, intervalMs);
     const onFocus = () => {
       void refreshGitDirtyStatus();
     };
-    const onVisibility = () => {
-      if (document.visibilityState === "visible") onFocus();
-    };
     window.addEventListener("focus", onFocus);
-    document.addEventListener("visibilitychange", onVisibility);
     return () => {
-      window.clearInterval(id);
+      stopPoll();
       window.removeEventListener("focus", onFocus);
-      document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [
     activeProject?.path,
@@ -14513,26 +14951,45 @@ export function AppWorkbench() {
     worktreeCreateStartChat,
   ]);
 
-  /**
-   * Pick folder → add project (name = folder basename; no rename prompt).
-   * `bindSession` also attaches the open chat under the new project.
-   */
-  const addProjectFromPicker = useCallback(
-    async (opts: { bindSession: boolean; autoTrust?: boolean }) => {
-      setLocalError(null);
+  const openCreateProject = useCallback(
+    (opts: { bindSession: boolean; workspace?: CreateProjectWorkspace }) => {
+      setCreateProjectBindSession(opts.bindSession);
+      setCreateProjectWorkspaceHint(opts.workspace ?? null);
+      setCreateProjectError(null);
+      setCreateProjectOpen(true);
+    },
+    [],
+  );
+
+  const submitCreateProject = useCallback(
+    async (input: {
+      name: string;
+      path: string;
+      workspace: CreateProjectWorkspace;
+    }) => {
+      setCreateProjectError(null);
+      setCreateProjectBusy(true);
       try {
         if (isMirrorClient()) {
           showToast(tr("mirror.desktopOnly"), 3200);
           return;
         }
         if (!api.isTauri()) {
-          setLocalError(tr("error.needTauri"));
+          setCreateProjectError(tr("error.needTauri"));
           return;
         }
-        const path = await api.pickDirectory();
-        if (!path) return;
-        const p = (await api.projectAdd(path, !!opts.autoTrust)) as Project;
-        await finalizeAddedProject(p, { bindSession: opts.bindSession });
+        let p = (await api.projectAdd(input.path, false)) as Project;
+        const nextName = input.name.trim();
+        if (nextName && nextName !== p.name) {
+          p = (await api.projectRename(p.id, nextName)) as Project;
+        }
+        stampProjectWorkMode(p.id, input.workspace);
+        setSurfaceOpen((prev) => ({ ...prev, [input.workspace]: true }));
+        applySurface(input.workspace);
+        setCreateProjectOpen(false);
+        await finalizeAddedProject(p, {
+          bindSession: createProjectBindSession,
+        });
       } catch (e) {
         const code =
           e && typeof e === "object" && "code" in e
@@ -14541,16 +14998,49 @@ export function AppWorkbench() {
         if (code === "UNSUPPORTED" || isMirrorClient()) {
           showToast(tr("mirror.desktopOnly"), 3200);
         } else {
-          setLocalError(String(e));
+          setCreateProjectError(String(e));
         }
+      } finally {
+        setCreateProjectBusy(false);
       }
     },
-    [finalizeAddedProject, showToast, tr],
+    [
+      applySurface,
+      createProjectBindSession,
+      finalizeAddedProject,
+      showToast,
+      stampProjectWorkMode,
+      tr,
+    ],
   );
 
-  const addProject = async (autoTrust = false) => {
-    await addProjectFromPicker({ bindSession: false, autoTrust });
-  };
+  const pickOfficeFolder = useCallback(async () => {
+    try {
+      if (isMirrorClient()) {
+        showToast(tr("mirror.desktopOnly"), 3200);
+        return;
+      }
+      const path = await api.pickDirectory();
+      if (!path?.trim()) return;
+      const p = (await api.projectAdd(path, false)) as Project;
+      await finalizeAddedProject(p, { bindSession: true });
+    } catch (e) {
+      showToast(String(e), 3200);
+    }
+  }, [finalizeAddedProject, showToast, tr]);
+
+  const officeFocusPath = useMemo(() => {
+    if (!isOffice) return null;
+    const tab = activeSideTab(sideWorkbench);
+    if (tab?.kind !== "file" || !tab.path) return null;
+    return isOfficeDocPath(tab.path) || isOfficePath(tab.path)
+      ? tab.path
+      : null;
+  }, [isOffice, sideWorkbench]);
+
+  const addProject = useCallback(async () => {
+    openCreateProject({ bindSession: false });
+  }, [openCreateProject]);
 
   const trustProject = async (proj?: Project | null) => {
     const target = proj || activeProject;
@@ -14832,7 +15322,7 @@ export function AppWorkbench() {
         void newChat(activeProject);
         break;
       case "add-project":
-        void addProject(false);
+        void addProject();
         break;
       case "new-space":
         promptCreateSpace();
@@ -15054,7 +15544,7 @@ export function AppWorkbench() {
       if (!p) return;
       setShowSearch(false);
       // Project is a folder: expand only; selection is for sessions.
-      setProjectsOpen(true);
+      setSurfaceOpen({ code: true, office: true, studio: true });
       setExpandedProjects((e) => ({ ...e, [p.id]: true }));
       return;
     }
@@ -15797,7 +16287,7 @@ export function AppWorkbench() {
           break;
         case "add_project":
           setLocalError(null);
-          void addProject(false);
+          void addProject();
           break;
         case "dismiss":
         case "keep_waiting":
@@ -17305,6 +17795,7 @@ export function AppWorkbench() {
           aspect: studio.aspect,
           resolution: studio.resolution,
           duration: studio.duration,
+          count: studio.count,
         });
       }
       const schemaForEdit = sessionJsonSchemaRef.current?.trim() || "";
@@ -17922,6 +18413,7 @@ export function AppWorkbench() {
         rewindConfirm ||
         forkConfirm ||
         resumeRestoreConfirm ||
+        createProjectOpen ||
         worktreeCreateOpen ||
         worktreeGcOpen ||
         shipOpen ||
@@ -18260,6 +18752,7 @@ export function AppWorkbench() {
 
   return (
     <ImageViewerProvider locale={locale}>
+    <MediaHandoffProvider value={mediaHandoff}>
     <div
       className={
         `app-shell platform-${platform}` +
@@ -19228,6 +19721,11 @@ export function AppWorkbench() {
               onPointerDown={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                try {
+                  e.currentTarget.setPointerCapture(e.pointerId);
+                } catch {
+                  /* capture is best-effort */
+                }
                 const width = layout.sidebarWidth || SIDEBAR_DEFAULT_WIDTH;
                 sidebarResizeStartRef.current = {
                   x: e.clientX,
@@ -19268,9 +19766,9 @@ export function AppWorkbench() {
               <SidebarProductSwitch
                 workMode={workMode}
                 onSelect={(mode) => {
-                  if (mode === "office") enterOffice();
-                  else if (mode === "studio") enterStudio();
-                  else exitOffice();
+                  if (!session.sessionId) pendingWorkModeRef.current = mode;
+                  applySurface(mode);
+                  setSurfaceOpen((prev) => ({ ...prev, [mode]: true }));
                 }}
                 labels={{
                   build: tr("sidebar.build"),
@@ -19328,7 +19826,7 @@ export function AppWorkbench() {
               <span className="nav-item__icon">
                 <IconNewChat size={16} />
               </span>
-              {tr(isOffice ? "sidebar.officeNewSession" : "sidebar.newSession")}
+              {tr(newSessionKey(workMode))}
             </button>
             <button
               type="button"
@@ -19378,21 +19876,8 @@ export function AppWorkbench() {
             viewportClassName="sidebar__scroll-inner"
             syncTreeReveal
           >
-            {/* L1 — Projects section */}
+            {/* Spaces + select / add folder; surfaces are below */}
             <div className="tree-l1">
-              <button
-                type="button"
-                className="tree-l1__head tree-l1__head--toggle"
-                onClick={() => setProjectsOpen((v) => !v)}
-                aria-expanded={projectsOpen}
-                aria-label={tr("sidebar.projects")}
-              >
-                {projectsOpen ? (
-                  <IconChevronDown size={14} />
-                ) : (
-                  <IconChevronRight size={14} />
-                )}
-              </button>
               <SpaceSwitcher
                 state={projectSpaces.state}
                 projectIds={projects.map((p) => p.id)}
@@ -19410,116 +19895,9 @@ export function AppWorkbench() {
                 onRename={(id) => promptRenameSpace(id)}
                 onDelete={(id) => confirmDeleteSpace(id)}
               />
-              <div className="tree-l1__actions">
-                {sessionSelectMode ? (
-                  <Tip label={tr("common.cancel")}>
-                    <button
-                      type="button"
-                      className="tree-l1__action"
-                      aria-label={tr("common.cancel")}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        exitSessionSelectMode();
-                      }}
-                    >
-                      <IconClose size={15} />
-                    </button>
-                  </Tip>
-                ) : selectableSessionCount > 0 ? (
-                  <>
-                    <Tip label={tr("sidebar.select")}>
-                      <button
-                        type="button"
-                        className="tree-l1__action"
-                        aria-label={tr("sidebar.select")}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          enterSessionSelectMode();
-                        }}
-                      >
-                        <IconListCheck size={15} />
-                      </button>
-                    </Tip>
-                    {unreadSessionIds.size > 0 ? (
-                      <Tip label={tr("session.clearAllUnread")}>
-                        <button
-                          type="button"
-                          className="tree-l1__action"
-                          aria-label={tr("session.clearAllUnread")}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleClearAllSessionUnread();
-                          }}
-                        >
-                          <IconCheck size={15} />
-                        </button>
-                      </Tip>
-                    ) : null}
-                    <Tip label={tr("sidebar.archiveOlder")}>
-                      <button
-                        type="button"
-                        className="tree-l1__action"
-                        aria-label={tr("sidebar.archiveOlder")}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setCtxMenu({
-                            kind: "archive-older",
-                            x: e.clientX,
-                            y: e.clientY,
-                          });
-                        }}
-                      >
-                        <IconArchive size={15} />
-                      </button>
-                    </Tip>
-                  </>
-                ) : null}
-                {projects.length > 0 && !sessionSelectMode ? (
-                  <Tip label={tr("sidebar.collapseAllProjects")}>
-                    <button
-                      type="button"
-                      className="tree-l1__action"
-                      aria-label={tr("sidebar.collapseAllProjects")}
-                      onClick={(e) => {
-                        // Collapse each project folder only — not the L1 section.
-                        e.stopPropagation();
-                        setExpandedProjects((prev) => {
-                          const next = { ...prev };
-                          for (const p of projects) {
-                            next[p.id] = false;
-                          }
-                          return next;
-                        });
-                      }}
-                    >
-                      <IconArrowsVerticalCollapse size={15} />
-                    </button>
-                  </Tip>
-                ) : null}
-                {!isMirrorClient() && !sessionSelectMode ? (
-                  <Tip label={tr("sidebar.addProject")}>
-                    <button
-                      type="button"
-                      className="tree-l1__action"
-                      aria-label={tr("sidebar.addProject")}
-                      onClick={() => void addProject(false)}
-                    >
-                      <IconPlus size={15} />
-                    </button>
-                  </Tip>
-                ) : null}
-              </div>
             </div>
 
-            <SidebarTreeReveal open={projectsOpen} className="tree-reveal--projects">
-            {projects.length === 0 && (
-              <div className="sidebar-empty">
-                {tr("sidebar.noProjects")}
-              </div>
-            )}
-
-            {projects.length > 0 &&
-              visibleProjects.length === 0 && (
+            {projects.length > 0 && visibleProjects.length === 0 && (
               <div className="sidebar-empty sidebar-empty--space">
                 {tr("sidebar.spaces.empty")}
                 <div className="sidebar-empty__hint">
@@ -19528,421 +19906,104 @@ export function AppWorkbench() {
               </div>
             )}
 
-            {visibleProjects.map((proj) => {
-                const open = expandedProjects[proj.id] !== false;
-                const projSessions = sessionsForProject(proj.id);
-                const projSessionIds = projSessions.map((s) => s.id);
-                const projAllSelected = areAllIdsSelected(
-                  selectedSessionIds,
-                  projSessionIds,
-                );
-                return (
-                  <div key={proj.id} className="tree-project">
-                    {/* L2 — project folder: expand/collapse; drag row to reorder */}
-                    <div
-                      className={
-                        "tree-l2" +
-                        (isProjectPathMissing(proj.pathOk)
-                          ? " tree-l2--path-missing"
-                          : "") +
-                        (sessionSelectMode ? " tree-l2--select-mode" : "") +
-                        (projectReorder.enabled ? " tree-l2--reorderable" : "")
-                      }
-                      data-project-reorder-id={proj.id}
-                      data-session-drop={proj.id}
-                      role="button"
-                      tabIndex={0}
-                      aria-expanded={open}
-                      {...(projectReorder.enabled
-                        ? projectReorder.bindRow(proj.id)
-                        : {})}
-                      onClick={() => {
-                        // After a completed drag, ignore the trailing click.
-                        if (projectReorder.suppressNextClick()) return;
-                        setExpandedProjects((e) => ({
-                          ...e,
-                          [proj.id]: !open,
-                        }));
-                      }}
-                      onContextMenu={(e) => openProjectMenu(e, proj)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          setExpandedProjects((ex) => ({
-                            ...ex,
-                            [proj.id]: !open,
-                          }));
-                        }
-                      }}
-                    >
-                      <span className="tree-l2__icon">
-                        <IconFolder size={15} />
-                      </span>
-                      {resolveProjectColorCss(proj.color) ? (
-                        <span
-                          className="tree-l2__color-dot"
-                          style={
-                            {
-                              "--project-color": resolveProjectColorCss(
-                                proj.color,
-                              ),
-                            } as CSSProperties
-                          }
-                          aria-hidden
-                        />
-                      ) : null}
-                      <Tip
-                        label={
-                          isProjectPathMissing(proj.pathOk)
-                            ? tr("project.pathMissing", { name: proj.name })
-                            : proj.path
-                        }
-                      >
-                        <span className="tree-l2__name">
-                          {proj.pinned ? (
-                            <IconPin size={12} className="tree-l2__pin" />
-                          ) : null}
-                          {projectDisplayName(proj, tr)}
-                        </span>
-                      </Tip>
-                      {isProjectPathMissing(proj.pathOk) ? (
-                        <span className="project-row__badge project-row__badge--path-missing">
-                          {tr("sidebar.pathMissing")}
-                        </span>
-                      ) : !proj.trusted ? (
-                        <span className="project-row__badge">
-                          {tr("sidebar.untrusted")}
-                        </span>
-                      ) : null}
-                      <span
-                        className={
-                          "tree-l2__actions" +
-                          (sessionSelectMode
-                            ? " tree-l2__actions--select-mode"
-                            : "")
-                        }
-                      >
-                        {sessionSelectMode ? (
-                          projSessionIds.length > 0 ? (
-                            <button
-                              type="button"
-                              className={
-                                "tree-l2__select-all" +
-                                (projAllSelected
-                                  ? " tree-l2__select-all--on"
-                                  : "")
-                              }
-                              aria-label={
-                                projAllSelected
-                                  ? tr("sidebar.deselectAllInGroup")
-                                  : tr("sidebar.selectAllInGroup")
-                              }
-                              aria-pressed={projAllSelected}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleSessionsSelected(projSessionIds);
-                              }}
-                            >
-                              <span
-                                className={
-                                  "tree-l3__check" +
-                                  (projAllSelected ? " is-on" : "")
-                                }
-                                aria-hidden
-                              >
-                                {projAllSelected ? (
-                                  <IconCheck size={11} stroke={2.4} />
-                                ) : null}
-                              </span>
-                              <span className="tree-l2__select-all-label">
-                                {projAllSelected
-                                  ? tr("sidebar.deselectAllInGroup")
-                                  : tr("sidebar.selectAllInGroup")}
-                              </span>
-                            </button>
-                          ) : null
-                        ) : (
-                          <>
-                            <Tip label={tr("sidebar.newConversation")}>
-                              <button
-                                type="button"
-                                className="tree-icon-btn"
-                                disabled={
-                                  !proj.trusted ||
-                                  isProjectPathMissing(proj.pathOk)
-                                }
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  void newChat(proj);
-                                }}
-                              >
-                                <IconSquarePen size={14} />
-                              </button>
-                            </Tip>
-                            <Tip label={tr("sidebar.menu")}>
-                              <button
-                                type="button"
-                                className="tree-icon-btn"
-                                onClick={(e) => openProjectMenu(e, proj)}
-                              >
-                                <IconMore size={14} />
-                              </button>
-                            </Tip>
-                          </>
-                        )}
-                      </span>
-                    </div>
-
-                    <SidebarTreeReveal open={open}>
-                      <div className="tree-l3-list-wrap">
-                        {isProjectPathMissing(proj.pathOk) && (
-                          <button
-                            type="button"
-                            className="tree-l3 tree-l3--hint"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              void relocateProject(proj);
-                            }}
-                          >
-                            {tr("sidebar.relocateProject")}
-                          </button>
-                        )}
-                        {!proj.trusted && !isProjectPathMissing(proj.pathOk) && (
-                          <button
-                            type="button"
-                            className="tree-l3 tree-l3--hint"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              void trustProject(proj);
-                            }}
-                          >
-                            {tr("sidebar.trustProject")}
-                          </button>
-                        )}
-                        {projSessions.length > 0
-                          ? (() => {
-                              const sortedSessions =
-                                sortSessionsForSidebar(projSessions);
-                              return (
-                                <VirtualList
-                                  className="tree-l3-list"
-                                  items={sortedSessions}
-                                  getKey={(s) => s.id}
-                                  rowHeight={sidebarRowMetrics.rowHeight}
-                                  gap={sidebarRowMetrics.gap}
-                                  scrollToKey={
-                                    session.sessionId &&
-                                    sortedSessions.some(
-                                      (x) => x.id === session.sessionId,
-                                    )
-                                      ? session.sessionId
-                                      : null
-                                  }
-                                  renderItem={(s) => {
-                                    const working = busyIds.has(s.id);
-                                    const checked =
-                                      selectedSessionIds.has(s.id);
-                                    const unread = unreadSessionIds.has(s.id);
-                                    const planPending =
-                                      planPendingSessionIds.has(s.id);
-                                    const noteRaw =
-                                      sessionNotesMap[s.id]?.trim() || "";
-                                    return (
-                                      <SidebarSessionRow
-                                        session={s}
-                                        variant="project"
-                                        active={session.sessionId === s.id}
-                                        working={working}
-                                        unread={unread}
-                                        planPending={planPending}
-                                        checked={checked}
-                                        selectMode={sessionSelectMode}
-                                        muted={mutedSessionIds.has(s.id)}
-                                        noteTitle={
-                                          noteRaw
-                                            ? notePreview(noteRaw) ||
-                                              sidebarSessionLabels.noteAria
-                                            : null
-                                        }
-                                        worktreeBadge={buildSidebarWorktreeBadge(
-                                          s,
-                                        )}
-                                        labels={sidebarSessionLabels}
-                                        locale={locale}
-                                        showRelativeTime={
-                                          sidebarShowRelativeTime
-                                        }
-                                        onOpen={onSidebarSessionOpen}
-                                        onContextMenu={
-                                          onSidebarSessionContextMenu
-                                        }
-                                        onToggleSelect={toggleSessionSelected}
-                                        onPin={onSidebarSessionPin}
-                                        onArchive={onSidebarSessionArchive}
-                                        onMenu={onSidebarSessionMenu}
-                                        onRename={onSidebarSessionRename}
-                                      />
-                                    );
-                                  }}
-                                />
-                              );
-                            })()
-                          : null}
-                        {projSessions.length === 0 && proj.trusted && (
-                          <div className="sidebar-empty" style={{ padding: "4px 10px" }}>
-                            {tr("sidebar.noChats")}
-                          </div>
-                        )}
-                      </div>
-                    </SidebarTreeReveal>
-                  </div>
-                );
-              })}
-            </SidebarTreeReveal>
-
-            {/* Orphans / history — block wrap so the reveal is not a flex item */}
-            <div className="tree-orphan">
-            <div className="tree-l1" style={{ marginTop: 8 }}>
-              <button
-                type="button"
-                className="tree-l1__head"
-                data-session-drop={SESSION_DROP_ORPHAN}
-                aria-expanded={historyOpen}
-                onClick={() => setHistoryOpen((v) => !v)}
-              >
-                <span className="tree-l1__chevron" aria-hidden>
-                  {historyOpen ? (
-                    <IconChevronDown size={14} />
-                  ) : (
-                    <IconChevronRight size={14} />
-                  )}
-                </span>
-                <span className="tree-l1__label">
-                  {tr("sidebar.otherSessions")}
-                </span>
-              </button>
-              {!sessionSelectMode && orphanSessionIds.length > 0 ? (
-                <div className="tree-l1__actions">
-                  <Tip label={tr("sidebar.select")}>
-                    <button
-                      type="button"
-                      className="tree-l1__action"
-                      aria-label={tr("sidebar.select")}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        enterSessionSelectMode();
-                      }}
-                    >
-                      <IconListCheck size={15} />
-                    </button>
-                  </Tip>
-                </div>
-              ) : null}
-              {sessionSelectMode && orphanSessionIds.length > 0 ? (
-                <div className="tree-l1__actions tree-l1__actions--select-mode">
-                  <button
-                    type="button"
-                    className={
-                      "tree-l1__select-all" +
-                      (orphanAllSelected ? " tree-l1__select-all--on" : "")
+            <SidebarSurfaceTrees
+              workMode={workMode}
+              surfaceOpen={surfaceOpen}
+              onToggleSurface={(mode) =>
+                setSurfaceOpen((prev) => ({
+                  ...prev,
+                  [mode]: prev[mode] === false,
+                }))
+              }
+              onCreateInSurface={(mode) => {
+                setSurfaceOpen((prev) => ({ ...prev, [mode]: true }));
+                void newChat(null, { workMode: mode });
+              }}
+              recentsOpen={historyOpen}
+              onToggleRecents={() => setHistoryOpen((o) => !o)}
+              onCreateRecent={() => {
+                setHistoryOpen(true);
+                void newChat(null, { recents: true });
+              }}
+              sessionSelectScope={sessionSelectScope}
+              onEnterSelect={(scope) => enterSessionSelectMode(undefined, scope)}
+              onExitSelect={exitSessionSelectMode}
+              onArchiveOlder={(scope, e) => {
+                setCtxMenu({
+                  kind: "archive-older",
+                  x: e.clientX,
+                  y: e.clientY,
+                  scope,
+                });
+              }}
+              onCollapseSurfaceProjects={(mode) => {
+                setExpandedProjects((prev) => {
+                  const next = { ...prev };
+                  for (const p of visibleProjects) {
+                    if (
+                      projectVisibleOnSurface(
+                        p.id,
+                        sessions,
+                        mode,
+                        sessionWorkModes,
+                        projectWorkModes,
+                      )
+                    ) {
+                      next[p.id] = false;
                     }
-                    aria-label={
-                      orphanAllSelected
-                        ? tr("sidebar.deselectAllInGroup")
-                        : tr("sidebar.selectAllInGroup")
-                    }
-                    aria-pressed={orphanAllSelected}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleSessionsSelected(orphanSessionIds);
-                    }}
-                  >
-                    <span
-                      className={
-                        "tree-l3__check" +
-                        (orphanAllSelected ? " is-on" : "")
-                      }
-                      aria-hidden
-                    >
-                      {orphanAllSelected ? (
-                        <IconCheck size={11} stroke={2.4} />
-                      ) : null}
-                    </span>
-                    <span className="tree-l1__select-all-label">
-                      {orphanAllSelected
-                        ? tr("sidebar.deselectAllInGroup")
-                        : tr("sidebar.selectAllInGroup")}
-                    </span>
-                  </button>
-                </div>
-              ) : null}
-            </div>
-            {orphanSessions.length > 0
-              ? (() => {
-                  const sortedOrphans = sortSessionsForSidebar(orphanSessions);
-                  return (
-                    <SidebarTreeReveal open={historyOpen}>
-                      <div className="tree-l3-list-wrap">
-                      <VirtualList
-                        className="tree-orphan-list"
-                        items={sortedOrphans}
-                        getKey={(s) => s.id}
-                        rowHeight={sidebarRowMetrics.rowHeight}
-                        gap={sidebarRowMetrics.gap}
-                        scrollToKey={
-                          session.sessionId &&
-                          sortedOrphans.some(
-                            (x) => x.id === session.sessionId,
-                          )
-                            ? session.sessionId
-                            : null
-                        }
-                        renderItem={(s) => {
-                          const working = busyIds.has(s.id);
-                          const checked = selectedSessionIds.has(s.id);
-                          const unread = unreadSessionIds.has(s.id);
-                          const planPending =
-                            planPendingSessionIds.has(s.id);
-                          const noteRaw =
-                            sessionNotesMap[s.id]?.trim() || "";
-                          return (
-                            <SidebarSessionRow
-                              session={s}
-                              variant="orphan"
-                              active={session.sessionId === s.id}
-                              working={working}
-                              unread={unread}
-                              planPending={planPending}
-                              checked={checked}
-                              selectMode={sessionSelectMode}
-                              muted={mutedSessionIds.has(s.id)}
-                              noteTitle={
-                                noteRaw
-                                  ? notePreview(noteRaw) ||
-                                    sidebarSessionLabels.noteAria
-                                  : null
-                              }
-                              worktreeBadge={buildSidebarWorktreeBadge(s)}
-                              labels={sidebarSessionLabels}
-                              locale={locale}
-                              showRelativeTime={sidebarShowRelativeTime}
-                              onOpen={onSidebarSessionOpen}
-                              onContextMenu={onSidebarSessionContextMenu}
-                              onToggleSelect={toggleSessionSelected}
-                              onPin={onSidebarSessionPin}
-                              onArchive={onSidebarSessionArchive}
-                              onMenu={onSidebarSessionMenu}
-                              onRename={onSidebarSessionRename}
-                            />
-                          );
-                        }}
-                      />
-                      </div>
-                    </SidebarTreeReveal>
-                  );
-                })()
-              : null}
-            </div>
+                  }
+                  return next;
+                });
+              }}
+              onAddProject={(workspace) => {
+                openCreateProject({ bindSession: false, workspace });
+              }}
+              canAddProject={!isMirrorClient()}
+              onOpenProject={(proj, mode) => {
+                activeProjectRef.current = proj;
+                setActiveProject(proj);
+                applySurface(mode);
+              }}
+              onNewProjectChat={(proj, mode) => {
+                void newChat(proj, { workMode: mode });
+              }}
+              visibleProjects={visibleProjects}
+              projectIds={projects.map((p) => p.id)}
+              noProjectsAtAll={projects.length === 0}
+              sessions={sessions}
+              sessionWorkModes={sessionWorkModes}
+              projectWorkModes={projectWorkModes}
+              sessionLists={sidebarSessionLists}
+              expandedProjects={expandedProjects}
+              setExpandedProjects={setExpandedProjects}
+              projectReorder={projectReorder}
+              sessionSelectMode={sessionSelectMode}
+              selectedSessionIds={selectedSessionIds}
+              toggleSessionsSelected={toggleSessionsSelected}
+              activeSessionId={session.sessionId}
+              busyIds={busyIds}
+              unreadSessionIds={unreadSessionIds}
+              planPendingSessionIds={planPendingSessionIds}
+              mutedSessionIds={mutedSessionIds}
+              sessionNotesMap={sessionNotesMap}
+              sidebarSessionLabels={sidebarSessionLabels}
+              locale={locale}
+              sidebarShowRelativeTime={sidebarShowRelativeTime}
+              rowHeight={sidebarRowMetrics.rowHeight}
+              rowGap={sidebarRowMetrics.gap}
+              tr={tr}
+              openProjectMenu={openProjectMenu}
+              relocateProject={(proj) => void relocateProject(proj)}
+              trustProject={(proj) => void trustProject(proj)}
+              buildSidebarWorktreeBadge={buildSidebarWorktreeBadge}
+              onSidebarSessionOpen={onSidebarSessionOpen}
+              onSidebarSessionContextMenu={onSidebarSessionContextMenu}
+              onToggleSelect={toggleSessionSelected}
+              onSidebarSessionPin={onSidebarSessionPin}
+              onSidebarSessionArchive={onSidebarSessionArchive}
+              onSidebarSessionMenu={onSidebarSessionMenu}
+              onSidebarSessionRename={onSidebarSessionRename}
+            />
           </OverlayScroll>
 
           {sessionSelectMode ? (
@@ -20055,6 +20116,7 @@ export function AppWorkbench() {
               login: tr("account.login"),
               logout: tr("account.logout"),
               remaining: tr("account.quotaRemaining"),
+              usage: tr("account.usage"),
               profileActive: tr("account.profileActive"),
               switchTo: tr("account.switchTo"),
               customProvider: tr("prov.customProvider"),
@@ -20068,6 +20130,7 @@ export function AppWorkbench() {
             }}
             onSettings={() => navigateSettings()}
             onAccountSettings={() => navigateSettings("account")}
+            onUsage={() => setShowUsageLimitModal(true)}
             onTutorial={() => setShowProductTutorial(true)}
             onTheme={applyThemeChoice}
             onLogin={() => void runAccountLogin("oauth")}
@@ -20546,6 +20609,8 @@ export function AppWorkbench() {
               />
             )}
           </div>
+
+          <UpdateReadyBanner t={tr} />
 
           {mainPane === "kanban" ? (
             <Suspense fallback={null}>
@@ -21123,6 +21188,49 @@ export function AppWorkbench() {
               retry: tr("ui.errorBoundary.retry"),
             }}
           >
+          <OfficeWorkspace
+            enabled={isOffice}
+            showChat={shouldShowOfficeCommandChat({
+              matchesOfficeSession:
+                isOffice &&
+                sessionMatchesSurface(
+                  session.sessionId,
+                  sessionWorkModes,
+                  "office",
+                  pendingWorkModeRef.current,
+                ),
+              messageCount: messages.length,
+              sessionBusy: Boolean(
+                session.sessionId && busyIds.has(session.sessionId),
+              ),
+              journalLoading: transcriptMeta.journalLoading,
+              hasStreamingAssistant: transcriptMeta.hasStreamingAssistant,
+            })}
+            locale={locale}
+            projectPath={effectiveProjectPath}
+            projectName={
+              activeProject && !isGeneralProject(activeProject)
+                ? projectDisplayName(activeProject, tr)
+                : null
+            }
+            focusPath={officeFocusPath}
+            onStart={(kind) => {
+              const proj =
+                activeProject && !isGeneralProject(activeProject)
+                  ? activeProject
+                  : null;
+              setDraft(
+                tr(
+                  officeStartSeedKey(kind, !!proj),
+                  proj ? { name: projectDisplayName(proj, tr) } : undefined,
+                ),
+              );
+              requestComposerFocus();
+            }}
+            onOpenFile={(path, name) => {
+              setResourceOpenTarget({ type: "file", path, title: name });
+            }}
+          >
           <ConversationThreadLive
             onContinueInterrupted={onThreadContinueInterrupted}
             onAddQuote={onThreadAddQuote}
@@ -21134,10 +21242,9 @@ export function AppWorkbench() {
             }
             sessionKey={session.sessionId ?? `draft-${session.title ?? "new"}`}
             projectPath={effectiveProjectPath}
-            suppressEmptyCopy={welcomeSession && !isOffice && !isStudio}
+            suppressEmptyCopy={isOffice}
             officeMode={isOffice}
             studioMode={isStudio}
-            studioKind={studio.kind}
             officeProjectName={
               isOffice &&
               activeProject &&
@@ -21153,6 +21260,19 @@ export function AppWorkbench() {
               setDraft(
                 tr(
                   officeStartSeedKey(kind, !!proj),
+                  proj ? { name: projectDisplayName(proj, tr) } : undefined,
+                ),
+              );
+              requestComposerFocus();
+            }}
+            onBuildStart={(kind) => {
+              const proj =
+                activeProject && !isGeneralProject(activeProject)
+                  ? activeProject
+                  : null;
+              setDraft(
+                tr(
+                  buildWelcomeSeedKey(kind, !!proj),
                   proj ? { name: projectDisplayName(proj, tr) } : undefined,
                 ),
               );
@@ -21196,6 +21316,7 @@ export function AppWorkbench() {
             structuredOutputUsage={structuredOutputUsage}
             structuredOutputLabels={structuredOutputLabels}
           />
+          </OfficeWorkspace>
           </UiErrorBoundary>
           </AttachedChatLookupContext.Provider>
 
@@ -21203,7 +21324,7 @@ export function AppWorkbench() {
             const composerNode = (
           <ComposerDock
             chrome={workbenchChrome}
-            welcome={welcomeSession && !isOffice && !isStudio}
+            welcome={false}
             sideDock={sideDockActive}
             phone={phoneLayout}
             wrapRef={composerWrapRef}
@@ -21214,25 +21335,6 @@ export function AppWorkbench() {
                     ["--sw-sidebar-occupied"]: `${dockSidebarOccupied}px`,
                   } as CSSProperties)
                 : undefined
-            }
-            welcomeMark={
-              welcomeBrandKind ? (
-              <div className="composer-welcome-mark">
-                {welcomeProviderBrandNode ?? (
-                  <SuperGrokMark
-                    kind={welcomeBrandKind}
-                    title={
-                      customRouteActive
-                        ? "SuperGrok"
-                        : account?.billing?.subscriptionTier?.trim() ||
-                          (welcomeBrandKind === "heavy"
-                            ? "SuperGrok Heavy"
-                            : "SuperGrok")
-                    }
-                  />
-                )}
-              </div>
-              ) : undefined
             }
           >
             {perm ? (
@@ -21363,7 +21465,10 @@ export function AppWorkbench() {
                   labels={{
                     noProject: tr("project.general"),
                     pickProject: tr("composer.pickProject"),
-                    addProject: tr("composer.addProject"),
+                    chooseProject: tr("composer.chooseProject"),
+                    searchProjects: tr("composer.searchProjects"),
+                    newProject: tr("composer.newProject"),
+                    projectsEmpty: tr("composer.projectsEmpty"),
                     pathMissing: tr("project.pathMissingShort"),
                   }}
                   disabled={
@@ -21378,7 +21483,7 @@ export function AppWorkbench() {
                     void bindSessionProject(full);
                   }}
                   onAdd={() => {
-                    void addProjectFromPicker({ bindSession: true });
+                    openCreateProject({ bindSession: true });
                   }}
                 />
                 {surface.composerWorktrees &&
@@ -22043,7 +22148,7 @@ export function AppWorkbench() {
                     <button
                       type="button"
                       className={
-                        "icon-btn" +
+                        "icon-btn icon-btn--skills" +
                         (sideWorkbench.tabs.some((t) => t.kind === "skills") &&
                         !layout.asideCollapsed
                           ? " is-open"
@@ -22085,27 +22190,13 @@ export function AppWorkbench() {
                         aspect={studio.aspect}
                         resolution={studio.resolution}
                         duration={studio.duration}
+                        count={studio.count}
                         onKind={studio.setKind}
-                        onCycleAspect={studio.cycleAspect}
+                        onAspect={studio.setAspect}
                         onResolution={studio.setResolution}
                         onDuration={studio.setDuration}
+                        onCount={studio.setCount}
                       />
-                    ) : null}
-                    {isOffice ? (
-                      <Tip label={tr("composer.officeHint")}>
-                        <button
-                          type="button"
-                          className="chip chip--office"
-                          onClick={() => exitOffice()}
-                          aria-label={tr("composer.officeClear")}
-                        >
-                          <IconFileText size={14} />
-                          <span className="chip__label">
-                            {tr("composer.office")}
-                          </span>
-                          <IconClose size={12} />
-                        </button>
-                      </Tip>
                     ) : null}
                     {surface.composerModel && sessionJsonSchema ? (
                       <Tip
@@ -22143,6 +22234,7 @@ export function AppWorkbench() {
                         modelGroupOfficial: tr("composer.modelGroupOfficial"),
                         modelViaProvider: tr("composer.modelViaProvider"),
                         effort: tr("composer.effort"),
+                        speed: tr("composer.speed"),
                         effortHigh: tr("effort.high"),
                         effortMedium: tr("effort.medium"),
                         effortLow: tr("effort.low"),
@@ -22173,18 +22265,11 @@ export function AppWorkbench() {
                     ) : null}
                     {surface.composerAccess ? (
                     <ComposerAccessMenu
-                      mode={mode}
                       policy={policy}
                       labels={{
                         access: tr("composer.access"),
                         accessHint: tr("composer.accessHint"),
-                        mode: tr("composer.mode"),
-                        modeAgent: tr("mode.agent"),
-                        modePlan: tr("mode.plan"),
-                        modeAsk: tr("mode.ask"),
-                        modeAgentDesc: tr("mode.agentDesc"),
-                        modePlanDesc: tr("mode.planDesc"),
-                        modeAskDesc: tr("mode.askDesc"),
+                        learnMore: tr("composer.permissionLearnMore"),
                         permission: tr("composer.permission"),
                         policyAsk: tr("policy.ask"),
                         policyAcceptEdits: tr("policy.accept_edits"),
@@ -22209,17 +22294,11 @@ export function AppWorkbench() {
                         policyShortDontAsk: tr("policy.short.dont_ask"),
                         policyShortYolo: tr("policy.short.always_approve"),
                       }}
-                      onMode={(v) => {
-                        setMode(v);
-                        if (v === "plan") setGoalMode(false);
-                        void persistComposerPrefs({
-                          projectId: activeProject?.id ?? null,
-                          sessionId: session.sessionId ?? null,
-                          mode: v,
-                        }).catch((e) => showToast(String(e), 4000));
-                      }}
                       onPolicy={(v: PermissionPolicyId) => {
                         applyPermissionPolicy(v);
+                      }}
+                      onLearnMore={() => {
+                        navigateSettings("general", "permissions");
                       }}
                     />
                     ) : null}
@@ -22394,6 +22473,12 @@ export function AppWorkbench() {
               aria-label="Resize files pane"
               onPointerDown={(e) => {
                 e.preventDefault();
+                e.stopPropagation();
+                try {
+                  e.currentTarget.setPointerCapture(e.pointerId);
+                } catch {
+                  /* capture is best-effort */
+                }
                 liveAsideWidthRef.current =
                   layout.asideWidth || DEFAULT_LAYOUT.asideWidth;
                 setResizingAside(true);
@@ -22456,6 +22541,34 @@ export function AppWorkbench() {
                   });
                   window.setTimeout(() => requestComposerFocus(), 40);
                 }}
+                officeFolder={
+                  isOffice
+                    ? {
+                        activeProject: activeProject
+                          ? {
+                              ...activeProject,
+                              name: projectDisplayName(activeProject, tr),
+                            }
+                          : null,
+                        projects: projects.map((p) => ({
+                          ...p,
+                          name: projectDisplayName(p, tr),
+                        })),
+                        onSelect: (proj) => {
+                          const full = proj
+                            ? projects.find((p) => p.id === proj.id) ?? null
+                            : null;
+                          void bindSessionProject(full);
+                        },
+                        onAdd: () => {
+                          openCreateProject({ bindSession: true });
+                        },
+                        onPickFolder: () => {
+                          void pickOfficeFolder();
+                        },
+                      }
+                    : null
+                }
 />
             </Suspense>
           </div>
@@ -22477,15 +22590,12 @@ export function AppWorkbench() {
               project: tr("phone.toolsProject"),
               model: tr("phone.toolsModel"),
               effort: tr("composer.effort"),
+              speed: tr("composer.speed"),
               access: tr("phone.toolsAccess"),
               context: tr("phone.toolsContext"),
               noProject: tr("project.general"),
-              addProject: tr("composer.addProject"),
-              mode: tr("composer.mode"),
+              addProject: tr("composer.newProject"),
               permission: tr("composer.permission"),
-              modeAgent: tr("mode.agent"),
-              modePlan: tr("mode.plan"),
-              modeAsk: tr("mode.ask"),
               modelGroupOfficial: tr("composer.modelGroupOfficial"),
               modelViaProvider: tr("composer.modelViaProvider"),
               policyAsk: tr("policy.ask"),
@@ -22505,7 +22615,7 @@ export function AppWorkbench() {
               sourceKnown: tr("context.sourceKnown"),
               sourceEstimated: tr("context.sourceEstimated"),
               sourceUnknown: tr("context.sourceUnknown"),
-              contextWindow: tr("context.window"),
+              contextWindow: tr("composer.contextWindow"),
               contextPercentUsed: tr("context.percentLabel"),
               contextCacheHit: tr("context.cacheHit"),
               breakdownUser: tr("context.breakdownUser"),
@@ -22522,9 +22632,9 @@ export function AppWorkbench() {
             activeSource={providerActiveSource}
             activeProviderId={providerActiveId}
             channelEfforts={channelEffortOptions}
-            mode={mode}
             policy={policy}
             contextDisplay={contextUsageDisplay}
+            contextWindow={currentModelWindow}
             onAttach={() => {
               void pickComposerFiles();
             }}
@@ -22538,21 +22648,12 @@ export function AppWorkbench() {
               void bindSessionProject(full);
             }}
             onAddProject={() => {
-              void addProjectFromPicker({ bindSession: true });
+              openCreateProject({ bindSession: true });
             }}
             onModelPick={(pick) => {
               void handleModelPick(pick);
             }}
             onEffort={handleEffortPick}
-            onMode={(v) => {
-              setMode(v);
-              if (v === "plan") setGoalMode(false);
-              void persistComposerPrefs({
-                projectId: activeProject?.id ?? null,
-                sessionId: session.sessionId ?? null,
-                mode: v,
-              }).catch((e) => showToast(String(e), 4000));
-            }}
             onPolicy={(v: PermissionPolicyId) => {
               applyPermissionPolicy(v);
             }}
@@ -22670,6 +22771,29 @@ export function AppWorkbench() {
         onConfirm={() => {
           if (!archiveAgeConfirm) return;
           void runArchiveAgePlan(archiveAgeConfirm);
+        }}
+      />
+      <CreateProjectModal
+        locale={locale}
+        open={createProjectOpen}
+        busy={createProjectBusy}
+        error={createProjectError}
+        defaultWorkspace={
+          createProjectWorkspaceHint ??
+          defaultCreateProjectWorkspace(workMode)
+        }
+        onClose={() => {
+          if (createProjectBusy) return;
+          setCreateProjectOpen(false);
+          setCreateProjectWorkspaceHint(null);
+          setCreateProjectError(null);
+        }}
+        onPickFolder={async () => {
+          if (!api.isTauri()) return null;
+          return api.pickDirectory();
+        }}
+        onCreate={(input) => {
+          void submitCreateProject(input);
         }}
       />
       <WorktreeCreateModal
@@ -23551,7 +23675,7 @@ export function AppWorkbench() {
           onPickProject={(p) => {
             setShowSearch(false);
             projectSpaces.revealProject(p.id);
-            setProjectsOpen(true);
+            setSurfaceOpen({ code: true, office: true, studio: true });
             setExpandedProjects((e) => ({ ...e, [p.id]: true }));
           }}
           onPickSession={(row, proj) => {
@@ -23635,7 +23759,16 @@ export function AppWorkbench() {
       {(() => {
         let items: ContextMenuItem[] = [];
         if (ctxMenu?.kind === "archive-older") {
-          const agePreviews = listArchiveAgeOptionPreviews(sessions);
+          const archivePool = ctxMenu.scope
+            ? sessionsInSidebarScope({
+                sessions,
+                scope: ctxMenu.scope,
+                projectIds: projectIdSet,
+                sessionWorkModes,
+                recentsSet: sessionRecents,
+              })
+            : sessions;
+          const agePreviews = listArchiveAgeOptionPreviews(archivePool);
           items = agePreviews.map(({ days, count }) => ({
             id: `archive-older-${days}`,
             label:
@@ -23649,7 +23782,7 @@ export function AppWorkbench() {
             // Keep rows clickable when empty so empty-honesty toast can fire.
             disabled: false,
             onClick: () => {
-              confirmArchiveOlderThan(days);
+              confirmArchiveOlderThan(days, ctxMenu.scope);
             },
           }));
         } else if (ctxMenu?.kind === "project") {
@@ -24465,7 +24598,16 @@ export function AppWorkbench() {
                       id: "select",
                       label: tr("sidebar.select"),
                       icon: <IconListCheck size={16} />,
-                      onClick: () => enterSessionSelectMode(s.id),
+                      onClick: () =>
+                        enterSessionSelectMode(
+                          s.id,
+                          sidebarScopeOfSession(
+                            s,
+                            projectIdSet,
+                            sessionRecents,
+                            sessionWorkModes,
+                          ),
+                        ),
                     } satisfies ContextMenuItem,
                   ]),
               {
@@ -24637,6 +24779,7 @@ export function AppWorkbench() {
 
       <span hidden data-layout-default={JSON.stringify(DEFAULT_LAYOUT)} />
     </div>
+    </MediaHandoffProvider>
     </ImageViewerProvider>
   );
 }

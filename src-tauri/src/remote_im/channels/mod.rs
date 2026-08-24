@@ -19,6 +19,14 @@ use super::types::{ChannelInstance, IncomingMessage};
 use tokio::sync::{mpsc, watch};
 use tokio::task::JoinHandle;
 
+/// Settings → Remote control picker. Domestic leftovers stay in the catalog
+/// for resolve / doctor, but Bridge must not start them.
+pub const GUI_CHANNELS: &[&str] = &["telegram", "slack", "discord", "matrix", "line"];
+
+pub fn is_gui_channel(channel: &str) -> bool {
+    GUI_CHANNELS.contains(&channel)
+}
+
 /// Catalog channel ids that must have a real connector entry.
 pub const CATALOG_CHANNELS: &[&str] = &[
     "feishu",
@@ -134,6 +142,19 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn gui_channels_are_the_five_overseas_connectors() {
+        assert_eq!(
+            GUI_CHANNELS,
+            ["telegram", "slack", "discord", "matrix", "line"]
+        );
+        assert!(is_gui_channel("telegram"));
+        assert!(is_gui_channel("line"));
+        assert!(!is_gui_channel("feishu"));
+        assert!(!is_gui_channel("dingtalk"));
+        assert!(!is_gui_channel("wps-agentspace"));
     }
 
     #[test]

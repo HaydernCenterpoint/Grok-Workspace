@@ -1,7 +1,7 @@
 /**
- * Composer chip menus (Codex-style):
- * - Model (+effort)
- * - Access: session mode + permission in one panel
+ * Composer chip menus:
+ * - Model: ChatGPT-style Model / Speed / Context window rows
+ * - Access: Ask / Approve for me / Full access (no Mode or Advanced)
  * Narrow composer widths compress triggers to icon (+ short label).
  */
 
@@ -16,8 +16,6 @@ import {
 import { createPortal } from "react-dom";
 import {
   GROK_BUILD_MODELS,
-  PERMISSION_POLICIES,
-  SESSION_MODES,
   effortDisplayLabel,
   effortUiOptionsForCatalog,
   effortsForModel,
@@ -37,17 +35,15 @@ import { composerModelChipLabel } from "@/lib/effectiveModel";
 import { formatTokenCount } from "@/lib/contextUsage";
 import { Tip } from "@/components/ui/tooltip";
 import {
-  IconAlertTriangle,
-  IconBolt,
   IconCheck,
   IconChevronDown,
   IconChevronRight,
-  IconHandStop,
-  IconList,
-  IconRobot,
-  IconShield,
-  IconShieldCheck,
 } from "@/components/icons";
+import {
+  COMPOSER_PRIMARY_POLICIES,
+  asPermissionPolicyId,
+  composerPolicyIcon,
+} from "@/components/composerAccessVisuals";
 import { useFloatingMenu, type FloatingPos } from "@/lib/floatingMenu";
 
 type Nested = "model" | "effort" | "window" | null;
@@ -222,6 +218,8 @@ export interface ComposerModelMenuProps {
     modelSearchPlaceholder: string;
     /** Empty state when filter matches nothing. */
     modelSearchEmpty: string;
+    /** ChatGPT-style Speed row (maps to reasoning effort). */
+    speed?: string;
     /** Section header for official catalog models. */
     modelGroupOfficial: string;
     /** @deprecated Prefer real custom groups via `providers`. */
@@ -411,16 +409,16 @@ export function ComposerModelMenu({
     activeCustom,
   });
   const eLabel = resolveEffortLabel(effort, effortCatalog, labels);
+  const speedLabel = labels.speed ?? labels.effort;
   // Compact trigger: model + short effort (locale), no middle-dot noise.
   const triggerText = `${modelLabel} ${eLabel}`;
-  const title = `${labels.model}: ${modelLabel} · ${labels.effort}: ${eLabel}`;
+  const title = `${labels.model}: ${modelLabel} · ${speedLabel}: ${eLabel}`;
 
   return (
     <MenuShell
       {...menu}
       className="cmm--model"
       panelClassName="cmm__pop--model"
-      triggerIcon={<IconBolt size={14} />}
       triggerText={triggerText}
       triggerShort={eLabel}
       ariaLabel={labels.model}
@@ -452,7 +450,7 @@ export function ComposerModelMenu({
             className="cmm__row"
             onClick={() => setNested("effort")}
           >
-            <span>{labels.effort}</span>
+            <span>{speedLabel}</span>
             <span className="cmm__row-val">
               <span className="cmm__row-val-text">{eLabel}</span>
               <IconChevronRight size={14} />
@@ -490,7 +488,7 @@ export function ComposerModelMenu({
               ? labels.model
               : nested === "window"
                 ? labels.contextWindow
-                : labels.effort}
+                : speedLabel}
           </button>
           {nested === "model" &&
             (groups.length === 0 ? (
@@ -675,21 +673,14 @@ export function ComposerModelMenu({
   );
 }
 
-/* ---------- Access: mode + permission (Codex-style one entry) ---------- */
+/* ---------- Access: ChatGPT-style Ask / Approve / Full access ---------- */
 
 export interface ComposerAccessMenuProps {
-  mode: string;
   policy: string;
   labels: {
     access: string;
     accessHint: string;
-    mode: string;
-    modeAgent: string;
-    modePlan: string;
-    modeAsk: string;
-    modeAgentDesc: string;
-    modePlanDesc: string;
-    modeAskDesc: string;
+    learnMore: string;
     permission: string;
     policyAsk: string;
     policyAcceptEdits: string;
@@ -710,24 +701,12 @@ export interface ComposerAccessMenuProps {
     policyShortDontAsk: string;
     policyShortYolo: string;
   };
-  onMode: (id: string) => void;
   onPolicy: (id: PermissionPolicyId) => void;
-}
-
-function modeLabel(id: string, labels: ComposerAccessMenuProps["labels"]): string {
-  if (id === "plan") return labels.modePlan;
-  if (id === "ask") return labels.modeAsk;
-  return labels.modeAgent;
-}
-
-function modeDesc(id: string, labels: ComposerAccessMenuProps["labels"]): string {
-  if (id === "plan") return labels.modePlanDesc;
-  if (id === "ask") return labels.modeAskDesc;
-  return labels.modeAgentDesc;
+  onLearnMore?: () => void;
 }
 
 function policyLabel(
-  id: string,
+  id: PermissionPolicyId,
   labels: ComposerAccessMenuProps["labels"],
 ): string {
   switch (id) {
@@ -741,13 +720,17 @@ function policyLabel(
       return labels.policyDontAsk;
     case "always_approve":
       return labels.policyYolo;
-    default:
+    case "ask":
       return labels.policyAsk;
+    default: {
+      const _never: never = id;
+      return _never;
+    }
   }
 }
 
 function policyShort(
-  id: string,
+  id: PermissionPolicyId,
   labels: ComposerAccessMenuProps["labels"],
 ): string {
   switch (id) {
@@ -761,13 +744,17 @@ function policyShort(
       return labels.policyShortDontAsk;
     case "always_approve":
       return labels.policyShortYolo;
-    default:
+    case "ask":
       return labels.policyShortAsk;
+    default: {
+      const _never: never = id;
+      return _never;
+    }
   }
 }
 
 function policyDesc(
-  id: string,
+  id: PermissionPolicyId,
   labels: ComposerAccessMenuProps["labels"],
 ): string {
   switch (id) {
@@ -781,133 +768,146 @@ function policyDesc(
       return labels.policyDontAskDesc;
     case "always_approve":
       return labels.policyYoloDesc;
-    default:
+    case "ask":
       return labels.policyAskDesc;
+    default: {
+      const _never: never = id;
+      return _never;
+    }
   }
 }
 
-function policyIcon(id: string) {
-  switch (id) {
-    case "accept_edits":
-      return <IconShieldCheck size={18} />;
-    case "allow_for_session":
-      return <IconShield size={18} />;
-    case "auto":
-      return <IconBolt size={18} />;
-    case "dont_ask":
-      return <IconHandStop size={18} />;
-    case "always_approve":
-      return <IconAlertTriangle size={18} />;
-    default:
-      return <IconHandStop size={18} />;
-  }
-}
-
-function modeIcon(id: string) {
-  if (id === "plan") return <IconList size={18} />;
-  if (id === "ask") return <IconHandStop size={18} />;
-  return <IconRobot size={18} />;
+function AccessPolicyRow({
+  id,
+  active,
+  labels,
+  onSelect,
+}: {
+  id: PermissionPolicyId;
+  active: boolean;
+  labels: ComposerAccessMenuProps["labels"];
+  onSelect: (id: PermissionPolicyId) => void;
+}) {
+  const yolo = id === "always_approve";
+  return (
+    <button
+      type="button"
+      className={
+        "cmm__opt cmm__opt--access" +
+        (active ? " is-active" : "") +
+        (yolo ? " is-yolo" : "")
+      }
+      onClick={() => onSelect(id)}
+    >
+      <span
+        className={
+          "cmm__opt-icon" + (yolo ? " cmm__opt-icon--grok" : "")
+        }
+        aria-hidden
+      >
+        {composerPolicyIcon(id, 20)}
+      </span>
+      <span className="cmm__opt-main">
+        <span className="cmm__opt-title">{policyLabel(id, labels)}</span>
+        <span className="cmm__opt-desc">{policyDesc(id, labels)}</span>
+      </span>
+      {active ? (
+        <span className="cmm__opt-check" aria-hidden>
+          <IconCheck size={16} />
+        </span>
+      ) : null}
+    </button>
+  );
 }
 
 export function ComposerAccessMenu({
-  mode,
   policy,
   labels,
-  onMode,
   onPolicy,
+  onLearnMore,
 }: ComposerAccessMenuProps) {
-  /* Wider dual-column sheet: mode | permission side by side. */
-  const menu = usePortalMenu(320, 520);
-  const isDanger = policy === "always_approve";
-  const full = policyLabel(policy, labels);
-  const short = policyShort(policy, labels);
-  const title = `${labels.mode}: ${modeLabel(mode, labels)} · ${labels.permission}: ${full}`;
+  const menu = usePortalMenu(360, 320);
+  const policyId = asPermissionPolicyId(policy);
+  const isYolo = policyId === "always_approve";
+  const full = policyLabel(policyId, labels);
+  const short = policyShort(policyId, labels);
+
+  const pickPolicy = (id: PermissionPolicyId) => {
+    onPolicy(id);
+    menu.setOpen(false);
+  };
+
+  const panel =
+    menu.open && menu.pos && typeof document !== "undefined"
+      ? createPortal(
+          <div
+            ref={menu.popRef}
+            className="cmm__pop cmm__pop--portal cmm__pop--access"
+            id={menu.popId}
+            role="dialog"
+            aria-label={labels.access}
+            style={menu.popStyle}
+          >
+            <div className="cmm__access-sheet">
+              <div className="cmm__access-head">
+                <div className="cmm__header-title">{labels.accessHint}</div>
+                {onLearnMore ? (
+                  <button
+                    type="button"
+                    className="cmm__access-learn"
+                    onClick={() => {
+                      menu.setOpen(false);
+                      onLearnMore();
+                    }}
+                  >
+                    {labels.learnMore}
+                  </button>
+                ) : null}
+              </div>
+              <div role="group" aria-label={labels.permission}>
+                {COMPOSER_PRIMARY_POLICIES.map((id) => (
+                  <AccessPolicyRow
+                    key={id}
+                    id={id}
+                    active={id === policyId}
+                    labels={labels}
+                    onSelect={pickPolicy}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )
+      : null;
 
   return (
-    <MenuShell
-      {...menu}
-      className="cmm--access"
-      panelClassName="cmm__pop--access"
-      triggerIcon={policyIcon(policy)}
-      triggerText={full}
-      triggerShort={short}
-      ariaLabel={labels.access}
-      title={title}
-      danger={isDanger}
+    <div
+      ref={menu.rootRef}
+      className={`cmm cmm--access${menu.open ? " is-open" : ""}${isYolo ? " cmm--danger" : ""}`}
     >
-      <div className="cmm__header">
-        <div className="cmm__header-title">{labels.accessHint}</div>
-      </div>
-
-      <div className="cmm__access-cols">
-        <div className="cmm__access-col" role="group" aria-label={labels.mode}>
-          <div className="cmm__section">{labels.mode}</div>
-          {SESSION_MODES.map((m) => (
-            <button
-              key={m.id}
-              type="button"
-              className={
-                "cmm__opt cmm__opt--access" + (m.id === mode ? " is-active" : "")
-              }
-              onClick={() => onMode(m.id)}
-            >
-              <span className="cmm__opt-icon" aria-hidden>
-                {modeIcon(m.id)}
-              </span>
-              <span className="cmm__opt-main">
-                <span className="cmm__opt-title">{modeLabel(m.id, labels)}</span>
-                <span className="cmm__opt-desc">{modeDesc(m.id, labels)}</span>
-              </span>
-              {m.id === mode && (
-                <span className="cmm__opt-check" aria-hidden>
-                  <IconCheck size={16} />
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-
-        <div
-          className="cmm__access-col"
-          role="group"
-          aria-label={labels.permission}
-        >
-          <div className="cmm__section">{labels.permission}</div>
-          {PERMISSION_POLICIES.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              className={
-                "cmm__opt cmm__opt--access" +
-                (p.id === policy ? " is-active" : "") +
-                (p.dangerous ? " is-danger" : "")
-              }
-              onClick={() => {
-                onPolicy(p.id);
-                menu.setOpen(false);
-              }}
-            >
-              <span className="cmm__opt-icon" aria-hidden>
-                {policyIcon(p.id)}
-              </span>
-              <span className="cmm__opt-main">
-                <span className="cmm__opt-title">
-                  {policyLabel(p.id, labels)}
-                </span>
-                <span className="cmm__opt-desc">
-                  {policyDesc(p.id, labels)}
-                </span>
-              </span>
-              {p.id === policy && (
-                <span className="cmm__opt-check" aria-hidden>
-                  <IconCheck size={16} />
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
-    </MenuShell>
+      <button
+        ref={menu.triggerRef}
+        type="button"
+        className="cmm__trigger cmm-run__pill"
+        aria-haspopup="dialog"
+        aria-expanded={menu.open}
+        aria-controls={menu.popId}
+        aria-label={full}
+        onClick={() => menu.setOpen((v) => !v)}
+      >
+        <span className="cmm__icon" aria-hidden>
+          {composerPolicyIcon(policyId, 16)}
+        </span>
+        <span className="cmm__trigger-text cmm__trigger-text--full">
+          {full}
+        </span>
+        <span className="cmm__trigger-text cmm__trigger-text--short">
+          {short}
+        </span>
+      </button>
+      {panel}
+    </div>
   );
 }
 

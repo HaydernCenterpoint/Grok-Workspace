@@ -55,6 +55,10 @@ import {
 } from "@/lib/resourceTree";
 import { isResourceDraftDirty } from "@/lib/resourceEdit";
 import { pathBaseName } from "@/lib/sessionChanges";
+import {
+  ComposerProjectMenu,
+  type ProjectOption,
+} from "@/components/ComposerProjectMenu";
 
 export type FilesWorkspaceProps = {
   locale: Locale | string;
@@ -82,6 +86,13 @@ export type FilesWorkspaceProps = {
   closePathRequest?: { path: string; token: number } | null;
   onClosePathResult?: (path: string, closed: boolean) => void;
   paneActive?: boolean;
+  officeFolder?: {
+    projects: ProjectOption[];
+    activeProject: ProjectOption | null;
+    onSelect: (project: ProjectOption | null) => void;
+    onAdd: () => void;
+    onPickFolder: () => void;
+  } | null;
 };
 
 const NOOP = () => {};
@@ -101,6 +112,7 @@ export function FilesWorkspace({
   closePathRequest,
   onClosePathResult,
   paneActive = true,
+  officeFolder = null,
 }: FilesWorkspaceProps) {
   const tr = useMemo(() => createT(locale as Locale), [locale]);
   const [root, setRoot] = useState<TreeNode[]>([]);
@@ -372,9 +384,38 @@ export function FilesWorkspace({
     !previewTab.loading &&
     !previewDirty;
 
+  const folderBar = officeFolder ? (
+    <div className="office-project-bar" data-testid="office-project-bar">
+      <ComposerProjectMenu
+        variant="context"
+        activeProject={officeFolder.activeProject}
+        projects={officeFolder.projects}
+        labels={{
+          noProject: tr("project.general"),
+          pickProject: tr("composer.pickProject"),
+          chooseProject: tr("composer.chooseProject"),
+          searchProjects: tr("composer.searchProjects"),
+          newProject: tr("composer.newProject"),
+          projectsEmpty: tr("composer.projectsEmpty"),
+          pathMissing: tr("project.pathMissingShort"),
+        }}
+        onSelect={officeFolder.onSelect}
+        onAdd={officeFolder.onAdd}
+      />
+      <button
+        type="button"
+        className="btn btn--ghost btn--sm"
+        onClick={officeFolder.onPickFolder}
+      >
+        {tr("office.pane.pickFolder")}
+      </button>
+    </div>
+  ) : null;
+
   if (!projectPath) {
     return (
       <div className="sw-files" data-testid="files-workspace">
+        {folderBar}
         <div className="rp__empty-state">
           <div className="rp__empty-title">{tr("main.noProject")}</div>
           <div className="rp__empty-desc">{tr("resources.needProject")}</div>
@@ -385,6 +426,7 @@ export function FilesWorkspace({
 
   return (
     <div className="sw-files rp--embedded" data-testid="files-workspace">
+      {folderBar}
       {/* Row 2 (image-5/6): crumbs LEFT · tree + 打开 RIGHT */}
       <div className="rp-files-toolbar" data-testid="files-toolbar">
         <div

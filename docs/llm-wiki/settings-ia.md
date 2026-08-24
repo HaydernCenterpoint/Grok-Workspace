@@ -24,7 +24,7 @@ Agent / 贡献者维护设置 UI 时**必读**。目标：层次清晰、可搜�
 | general | `composer` · `permissions` · `agent`（含 experimental memory、memory browser、**memory embedding 0.2.117**） · `app` |
 | appearance | `theme`（主题：浅深色 / 皮肤 / 背景）· `interface`（界面：工作台 chrome、聊天展示） |
 | account | `official` · `providers` · `extras`（「拓展」：官方工具注入开关） |
-| extensions | `plugins` · `mcp` · `skills`（含 **探测 Claude/Cursor 技能** 开关，`#/settings/extensions/skills` → `settings-anchor-ext-skills-discover`）· `agents` · `hooks`（**无** `market` / `apps`；`#/settings/extensions/market` → `plugins` 可安装目录锚点） |
+| extensions | `plugins` · `mcp` · `skills`（含 **探测 Claude/Cursor 技能** 开关，`#/settings/extensions/skills` → `settings-anchor-ext-skills-discover`；**查找已安装技能 / 从 Codex·Claude 导入**，`settings-anchor-ext-skills-find` / `settings-anchor-ext-import`）· `agents` · `hooks`（**无** `market` / `apps`；`#/settings/extensions/market` → `plugins` 可安装目录锚点） |
 | runtime | `cli` · `connection` · `network` · `pool` · `tools` · `privacy` |
 | remote_im（远程控制） | `im`（IM 通信）· `mirror`（手机镜像） |
 | pet | `look`（外观设置：顶栏开关+尺寸，左侧预览，右侧形体/表情/颜色/眼睛）· `bubbles`（气泡设置：提示框、进度条、自动关闭、形状/背景） |
@@ -84,6 +84,7 @@ Agent / 贡献者维护设置 UI 时**必读**。目标：层次清晰、可搜�
 
 ## 相关
 
+- **Chat width** (`appearance.chatWidth`): Settings still writes `html[data-chat-width]`. Grok Build / Office / Studio command columns ignore that ladder and use `--composer-width-max` (same as the docked composer). See [office.md](./office.md) / [studio.md](./studio.md).
 - i18n：`docs/llm-wiki/i18n.md`
 - 账户分栏：`docs/llm-wiki/account.md`
 - 插件市场：`docs/llm-wiki/plugins-marketplace.md`

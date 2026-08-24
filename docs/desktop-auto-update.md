@@ -32,8 +32,17 @@ Unsigned / local builds keep the previous GitHub “open release page” path.
 | Pre-relaunch teardown | `prepare_for_app_update` — **only after** successful `install()`, never before |
 | Frontend state machine | `src/hooks/useUpdater.ts` + `UpdaterProvider` (single path: plugin or GitHub) |
 | Path honesty (copy / channel) | `src/lib/appUpdateHonesty.ts` — signed auto vs GitHub manual vs unsupported vs host-only; soft-fail error classes; agents stop only after install prepare |
-| UI | Settings → About (`AboutUpdateRow`) |
+| UI | Settings → About (`AboutUpdateRow` + auto-download toggle) · ChatGPT-style workbench banner (`UpdateReadyBanner`: Now / Later) · sidebar icon (`SidebarUpdateButton`) |
 | Capabilities | `updater:allow-*`, `process:allow-restart` |
+
+The banner is in-app chrome (not an OS toast). **Restart now** opens
+`UpdateInstallConfirmModal`, then the same P0 install order. **Later** writes
+sessionStorage for this version + state so the bar stays hidden until the next
+launch; the sidebar icon remains. Settings → About **Download updates
+automatically** is localStorage-only (default on). Off still lets background
+check surface `available` / `manual-required`, but the signed path does not
+call `downloadUpdate` until the user starts it from the banner, About, or
+sidebar. Unsigned / local / Linux non-AppImage stay GitHub-manual.
 
 Local `pnpm dev` / debug builds **never** enable the updater plugin (no
 feature, no env), so dev binaries never hit a production endpoint.

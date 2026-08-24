@@ -6,9 +6,8 @@ import { memo } from "react";
 import type { Locale } from "@/i18n";
 import type { ChatMessage } from "@/lib/session";
 import { toolStepDisplayTitle } from "@/lib/session";
-import { isBrowseToolKind, isSearchToolKind } from "@/lib/toolDisplay";
-import { IconCircle, IconSearch, IconWorld } from "@/components/icons";
 import { EndOfTurnChip } from "./EndOfTurnChip";
+import { ToolGrid } from "./ActivityLoaders";
 
 export {
   isToolStepMessage,
@@ -28,12 +27,6 @@ export const LiveToolText = memo(function LiveToolText({
   const title = toolStepDisplayTitle(message);
   if (!title) return null;
 
-  const kind = message.toolKind;
-  let icon = <IconCircle size={15} stroke={1.5} />;
-  if (isBrowseToolKind(kind, title)) icon = <IconWorld size={15} stroke={1.5} />;
-  else if (isSearchToolKind(kind, title))
-    icon = <IconSearch size={15} stroke={1.5} />;
-
   return (
     <div
       className="grok-act__step is-running is-last"
@@ -43,7 +36,9 @@ export const LiveToolText = memo(function LiveToolText({
       title={message.toolDetail || message.toolPath || title}
     >
       <div className="grok-act__icon-col" aria-hidden>
-        <span className="grok-act__icon">{icon}</span>
+        <span className="grok-act__icon">
+          <ToolGrid />
+        </span>
       </div>
       <span className="grok-act__label">{title}</span>
     </div>

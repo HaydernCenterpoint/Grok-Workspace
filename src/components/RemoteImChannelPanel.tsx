@@ -5,6 +5,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createT, resolveLocale, type MessageKey } from "@/i18n";
+import { startVisibleInterval } from "@/lib/visibleInterval";
 import type {
   AclConfig,
   ChannelInstance,
@@ -492,11 +493,11 @@ export function RemoteImChannelPanel({
         setScanPhase("idle");
       }
     };
-    const id = window.setInterval(() => void tick(), 4000);
     void tick();
+    const stop = startVisibleInterval(() => void tick(), 4000);
     return () => {
       cancelled = true;
-      window.clearInterval(id);
+      stop();
     };
   }, [scanPhase, scanDeviceCode, channelId, t]);
 

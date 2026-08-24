@@ -1,14 +1,19 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_WORK_MODE,
   OFFICE_HASH,
   OFFICE_START_KINDS,
   officeStartSeedKey,
+  resolveOfficeWorkspaceLayout,
+  shouldShowOfficeCommandChat,
   WORK_MODE_ATTR,
   WORK_MODE_STORAGE_KEY,
   WORK_MODES,
   applyWorkMode,
   composerPlaceholderKey,
+  newSessionKey,
   productTitleKey,
   workSurfaceChrome,
   isOfficeSideTabKind,
@@ -99,14 +104,14 @@ describe("grokOffice", () => {
     ).toBe("composer.goalPlaceholder");
     expect(
       composerPlaceholderKey({ goalMode: false, workMode: "office" }),
-    ).toBe("composer.officePlaceholder");
+    ).toBe("composer.placeholder");
     expect(
       composerPlaceholderKey({
         goalMode: false,
         workMode: "office",
         hasBuildProject: true,
       }),
-    ).toBe("composer.officePlaceholderFromBuild");
+    ).toBe("composer.placeholder");
     expect(
       composerPlaceholderKey({ goalMode: false, workMode: "code" }),
     ).toBe("composer.placeholder");
@@ -119,6 +124,67 @@ describe("grokOffice", () => {
     expect(productTitleKey("code")).toBe("sidebar.build");
     expect(productTitleKey("office")).toBe("sidebar.office");
     expect(productTitleKey("studio")).toBe("sidebar.studio");
+    expect(newSessionKey("code")).toBe("sidebar.newSession");
+    expect(newSessionKey("office")).toBe("sidebar.officeNewSession");
+    expect(newSessionKey("studio")).toBe("sidebar.studioNewSession");
+  });
+
+  it("hides the Office landing once a transcript or document is present", () => {
+    expect(
+      resolveOfficeWorkspaceLayout({ showChat: false, hasDocument: false }),
+    ).toBe("start");
+    expect(
+      resolveOfficeWorkspaceLayout({ showChat: true, hasDocument: false }),
+    ).toBe("chat-only");
+    expect(
+      resolveOfficeWorkspaceLayout({ showChat: true, hasDocument: true }),
+    ).toBe("split");
+    expect(
+      resolveOfficeWorkspaceLayout({ showChat: false, hasDocument: true }),
+    ).toBe("split");
+  });
+
+  it("opens the Office command column on a live or loading session", () => {
+    expect(
+      shouldShowOfficeCommandChat({
+        matchesOfficeSession: false,
+        messageCount: 3,
+        sessionBusy: true,
+      }),
+    ).toBe(false);
+    expect(
+      shouldShowOfficeCommandChat({
+        matchesOfficeSession: true,
+        messageCount: 0,
+      }),
+    ).toBe(false);
+    expect(
+      shouldShowOfficeCommandChat({
+        matchesOfficeSession: true,
+        messageCount: 1,
+      }),
+    ).toBe(true);
+    expect(
+      shouldShowOfficeCommandChat({
+        matchesOfficeSession: true,
+        messageCount: 0,
+        sessionBusy: true,
+      }),
+    ).toBe(true);
+    expect(
+      shouldShowOfficeCommandChat({
+        matchesOfficeSession: true,
+        messageCount: 0,
+        journalLoading: true,
+      }),
+    ).toBe(true);
+    expect(
+      shouldShowOfficeCommandChat({
+        matchesOfficeSession: true,
+        messageCount: 0,
+        hasStreamingAssistant: true,
+      }),
+    ).toBe(true);
   });
 
   it("seeds the composer per starter, naming the Build folder only for reports", () => {
@@ -152,5 +218,18 @@ describe("grokOffice", () => {
     expect(build.composerModel).toBe(true);
     expect(isOfficeSideTabKind("file")).toBe(true);
     expect(isOfficeSideTabKind("terminal")).toBe(false);
+  });
+
+  it("does not paint a paper tint over the shared theme", () => {
+    const css = readFileSync(
+      join(__dirname, "../styles/workbench-office.css"),
+      "utf8",
+    );
+    expect(css).not.toMatch(/html\[data-work-mode="office"\] \.main\b/);
+    expect(css).not.toMatch(/html\[data-work-mode="office"\] \.workbench\b/);
+    expect(css).not.toMatch(/html\[data-work-mode="office"\] \.sidebar\b/);
+    expect(css).toMatch(
+      /\.office-workspace--chat-only > \.office-workspace__canvas\s*\{[^}]*display:\s*none/s,
+    );
   });
 });

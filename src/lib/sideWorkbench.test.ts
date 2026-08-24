@@ -19,6 +19,7 @@ import {
   setActiveSideTab,
   sidePickerOptions,
   filterSideTabsForWorkMode,
+  shouldAutoUncollapseOfficeFilesAside,
   SIDE_PICKER_EXCLUDED,
   SIDE_TAB_DEFAULT_NAME_KEYS,
   toggleSideExpanded,
@@ -96,6 +97,27 @@ describe("sidePickerOptions", () => {
     s = openSideTab(s, "terminal");
     const next = filterSideTabsForWorkMode(s, "office");
     expect(next.tabs.map((t) => t.kind)).toEqual(["file"]);
+  });
+
+  it("does not force the Office files pane back after the user closed it", () => {
+    expect(
+      shouldAutoUncollapseOfficeFilesAside({
+        alreadyOpenedThisSession: false,
+        asideCollapsed: true,
+      }),
+    ).toBe(true);
+    expect(
+      shouldAutoUncollapseOfficeFilesAside({
+        alreadyOpenedThisSession: true,
+        asideCollapsed: false,
+      }),
+    ).toBe(true);
+    expect(
+      shouldAutoUncollapseOfficeFilesAside({
+        alreadyOpenedThisSession: true,
+        asideCollapsed: true,
+      }),
+    ).toBe(false);
   });
 });
 

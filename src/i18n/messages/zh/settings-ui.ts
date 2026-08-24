@@ -423,6 +423,8 @@ export const zhSettingsUi = {
   "settings.autoUpdateError.other": "更新失败。你仍可打开发布页并手动安装。",
   "settings.autoUpdateChannelUnsupported": "更新通道：手动安装（此安装包类型不支持自动更新）",
   "settings.autoUpdateChannelHostOnly": "更新通道：仅桌面端（此处不可用）",
+  "settings.autoDownloadUpdates": "自动下载更新",
+  "settings.autoDownloadUpdatesDesc": "已签名的正式版会在后台下载，然后等你确认「安装并重启」。未签名 / 本地构建仍打开 GitHub，不会静默安装。关闭后需自行开始下载。",
   "settings.askDemo.title": "Ask-user 演示路径",
   "settings.askDemo.desc": "建议步骤：无需四处寻找设置，即可对比 Ask 与 YOLO。应用只准备权限与示例提示词——真实问卷仍取决于模型与 CLI。",
   "settings.askDemo.honesty": "诚实说明：真正的 `ask_user_question` 取决于模型与 Grok Build CLI。应用不会自动发送提示词，也不会声称 Agent 一定会提问。",

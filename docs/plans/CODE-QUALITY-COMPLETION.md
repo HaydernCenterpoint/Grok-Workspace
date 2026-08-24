@@ -45,8 +45,9 @@ untrusted workbook HTML to the WebView without `sanitizeOfficeSheetHtml`.
 
 ## What this note is not
 
-- It is not a claim that every 1000-line file is gone. The budget gate still
-  allows a fixed count; shrinking further is follow-up, not a blocker.
+- It is not a claim that every 1000-line file is gone. The budget gate allows
+  90 files ≥1000 lines (84 on the workbench tree after `AppWorkbench` + Codex
+  import + Remote IM). Shrinking further is follow-up, not a blocker.
 - It is not a security audit of SheetJS itself. The override is documented
   here so CI can distinguish “forgotten CVE” from “known, contained pin”.
 - It is not a license to skip `pnpm audit:prod` on other production deps.

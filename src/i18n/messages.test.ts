@@ -177,6 +177,7 @@ describe("i18n catalog", () => {
       "sidebar.settings",
       "sidebar.search",
       "sidebar.projects",
+      "sidebar.recents",
       "conn.ready",
       "perm.allowOnce",
       "tray.newChat",
@@ -212,6 +213,11 @@ describe("i18n catalog", () => {
       ["app.quitBusy.message", ["{n}"]],
       ["fileCard.code", ["{ext}"]],
       ["settings.autoUpdateConfirm.message", ["{version}"]],
+      ["update.banner.ready", ["{version}"]],
+      ["update.banner.manual", ["{version}"]],
+      ["update.banner.downloading", ["{version}"]],
+      ["studio.count", ["{n}"]],
+      ["studio.count.n", ["{n}"]],
     ];
     for (const loc of LOCALES) {
       for (const [key, vars] of cases) {

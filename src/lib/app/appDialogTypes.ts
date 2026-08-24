@@ -3,6 +3,8 @@
  * window.prompt/confirm are unreliable in Tauri WebView — use these instead.
  */
 
+import type { SidebarActionScope } from "@/lib/sessionSidebarLists";
+
 export type ContextMenuState =
   | { kind: "project"; id: string; x: number; y: number }
   | { kind: "project-policy"; id: string; x: number; y: number }
@@ -10,7 +12,12 @@ export type ContextMenuState =
   | { kind: "project-color"; id: string; x: number; y: number }
   | { kind: "session"; id: string; x: number; y: number }
   | { kind: "session-move"; ids: string[]; x: number; y: number }
-  | { kind: "archive-older"; x: number; y: number }
+  | {
+      kind: "archive-older";
+      x: number;
+      y: number;
+      scope?: SidebarActionScope;
+    }
   | null;
 
 /** In-app dialogs — window.prompt/confirm are unreliable in Tauri WebView. */

@@ -1,7 +1,7 @@
 /**
  * Honest empty copy for the main chat transcript.
  *
- * - new draft → "Start chatting"
+ * - new draft → Grok logo + welcome slogan
  * - selected session whose journal is not hydrated yet → loading
  * - selected session whose journal is confirmed empty → no welcome copy
  *   (the empty-session banner owns that case)
@@ -9,22 +9,22 @@
  * Loading must not look like a fresh chat or a failed empty session.
  */
 
-export type ChatTranscriptEmptyKind = "start" | "loading";
+export type ChatTranscriptEmptyKind = "start" | "loading" | "welcome";
 
 export type ChatTranscriptEmptyPresentation = {
   kind: ChatTranscriptEmptyKind;
   titleKey:
     | "main.startTitle"
+    | "main.welcomeSlogan"
     | "main.loadingTitle"
     | "office.startTitle"
     | "office.startTitleFromBuild"
-    | "studio.headline.image";
-  hintKey:
+    | "studio.welcomeSlogan";
+  hintKey?:
     | "main.startHint"
     | "main.loadingHint"
     | "office.startHint"
-    | "office.startHintFromBuild"
-    | "studio.placeholder";
+    | "office.startHintFromBuild";
   vars?: { name: string };
 };
 
@@ -54,8 +54,7 @@ export function resolveChatTranscriptEmptyState(input: {
   if (input.studioMode) {
     return {
       kind: "start",
-      titleKey: "studio.headline.image",
-      hintKey: "studio.placeholder",
+      titleKey: "studio.welcomeSlogan",
     };
   }
   if (input.officeMode) {
@@ -75,9 +74,8 @@ export function resolveChatTranscriptEmptyState(input: {
     };
   }
   return {
-    kind: "start",
-    titleKey: "main.startTitle",
-    hintKey: "main.startHint",
+    kind: "welcome",
+    titleKey: "main.welcomeSlogan",
   };
 }
 

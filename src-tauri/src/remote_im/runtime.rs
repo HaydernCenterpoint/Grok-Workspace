@@ -56,6 +56,9 @@ pub async fn start_runtime(
     let mut instances = Vec::new();
 
     for dto in list {
+        if !channels::is_gui_channel(&dto.channel) {
+            continue;
+        }
         if !dto.enabled || !dto.has_credentials {
             continue;
         }

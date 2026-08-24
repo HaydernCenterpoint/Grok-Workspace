@@ -169,7 +169,7 @@ describe("wrapTextLines", () => {
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("no 2d");
     const font =
-      '13.5px ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+      '13.5px "Inter Variable", Inter, sans-serif';
     const maxW = 200;
     const long =
       "先查深圳未来一周天气，再据此生成动漫风天气卡片。天气数据已齐：未来一周以雷雨为主，周末有暴雨风险。按技 HTML 天气卡片并导出为图片。把动漫画也复制到工作区，方便你直接使用。";

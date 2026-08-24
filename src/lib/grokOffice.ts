@@ -1,7 +1,7 @@
 /**
  * Product surfaces: Grok Build (`code`), Grok Office (`office`), Grok Studio (`studio`).
- * Office = papers / slides / sheets. Studio = Imagine image / video.
- * Not a second agent and not an editor suite.
+ * Office = papers / slides / sheets on a document canvas. Studio = Imagine.
+ * Not a second agent. Not a port of OfficeCLI.
  */
 
 export type WorkMode = "code" | "office" | "studio";
@@ -111,20 +111,15 @@ export function composerPlaceholderKey(opts: {
   hasBuildProject?: boolean;
 }):
   | "composer.goalPlaceholder"
-  | "composer.officePlaceholderFromBuild"
-  | "composer.officePlaceholder"
   | "studio.placeholder"
   | "composer.placeholder" {
   if (opts.goalMode) return "composer.goalPlaceholder";
   switch (opts.workMode) {
     case "office":
-      return opts.hasBuildProject
-        ? "composer.officePlaceholderFromBuild"
-        : "composer.officePlaceholder";
-    case "studio":
-      return "studio.placeholder";
     case "code":
       return "composer.placeholder";
+    case "studio":
+      return "studio.placeholder";
     default: {
       const _never: never = opts.workMode;
       return _never;
@@ -142,6 +137,26 @@ export function productTitleKey(
       return "sidebar.studio";
     case "code":
       return "sidebar.build";
+    default: {
+      const _never: never = mode;
+      return _never;
+    }
+  }
+}
+
+export function newSessionKey(
+  mode: WorkMode,
+):
+  | "sidebar.newSession"
+  | "sidebar.officeNewSession"
+  | "sidebar.studioNewSession" {
+  switch (mode) {
+    case "office":
+      return "sidebar.officeNewSession";
+    case "studio":
+      return "sidebar.studioNewSession";
+    case "code":
+      return "sidebar.newSession";
     default: {
       const _never: never = mode;
       return _never;
@@ -228,6 +243,43 @@ export const OFFICE_START_KINDS: readonly OfficeStartKind[] = [
   "slides",
   "sheet",
 ] as const;
+
+export type OfficeWorkspaceLayout = "start" | "chat-only" | "split";
+
+/**
+ * Empty Office keeps the landing canvas. A transcript with no document
+ * uses the full command column (Build/Studio hide their heroes the same
+ * way). A loaded `*.office.json` / office file keeps the document split.
+ */
+export function resolveOfficeWorkspaceLayout(input: {
+  showChat: boolean;
+  hasDocument: boolean;
+}): OfficeWorkspaceLayout {
+  if (input.hasDocument) return "split";
+  if (input.showChat) return "chat-only";
+  return "start";
+}
+
+/**
+ * Hide the Office start mark once this Office session is a live chat —
+ * not only after the shell message array has a row. Working / hydrating
+ * turns used to keep the logo + slogan on top of an empty command column.
+ */
+export function shouldShowOfficeCommandChat(input: {
+  matchesOfficeSession: boolean;
+  messageCount: number;
+  sessionBusy?: boolean;
+  journalLoading?: boolean;
+  hasStreamingAssistant?: boolean;
+}): boolean {
+  if (!input.matchesOfficeSession) return false;
+  return (
+    input.messageCount > 0 ||
+    input.sessionBusy === true ||
+    input.journalLoading === true ||
+    input.hasStreamingAssistant === true
+  );
+}
 
 export type OfficeStartSeedKey =
   | "composer.officeReportDraft"
