@@ -663,7 +663,35 @@ export function applyWallpaperFlag(
     root.setAttribute("data-wallpaper", "1");
   } else {
     root.removeAttribute("data-wallpaper");
+    root.removeAttribute("data-wallpaper-video");
   }
+}
+
+/**
+ * Video wallpaper parked: object URL revoked, chrome flags off, no `<video>`.
+ * Still-image wallpaper never sets this (frost stays).
+ */
+export function applyWallpaperParkedFlag(
+  parked: boolean,
+  root: SkinRoot = document.documentElement,
+): void {
+  if (parked) {
+    root.setAttribute("data-wallpaper-parked", "1");
+    return;
+  }
+  root.removeAttribute("data-wallpaper-parked");
+}
+
+/** Video wallpaper + pane blur is a WebView2 GPU sink even while idle. */
+export function applyWallpaperVideoFlag(
+  video: boolean,
+  root: SkinRoot = document.documentElement,
+): void {
+  if (video) {
+    root.setAttribute("data-wallpaper-video", "1");
+    return;
+  }
+  root.removeAttribute("data-wallpaper-video");
 }
 
 export type WallpaperPrepareErrorCode =

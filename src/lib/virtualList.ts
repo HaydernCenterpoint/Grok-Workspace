@@ -2,12 +2,12 @@
  * Pure windowing math for fixed-height lists (sidebar sessions, etc.).
  * Zero-deps — used by VirtualList; safe to unit-test without DOM.
  *
- * Comfortable density matches `.tree-l3` CSS: height 30px, list gap 2px.
- * Compact density uses 24px / 0 via `sidebarSessionRowMetrics` (see sidebarDensity.ts).
+ * Comfortable density matches `.tree-l3` CSS: height 24px, list gap 2px.
+ * Compact density uses 19px / 0 via `sidebarSessionRowMetrics` (see sidebarDensity.ts).
  */
 
 /** Fixed session row height in the project tree (`.tree-l3`) — comfortable. */
-export const SIDEBAR_SESSION_ROW_HEIGHT = 30;
+export const SIDEBAR_SESSION_ROW_HEIGHT = 24;
 
 /** Flex gap between session rows (`.tree-l3-list` / orphan stack) — comfortable. */
 export const SIDEBAR_SESSION_ROW_GAP = 2;
